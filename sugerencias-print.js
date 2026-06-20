@@ -2,18 +2,19 @@
     'use strict';
 
     // Mapa de configuración unificado
+    // MODIFICADO: Ahora consume las variables globales inyectadas por config.js
     const SUGERENCIAS_CONFIG = {
         RG: {
-            versionStr: 'v2.9.3-RG-Unified',
+            versionStr: 'v2.9.4-RG-SuperConfig',
             versionKey: 'sugerencias_rg',
             containerId: 'sugerencias-contenido',
-            logoSrc: 'logo RG_REST.png',
+            logoSrc: LOGO_RG,
             logoFallback: 'https://z-cdn-media.chatglm.cn/files/fc4b4919-b148-470d-97a2-c740c58d1178.png?auth_key=1881113734-9f1ef8e42c5a4eae8f4f0f9055730ecf-0-f7b585f0f08f5f78de683fb163bec75d',
             qrImgId: 'img-qr-rg',
             qrRadioName: 'qr-mode-rg-footer',
-            qrDefault: 'qr-code-RG-MOD.png', // Oficial RG
-            qrMod: 'qr-code.png',           // Alternativo RG
-            defaultQrSelection: 'mod',       // Cargado por defecto en RG
+            qrDefault: QR_RG_DEFAULT, 
+            qrMod: QR_RG_MOD,           
+            defaultQrSelection: 'mod',       
             // 3 Opciones restauradas para RG
             qrOptions: [
                 { value: 'none', label: 'Sin QR', isDefault: false },
@@ -22,16 +23,16 @@
             ]
         },
         USOPEN: {
-            versionStr: 'v2.9.3-USOPEN-Unified',
+            versionStr: 'v2.9.4-USOPEN-SuperConfig',
             versionKey: 'sugerencias_usopen',
             containerId: 'sugerencias-contenido-usopen',
-            logoSrc: 'USOPEN_REST.png',
+            logoSrc: LOGO_USOPEN,
             logoFallback: 'https://z-cdn-media.chatglm.cn/files/fc4b4919-b148-470d-97a2-c740c58d1178.png?auth_key=1881113734-9f1ef8e42c5a4eae8f4f0f9055730ecf-0-f7b585f0f08f5f78de683fb163bec75d',
             qrImgId: 'img-qr-usopen',
             qrRadioName: 'qr-mode-usopen-footer',
-            qrDefault: 'qr-usopen_oficial.png', // Oficial USOPEN
-            qrMod: 'qr-usopen_mod.png',         // Alternativo USOPEN
-            defaultQrSelection: 'default',      // Cargado por defecto en USOPEN
+            qrDefault: QR_USOPEN_DEFAULT, 
+            qrMod: QR_USOPEN_MOD,         
+            defaultQrSelection: 'default',      
             // 3 Opciones para USOPEN
             qrOptions: [
                 { value: 'none', label: 'Sin QR', isDefault: false },
@@ -41,7 +42,7 @@
         }
     };
 
-    const PATH_ALERGENOS = 'imagenes/alergenos/';
+    // MODIFICADO: Eliminado el PATH_ALERGENOS local. Ahora usa la variable global inyectada por config.js
 
     // Inyectar estilos de impresión una sola vez de forma segura
     if (!document.getElementById('sugerencias-print-styles')) {
@@ -145,7 +146,7 @@
     };
 
     function aplicarParcheOptimista(fuente, modo) {
-        const CONSISTENCY_WINDOW_MS = 180000;
+        // MODIFICADO: Usar variable global CONSISTENCY_WINDOW_MS inyectada desde config.js
         const state = window.optimisticState ? window.optimisticState[modo] : { t: 0, s: [] };
         const timeSinceSave = Date.now() - state.t;
         
@@ -203,6 +204,7 @@
             lista.forEach(p => {
                 let iconsHtml = '';
                 if (p.alergenos) {
+                    // MODIFICADO: Uso de PATH_ALERGENOS global de config.js
                     iconsHtml = '<div class="sugerencias-alergenos">' + p.alergenos.split(',').map(a => `<img src="${PATH_ALERGENOS}${a.trim()}.webp" class="sugerencias-alergeno-icon" onerror="this.style.display='none'">`).join('') + '</div>';
                 }
                 const objEs = window.desglosarNombre(p.es);
