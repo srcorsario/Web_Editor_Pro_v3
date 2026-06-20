@@ -59,57 +59,8 @@ function getCsvUrlSafe() {
     return '';
 }
 
-function superLimpiar(texto) {
-    if (!texto) return "";
-    let t = texto.toString().trim();
-    if (t.startsWith('"') && t.endsWith('"')) t = t.substring(1, t.length - 1);
-    t = t.replace(/""/g, '"');
-    return t.trim();
-}
-
-function desglosarNombre(texto) {
-    if (!texto) return { nombre: "", uvas: "" };
-    const partes = texto.split('//');
-    return {
-        nombre: partes[0] ? partes[0].trim() : "",
-        uvas: partes[1] ? partes[1].trim() : ""
-    };
-}
-
-function formatWineName(texto) {
-    if (!texto) return "";
-    const partes = texto.split('(');
-    let nombrePrincipal = partes[0].toUpperCase();
-    if (partes.length > 1) {
-        return nombrePrincipal + '(' + partes.slice(1).join('(');
-    }
-    return nombrePrincipal;
-}
-
-function extraerJSON(texto) {
-    let limpio = texto.replace(/```json/g, '').replace(/```/g, '').trim();
-    let braceCount = 0;
-    let startIndex = -1;
-    
-    for (let i = 0; i < limpio.length; i++) {
-        if (limpio[i] === '{') {
-            if (braceCount === 0) startIndex = i;
-            braceCount++;
-        } else if (limpio[i] === '}') {
-            braceCount--;
-            if (braceCount === 0 && startIndex !== -1) {
-                const jsonString = limpio.substring(startIndex, i + 1);
-                try {
-                    return JSON.parse(jsonString);
-                } catch (e) {
-                    console.error("JSON aislado pero inválido:", jsonString);
-                    throw new Error("JSON inválido: " + e.message);
-                }
-            }
-        }
-    }
-    throw new Error("No se encontró un JSON válido en la respuesta de la IA.");
-}
+// MODIFICADO: Funciones puras (desglosarNombre, superLimpiar, formatWineName, extraerJSON) 
+// movidas a utils.js para limpiar este archivo y evitar duplicidades.
 
 async function cargar(retryCount = 0) {
     const CONSISTENCY_WINDOW_MS = 180000; // NUEVO: Ventana de 3 minutos (180s)
@@ -460,8 +411,6 @@ function abrirEditor(id, esNuevo = false) {
 function actualizarNombreCroquetas() {
     const esCroquetaVeg = (platoEditandoId >= 12200 && platoEditandoId <= 12299);
 
-// [🔒 FIN DE PARTE 1. CONTINÚA EN LA SIGUIENTE PARTE]
-// [🔒 CONTINUACIÓN DE ARCHIVO DIVIDIDO - PARTE 2 DE 3 - UNIR CON PARTE ANTERIOR]
     const seleccionadas = Array.from(document.querySelectorAll('.croqueta-btn.selected')).map(el => el.innerText.trim());
     
     if (seleccionadas.length === 0) {
@@ -962,9 +911,6 @@ function actualizarListaKeys() {
     if (!select) return;
     
     if (keys.length === 0) {
-
-// [🔒 FIN DE PARTE 2. CONTINÚA EN LA SIGUIENTE PARTE]
-// [🔒 CONTINUACIÓN DE ARCHIVO DIVIDIDO - PARTE 3 DE 3 - UNIR CON PARTE ANTERIOR]
         select.innerHTML = '<option value="">No hay API Keys</option>';
         select.disabled = true;
         return;
@@ -1023,7 +969,3 @@ if (editPrecioInput) {
 }
 
 console.groupEnd();
-
-
-
-// [🔒 FIN DE ARCHIVO DIVIDIDO - PARTE 3 DE 3]
