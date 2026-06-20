@@ -16,25 +16,45 @@ window.APP_VERSIONS        Object   Varios           app.js, ui.js, sugerencias-
 window.UI.tempImportFile   File     ui.js            ui.js (listener archivoLocal)                                   ui.js (confirmarImportacion, cancelarImportacion)
 window.lastSaveAttempt     Number   No definido      -                                                                  ui.js (cargarGoogleSheets)
 
+--- NUEVAS VARIABLES DE SUPER-CONFIG (Inyectadas por config.js) ---
+CONSISTENCY_WINDOW_MS      Number   config.js       (Estática)                                                         app.js (cargar, iniciarContadorOptimista), index.html (updateDebugPanel), sugerencias-print.js (aplicarParcheOptimista)
+PATH_IMAGENES              String   config.js       (Estática)                                                         index.html (rutas de logos en header)
+PATH_ALERGENOS             String   config.js       (Estática)                                                         sugerencias-print.js (procesarYRender)
+LOGO_RG                    String   config.js       (Estática)                                                         index.html (header img src), sugerencias-print.js (SUGERENCIAS_CONFIG)
+LOGO_USOPEN                String   config.js       (Estática)                                                         index.html (header img src), sugerencias-print.js (SUGERENCIAS_CONFIG)
+QR_RG_DEFAULT              String   config.js       (Estática)                                                         sugerencias-print.js (SUGERENCIAS_CONFIG)
+QR_RG_MOD                  String   config.js       (Estática)                                                         sugerencias-print.js (SUGERENCIAS_CONFIG)
+QR_USOPEN_DEFAULT          String   config.js       (Estática)                                                         sugerencias-print.js (SUGERENCIAS_CONFIG)
+QR_USOPEN_MOD              String   config.js       (Estática)                                                         sugerencias-print.js (SUGERENCIAS_CONFIG)
+
 
 ================================================================================
 📁 config.js
 ================================================================================
 No usa módulos. Se ejecuta en el scope global.
 
-Constantes
+Constantes de Red
 - CSV_URL_RG, CSV_URL_USOPEN, WEB_APP_URL_RG, WEB_APP_URL_USOPEN
   Es usado por: getWebAppUrl(), getCsvUrl() (ambas internas).
 
-getWebAppUrl()
-- Retorna: String (URL del Web App de Google)
-- Lee: window.currentMode, WEB_APP_URL_RG, WEB_APP_URL_USOPEN
-- Es usado por: app.js (vía getWebAppUrlSafe()), ui.js (en sincronizarConGoogleSheets)
+Funciones de Red
+- getWebAppUrl()
+  Retorna: String (URL del Web App de Google)
+  Lee: window.currentMode, WEB_APP_URL_RG, WEB_APP_URL_USOPEN
+  Es usado por: app.js (vía getWebAppUrlSafe()), ui.js (en sincronizarConGoogleSheets)
 
-getCsvUrl()
-- Retorna: String (URL del CSV de Google Sheets)
-- Lee: window.currentMode, CSV_URL_RG, CSV_URL_USOPEN
-- Es usado por: app.js (vía getCsvUrlSafe()), index.html (en switchTab)
+- getCsvUrl()
+  Retorna: String (URL del CSV de Google Sheets)
+  Lee: window.currentMode, CSV_URL_RG, CSV_URL_USOPEN
+  Es usado por: app.js (vía getCsvUrlSafe()), index.html (en switchTab)
+
+NUEVAS: Constantes de Assets y Sistema
+- PATH_IMAGENES, PATH_ALERGENOS, LOGO_RG, LOGO_USOPEN
+  Es usado por: index.html, sugerencias-print.js (inyectadas en SUGERENCIAS_CONFIG)
+- QR_RG_DEFAULT, QR_RG_MOD, QR_USOPEN_DEFAULT, QR_USOPEN_MOD
+  Es usado por: sugerencias-print.js (inyectadas en SUGERENCIAS_CONFIG)
+- CONSISTENCY_WINDOW_MS
+  Es usado por: app.js, index.html, sugerencias-print.js
 
 
 ================================================================================
@@ -42,26 +62,24 @@ getCsvUrl()
 ================================================================================
 No usa módulos. Se ejecuta en el scope global.
 
-getKeys()
-- Retorna: Array<String>
-- Lee: localStorage
-- Es usado por: app.js (generarTraduccionEN, ejecutarTraduccionAutomatica), ui.js (iniciarTraduccionPorLotes)
+- getKeys()
+  Retorna: Array<String>
+  Lee: localStorage
+  Es usado por: app.js (generarTraduccionEN, ejecutarTraduccionAutomatica), ui.js (iniciarTraduccionPorLotes)
 
-saveKey(key)
-- Escribe en: localStorage
-- Es usado por: app.js (agregarKey), ui.js (listener de addKeyBtn)
+- saveKey(key)
+  Escribe en: localStorage
+  Es usado por: app.js (agregarKey), ui.js (listener de addKeyBtn)
 
-deleteKey(key)
-- Escribe en: localStorage
-- Es usado por: app.js (eliminarKeySeleccionada), ui.js (listener de btnEliminarKeySeleccionada)
+- deleteKey(key)
+  Escribe en: localStorage
+  Es usado por: app.js (eliminarKeySeleccionada), ui.js (listener de btnEliminarKeySeleccionada)
 
 
 ================================================================================
 📁 utils.js
 ================================================================================
 No usa módulos. Se ejecuta en el scope global. Archivo puramente declarativo de funciones puras (no tocan DOM ni estado).
-
-Funciones Globales Inyectadas
 
 - desglosarNombre(texto)
   Retorna: { nombre: String, uvas: String }
@@ -86,7 +104,6 @@ Funciones Globales Inyectadas
 ================================================================================
 No usa módulos. Se ejecuta en el scope global. Archivo puramente declarativo.
 
-Variables Globales Inyectadas
 - IDIOMAS_CONFIG (Object): Mapeo ISO -> Nombre visible.
 - IDIOMAS_ORDEN (Array): Orden de procesamiento.
 - IDIOMAS_CSV_INDICES (Object): Mapeo de qué columna del CSV pertenece a qué idioma.
@@ -119,7 +136,7 @@ Funciones de Red y Estado
   Es usado por: Internamente en app.js.
 
 - cargar(retryCount)
-  Lee: getCsvUrlSafe(), window.optimisticState, window.ESTRUCTURA, window.IDIOMAS_ORDEN, window.IDIOMAS_CSV_INDICES
+  Lee: getCsvUrlSafe(), window.optimisticState, window.ESTRUCTURA, window.IDIOMAS_ORDEN, window.IDIOMAS_CSV_INDICES, CONSISTENCY_WINDOW_MS (GLOBAL)
   Escribe en: window.datosLocales, window.hayCambiosSinGuardar, DOM (#status-carga, #editor-dinamico)
   Es usado por: index.html (switchTab), se auto-invoca al final del archivo.
 
@@ -129,7 +146,7 @@ Funciones de Red y Estado
   Es usado por: index.html (botón #btn-guardar-dinamico inline onclick), index.html (switchTab)
 
 - iniciarContadorOptimista(modo)
-  Lee: window.optimisticTimers, window.currentMode
+  Lee: window.optimisticTimers, window.currentMode, CONSISTENCY_WINDOW_MS (GLOBAL)
   Escribe en: window.optimisticTimers, sessionStorage, DOM (#optimistic-timer)
   Es usado por: app.js (enviarAlExcel)
 
@@ -245,6 +262,7 @@ SUGERENCIAS_CONFIG (Variable Interna de Configuración)
 - Tipo: Object
 - Claves obligatorias: 'RG', 'USOPEN' (Ambas en MAYÚSCULAS estrictas).
 - Contiene: versionStr, versionKey, containerId, logoSrc, qrImgId, qrRadioName, qrDefault, qrMod, defaultQrSelection, qrOptions (Array de objetos con value, label, isDefault).
+- MODIFICADO: Ahora los valores de logoSrc, qrDefault y qrMod apuntan a variables globales inyectadas por config.js (LOGO_RG, QR_RG_DEFAULT, etc.) en lugar de strings hardcoded.
 
 - window.renderCarta(modo)
   Contrato de modo: String. DEBE ser 'RG' o 'USOPEN' (La función aplica .toUpperCase() por seguridad interna, pero el contrato es mayúsculas).
@@ -265,11 +283,17 @@ SUGERENCIAS_CONFIG (Variable Interna de Configuración)
   Escribe en: DOM (img #img-qr-rg o #img-qr-usopen -> atributo src y style.display)
   Es usado por: HTML generado dinámicamente (inputs radio inline onchange)
 
+- aplicarParcheOptimista(fuente, modo) [Interna]
+  Lee: window.optimisticState, CONSISTENCY_WINDOW_MS (GLOBAL)
+  Escribe en: Array fuente (por referencia)
+  Es usado por: procesarYRender (Interna)
+
 
 ================================================================================
 📁 index.html (Scripts Inline)
 ================================================================================
 Contiene la orquestación de pestañas, sistema de arrastre del panel Debug y toggle de visibilidad.
+MODIFICADO: Los src de las imágenes del header ahora apuntan a la ruta centralizada en config.js (imagenes/imagenes/...).
 
 - actualizarTextoBotonGuardar()
   Lee: window.currentMode
@@ -282,7 +306,7 @@ Contiene la orquestación de pestañas, sistema de arrastre del panel Debug y to
   Es usado por: Botones .tab-btn inline onclick
 
 - updateDebugPanel()
-  Lee: window.APP_VERSIONS, window.optimisticState, window.datosLocales, window.currentMode
+  Lee: window.APP_VERSIONS, window.optimisticState, window.datosLocales, window.currentMode, CONSISTENCY_WINDOW_MS (GLOBAL)
   Escribe en: DOM (#debug-versions, #debug-state)
   Es usado por: setInterval interno (cada 1s)
 
