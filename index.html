@@ -114,7 +114,7 @@
                     <div class="border-t pt-1.5 space-y-1.5 mt-2">
                         <div class="flex items-center justify-between text-xs">
                             <span class="font-medium">Rango de Filas:</span>
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-center gap:2">
                                 <label class="text-slate-400">Desde: <input type="number" id="rangoInicio" value="2" min="2" class="w-20 text-center text-xs py-0.5 px-1 ml-1"></label>
                                 <label class="text-slate-400">Hasta: <input type="number" id="rangoFin" value="9999" min="2" class="w-20 text-center text-xs py-0.5 px-1 ml-1"></label>
                             </div>
@@ -280,8 +280,9 @@
     <script src="state.js"></script>
     <script src="app.js"></script>
     <script type="module" src="ui.js"></script>
-    <script src="sugerencias-print-rg.js"></script>
-    <script src="sugerencias-print-usopen.js"></script>
+    
+    <!-- MODIFICADO: Sustituidos los dos archivos antiguos por el archivo unificado -->
+    <script src="sugerencias-print.js"></script>
 
     <!-- NUEVO: Pantalla Flotante de Carga -->
     <div id="loading-overlay" class="loading-overlay">
@@ -410,9 +411,11 @@
 
                 // 6. Disparadores de Renderizado Específicos
                 if (tabId === 'sugerencias') {
-                    if (typeof window.renderCartaRG === 'function') window.renderCartaRG();
+                    // MODIFICADO: Llamada unificada pasando el modo
+                    if (typeof window.renderCarta === 'function') window.renderCarta('RG');
                 } else if (tabId === 'sugerencias-usopen') {
-                    if (typeof window.renderCartaUSOPEN === 'function') window.renderCartaUSOPEN();
+                    // MODIFICADO: Llamada unificada pasando el modo
+                    if (typeof window.renderCarta === 'function') window.renderCarta('USOPEN');
                 }
                 
                 actualizarTextoBotonGuardar();
