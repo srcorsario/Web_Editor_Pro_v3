@@ -88,7 +88,7 @@
                     <div class="border-t pt-1.5 space-y-1.5 mt-2">
                         <div class="flex items-center justify-between text-xs">
                             <span class="font-medium">Rango de Filas:</span>
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-center gap:2">
                                 <label class="text-slate-400">Desde: <input type="number" id="rangoInicio" value="2" min="2" class="w-20 text-center text-xs py-0.5 px-1 ml-1"></label>
                                 <label class="text-slate-400">Hasta: <input type="number" id="rangoFin" value="9999" min="2" class="w-20 text-center text-xs py-0.5 px-1 ml-1"></label>
                             </div>
@@ -162,12 +162,14 @@
                 <div class="input-group">
                     <label id="label-uvas" class="label-seccion">Nombres y Detalles del Plato</label>
                     <input id="edit-es" class="input-estandar" placeholder="Nombre en Español">
-                    <input id="-es-uvas" class="input-estandar input-uvas" placeholder="Detalles / Uvas (Español)" style="display: none;">
+                    <!-- MODIFICADO: Corregido ID de '-es-uvas' a 'edit-es-uvas' para coincidir con app.js -->
+                    <input id="edit-es-uvas" class="input-estandar input-uvas" placeholder="Detalles / Uvas (Español)" style="display: none;">
                 </div>
                 <div class="input-group">
                     <button id="btn-generar-en" class="btn-traducir-en" onclick="generarTraduccionEN()">🇬🇧 Generar opciones en Inglés con IA</button>
                     <input id="edit-en" class="input-estandar" placeholder="Nombre en Inglés">
-                    <input id="en-uvas" class="input-estandar input-uvas" placeholder="Detalles / Uvas (Inglés)" style="display: none;">
+                    <!-- MODIFICADO: Corregido ID de 'en-uvas' a 'edit-en-uvas' para coincidir con app.js -->
+                    <input id="edit-en-uvas" class="input-estandar input-uvas" placeholder="Detalles / Uvas (Inglés)" style="display: none;">
                 </div>
                 <button id="btn-autotraducir" class="btn-traductor-magico" onclick="ejecutarTraduccionAutomatica()" disabled>✨ Auto-Traducir resto de idiomas con Gemini</button>
                 <div class="input-group">
@@ -356,7 +358,8 @@
         }
 
         if (!window.currentMode) {
-            window.currentMode = = 'RG';
+            // MODIFICADO: Corregido error de sintaxis fatal (doble igual '= =') que rompía todo el script inline
+            window.currentMode = 'RG';
         }
         actualizarTextoBotonGuardar();
 
