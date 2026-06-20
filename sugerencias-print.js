@@ -4,7 +4,7 @@
     // NUEVO: Mapa de configuración unificado para evitar duplicar lógica
     const SUGERENCIAS_CONFIG = {
         RG: {
-            versionStr: 'v2.9.1-RG-Unified',
+            versionStr: 'v2.9.2-RG-Unified',
             versionKey: 'sugerencias_rg',
             containerId: 'sugerencias-contenido',
             logoSrc: 'logo RG_REST.png',
@@ -13,10 +13,14 @@
             qrRadioName: 'qr-mode-rg-footer',
             qrDefault: 'qr-code-RG-MOD.png',
             qrMod: 'qr-code.png',
-            defaultQrSelection: 'mod'
+            // NUEVO: Definición exacta de botones para RG (2 botones)
+            qrOptions: [
+                { value: 'none', label: 'Sin QR', isDefault: false },
+                { value: 'mod', label: 'Alternativo', isDefault: true }
+            ]
         },
         USOPEN: {
-            versionStr: 'v2.9.1-USOPEN-Unified',
+            versionStr: 'v2.9.2-USOPEN-Unified',
             versionKey: 'sugerencias_usopen',
             containerId: 'sugerencias-contenido-usopen',
             logoSrc: 'USOPEN_REST.png',
@@ -25,7 +29,12 @@
             qrRadioName: 'qr-mode-usopen-footer',
             qrDefault: 'qr-usopen_oficial.png',
             qrMod: 'qr-usopen_mod.png',
-            defaultQrSelection: 'default'
+            // NUEVO: Definición exacta de botones para USOPEN (3 botones)
+            qrOptions: [
+                { value: 'none', label: 'Sin QR', isDefault: false },
+                { value: 'default', label: 'Oficial', isDefault: true },
+                { value: 'mod', label: 'Alternativo', isDefault: false }
+            ]
         }
     };
 
@@ -84,7 +93,7 @@
         document.head.appendChild(stylePrint);
     }
 
-    // NUEVO: Inyectar utilidad compartida una sola vez
+    // Inyectar utilidad compartida una sola vez
     if (!window.desglosarNombre) {
         window.desglosarNombre = function(texto) { 
             if (!texto) return { nombre: "", uvas: "" };
@@ -96,7 +105,7 @@
         };
     }
 
-    // MODIFICADO: Función unificada usando el mapa de configuración
+    // Función unificada usando el mapa de configuración
     window.toggleQR = function(tipo, modo) {
         const config = SUGERENCIAS_CONFIG[modo];
         if (!config) return;
@@ -118,7 +127,7 @@
         }
     };
 
-    // MODIFICADO: Función unificada de renderizado
+    // Función unificada de renderizado
     window.renderCarta = function(modo) {
         const config = SUGERENCIAS_CONFIG[modo];
         if (!config) return;
@@ -152,7 +161,7 @@
         intentarRenderizado();
     };
 
-    // MODIFICADO: Función de parche optimista parametrizada
+    // Función de parche optimista parametrizada
     function aplicarParcheOptimista(fuente, modo) {
         const CONSISTENCY_WINDOW_MS = 180000; // 3 minutos
         const state = window.optimisticState ? window.optimisticState[modo] : { t: 0, s: [] };
@@ -180,7 +189,7 @@
         return fuente;
     }
 
-    // MODIFICADO: Lógica de renderizado unificada inyectando el config
+    // Lógica de renderizado unificada inyectando el config
     function procesarYRender(fuente, contenedor, config) {
         aplicarParcheOptimista(fuente, config.containerId.includes('usopen') ? 'USOPEN' : 'RG');
 
@@ -272,8 +281,23 @@
         html += renderCat("POSTRES / DESSERTS", postres, "sugerencias-seccion-postres");
         html += renderCat("BODEGA / WINE CELLAR", vinos, "sugerencias-seccion-vinos");
 
-        // NUEVO: Lógica dinámica para inyectar el selector de QR correcto blindado contra herencias CSS
+        // MODIFICADO: Generador exacto de botones QR iterando el array del config
         const modoQR = config.containerId.includes('usopen') ? 'usopen' : 'rg';
+        
+        // Obtener la imagen inicial basada en cuál es el default
+        let initialImgSrc = config.qrMod; // Por defecto en RG
+        const defaultOpt = config.qrOptions.find(o => o.isDefault);
+        if (defaultOpt && defaultOpt.value === 'default') {
+            initialImgSrc = config.qrDefault;
+        }
+
+        let qrButtonsHtml = '';
+        config.qrOptions.forEach(opt => {
+            const isActive = opt.isDefault;
+            const style = `cursor: pointer; color: ${isActive ? '#0d5c63' : '#64748b'}; font-weight: ${isActive ? 'bold' : 'normal'};`;
+            // MODIFICADO: Vuelta a strings estáticos para evitar problemas de parseo con innerHTML
+            qrButtonsHtml += `<label style="${style}"><input type="radio" name="${config.qrRadioName}" value="${opt.value}" ${isActive ? 'checked' : ''} onchange="window.toggleQR('${opt.value}', '${modoQR}')"> ${opt.label}</label>`;
+        });
         
         html += `
             </div>
@@ -284,18 +308,9 @@
                 </div>
                 <div class="sugerencias-qr-container">
                     <div class="qr-selector-wrapper" style="font-size: 0.75rem; color: #64748b; text-align: center; margin-bottom: 5px; user-select:none; display: flex; flex-direction: row; align-items: center; justify-content: center; flex-wrap: nowrap; gap: 8px; white-space: nowrap;">
-                        Tipo de QR:
-                        <label style="cursor: pointer; color: #64748b; font-weight: normal; pointer-events: auto;">
-                            <input type="radio" name="${config.qrRadioName}" value="none" style="pointer-events: auto; cursor: pointer;" onchange="window.toggleQR(this.value, '${modoQR}')"> Sin QR
-                        </label>
-                        <label style="cursor: pointer; color: ${config.defaultQrSelection === 'default' ? '#0d5c63' : '#64748b'}; font-weight: ${config.defaultQrSelection === 'default' ? 'bold' : 'normal'}; pointer-events: auto;">
-                            <input type="radio" name="${config.qrRadioName}" value="default" style="pointer-events: auto; cursor: pointer;" ${config.defaultQrSelection === 'default' ? 'checked' : ''} onchange="window.toggleQR(this.value, '${modoQR}')"> Oficial
-                        </label>
-                        <label style="cursor: pointer; color: ${config.defaultQrSelection === 'mod' ? '#0d5c63' : '#64748b'}; font-weight: ${config.defaultQrSelection === 'mod' ? 'bold' : 'normal'}; pointer-events: auto;">
-                            <input type="radio" name="${config.qrRadioName}" value="mod" style="pointer-events: auto; cursor: pointer;" ${config.defaultQrSelection === 'mod' ? 'checked' : ''} onchange="window.toggleQR(this.value, '${modoQR}')"> Alternativo
-                        </label>
+                        Tipo de QR: ${qrButtonsHtml}
                     </div>
-                    <img src="${config.defaultQrSelection === 'default' ? config.qrDefault : config.qrMod}" class="sugerencias-qr-img" id="${config.qrImgId}">
+                    <img src="${initialImgSrc}" class="sugerencias-qr-img" id="${config.qrImgId}">
                 </div>
             </div>
         `;
@@ -303,7 +318,7 @@
         contenedor.innerHTML = html;
     }
 
-    // MODIFICADO: Función unificada de impresión
+    // Función unificada de impresión
     window.imprimirSugerencias = function(modo) {
         const config = SUGERENCIAS_CONFIG[modo];
         if (!config) return;
