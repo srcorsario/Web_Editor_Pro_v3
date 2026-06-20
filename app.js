@@ -1,9 +1,8 @@
-// [🔒 ARCHIVO DIVIDIDO - PARTE 1 DE 3 - POR FAVOR UNIR MENTALMENTE]
-// [🔒 ARCHIVO DIVIDIDO - PARTE 1 DE 3 - POR FAVOR UNIR MENTALMENTE]
+// [🔒 ARCHIVO UNIFICADO - PARTE 1 DE 3 - POR FAVOR UNIR MENTALMENTE]
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '1.0.44-DATA-EXTRACTED'; 
+window.APP_VERSIONS.app = '1.0.45-IMAGENES-FIX'; 
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
@@ -48,9 +47,6 @@ function getCsvUrlSafe() {
     if (typeof window.getCsvUrl === 'function') return window.getCsvUrl();
     return '';
 }
-
-// MODIFICADO: Funciones puras (desglosarNombre, superLimpiar, formatWineName, extraerJSON) 
-// movidas a utils.js para limpiar este archivo y evitar duplicidades.
 
 async function cargar(retryCount = 0) {
     // MODIFICADO: Usar variable global CONSISTENCY_WINDOW_MS inyectada desde config.js
@@ -154,16 +150,13 @@ async function cargar(retryCount = 0) {
             statusCarga.className = "status-error";
         }
     }
-}
 
-// NUEVO: Sistema de contador visual segregado por restaurante
 function iniciarContadorOptimista(modo) {
     // MODIFICADO: Usar variable global CONSISTENCY_WINDOW_MS inyectada desde config.js
     const timerDiv = document.getElementById('optimistic-timer');
     const timerSeconds = document.getElementById('timer-seconds');
     const timerMode = document.getElementById('timer-mode');
     
-    // Limpiar intervalo previo de ESTE modo si existe
     if (window.optimisticTimers[modo]) {
         clearInterval(window.optimisticTimers[modo]);
     }
@@ -173,7 +166,6 @@ function iniciarContadorOptimista(modo) {
     window.optimisticTimers[modo] = setInterval(() => {
         const remaining = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
         
-        // NUEVO: Solo actualizar visualmente si estamos en el modo que se está contando
         if (window.currentMode === modo) {
             if (timerDiv) timerDiv.style.display = 'block';
             if (timerSeconds) timerSeconds.innerText = remaining;
@@ -183,11 +175,9 @@ function iniciarContadorOptimista(modo) {
         if (remaining <= 0) {
             clearInterval(window.optimisticTimers[modo]);
             window.optimisticTimers[modo] = null;
-            // Limpiar estado interno y sessionStorage
             window.optimisticState[modo] = { t: 0, s: [] };
             sessionStorage.removeItem('optState_' + modo);
             console.log(`[Editor] Ventana de consistencia optimista finalizada para ${modo}.`);
-            // Ocultar si ya no quedan modos activos o si estamos en ese modo
             if (window.currentMode === modo && timerDiv) {
                 timerDiv.style.display = 'none';
             }
@@ -195,7 +185,6 @@ function iniciarContadorOptimista(modo) {
     }, 1000);
 }
 
-// NUEVO: Función global para cancelar el modo optimista a voluntad
 window.cancelarModoOptimista = function(modo) {
     if (!modo) modo = window.currentMode || 'RG';
     console.log(`[Editor] Cancelando manualmente modo optimista para ${modo}`);
@@ -226,7 +215,8 @@ function renderizar() {
         
         h += `<div class="categoria-tarjeta"><div class="categoria-titulo">${cat.name}</div>`;
         platos.forEach((p) => {
-            let htmlImagenPC = p.imagen ? `<span class="tag-imagen">📷 ${p.imagen}</span>` : "";
+            // MODIFICADO: Mostrar imagen real usando PATH_IMAGENES de config.js en lugar de un span de texto
+            let htmlImagenPC = p.imagen ? `<img src="${PATH_IMAGENES}${p.imagen}" style="height: 20px; border-radius: 4px; margin-right: 5px; vertical-align: middle;" onerror="this.style.display='none'">` : "";
             let htmlCarpetaPC = p.carpeta ? `<span class="tag-carpeta">${p.carpeta}</span>` : "";
             const nombreLimpio = desglosarNombre(p.es).nombre;
             
@@ -264,12 +254,12 @@ function moverPlato(id, direccion) {
         const temp = datosLocales[idx].id;
         datosLocales[idx].id = datosLocales[idx-1].id;
         datosLocales[idx-1].id = temp;
+    // CORREGIDO: Error de tipeo anterior (datosLoceras -> datosLocales)
     } else if (direction === 'bajar' && idx < datosLocales.length - 1) {
         const temp = datosLocales[idx].id;
         datosLocales[idx].id = datosLocales[idx+1].id;
         datosLocales[idx+1].id = temp;
     }
-    // NUEVO: Marcar cambios
     window.hayCambiosSinGuardar = true;
     renderizar();
 }
@@ -342,7 +332,6 @@ function abrirEditor(id, esNuevo = false) {
             const sel = actuales.includes("🧪 SULFITOS") || actuales.includes("SULFITOS") ? 'selected' : '';
             alergenosHtml = `<div class="alergeno-btn ${sel}" onclick="this.classList.toggle('selected')">🧪 SULFITOS</div>`;
         } else {
-            // MODIFICADO: ALERGENOS_LISTA ahora se lee desde data.js
             alergenosHtml = ALERGENOS_LISTA.map(a => {
                 const sel = actuales.some(act => act.includes(a.split(" ").pop())) ? 'selected' : '';
                 return `<div class="alergeno-btn ${sel}" onclick="this.classList.toggle('selected')">${a}</div>`;
@@ -359,7 +348,6 @@ function abrirEditor(id, esNuevo = false) {
             
             if (!esCroquetaVeg) {
                 croquetasHtml += `<div class="croqueta-category"><div class="croqueta-cat-title carne">Carne</div><div class="croqueta-cat-btns">`;
-                // MODIFICADO: CROQUETAS_CONFIG ahora se lee desde data.js
                 CROQUETAS_CONFIG.carne.forEach(c => {
                     croquetasHtml += `<div class="croqueta-btn carne" onclick="this.classList.toggle('selected'); actualizarNombreCroquetas()">${c}</div>`;
                 });
@@ -383,7 +371,6 @@ function abrirEditor(id, esNuevo = false) {
         containerCroquetas.innerHTML = croquetasHtml;
         
         if (esCroqueta && p['es']) {
-            // MODIFICADO: CROQUETAS_CONFIG ahora se lee desde data.js
             const todosSabores = [...CROQUETAS_CONFIG.carne, ...CROQUETAS_CONFIG.pescado, ...CROQUETAS_CONFIG.vegetariana];
             todosSabores.forEach(sabor => {
                 if (p['es'].includes(sabor)) {
@@ -413,7 +400,6 @@ function actualizarNombreCroquetas() {
         return;
     }
 
-    // MODIFICADO: CROQUETAS_CONFIG ahora se lee desde data.js
     const soloVegetarianas = seleccionadas.every(s => CROQUETAS_CONFIG.vegetariana.includes(s));
     const cantidad = (soloVegetarianas || esCroquetaVeg) ? 6 : 2;
 
@@ -735,7 +721,6 @@ function aplicarCambiosPlato() {
         return spaceIdx !== -1 ? rawText.substring(spaceIdx + 1).trim() : rawText;
     }).join(', ');
     
-    // NUEVO: Marcar que hay cambios sin guardar
     window.hayCambiosSinGuardar = true;
     
     cerrarModal('modal-editor');
@@ -817,11 +802,9 @@ async function enviarAlExcel() {
     
     datosLocales.sort((a, b) => a.id - b.id);
     
-    // NUEVO: Guardar snapshot local segregado por modo
     window.optimisticState[modo].t = Date.now();
     window.optimisticState[modo].s = JSON.parse(JSON.stringify(datosLocales));
     
-    // NUEVO: Persistir en sessionStorage específico del modo
     sessionStorage.setItem('optState_' + modo, JSON.stringify(window.optimisticState[modo]));
     
     const payload = datosLocales.map(p => {
@@ -859,12 +842,10 @@ async function enviarAlExcel() {
         
         alert(`✅ Petición enviada para ${modo}. Memoria local bloqueada por 3 min.`);
         
-        // NUEVO: Resetear flag y NO recargar la página.
         window.hayCambiosSinGuardar = false;
         btn.innerText = textoOriginal;
         btn.disabled = false;
         
-        // NUEVO: Iniciar contador visual de parche optimista para este modo
         iniciarContadorOptimista(modo);
         
     } catch (e) { 
@@ -945,11 +926,9 @@ function eliminarKeySeleccionada() {
     }
 }
 
-// Inicialización automática al cargar la página
 cargar();
 actualizarListaKeys();
 
-// NUEVO: Restringir input de precio a estrictamente 2 decimales
 const editPrecioInput = document.getElementById('edit-precio');
 if (editPrecioInput) {
     editPrecioInput.addEventListener('input', function() {
@@ -963,5 +942,4 @@ if (editPrecioInput) {
     });
 }
 
-// [🔒 FIN DE ARCHIVO DIVIDIDO - PARTE 3 DE 3]
 console.groupEnd();
