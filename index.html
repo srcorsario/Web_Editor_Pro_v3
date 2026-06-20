@@ -14,7 +14,8 @@
 
     <div class="container">
         <div class="header-admin">
-            <img src="logo RG_REST.png" class="header-logo header-logo-left" alt="Logo RG">
+            <!-- MODIFICADO: Ruta actualizada a la nueva carpeta de imágenes -->
+            <img src="imagenes/imagenes/logo RG_REST.png" class="header-logo header-logo-left" alt="Logo RG">
             
             <div class="header-center-wrapper">
                 <h1>Web Editor Pro <span id="app-version" style="font-size: 0.65rem; color: #95a5a6; font-weight: 400; margin-left: 10px; vertical-align: middle; display: inline-block;"></span></h1>
@@ -47,7 +48,8 @@
                 </div>
             </div>
 
-            <img src="USOPEN_REST.png" class="header-logo header-logo-right" alt="Logo USOPEN">
+            <!-- MODIFICADO: Ruta actualizada a la nueva carpeta de imágenes -->
+            <img src="imagenes/imagenes/USOPEN_REST.png" class="header-logo header-logo-right" alt="Logo USOPEN">
         </div>
 
         <div class="tabs-container">
@@ -88,7 +90,7 @@
                     <div class="border-t pt-1.5 space-y-1.5 mt-2">
                         <div class="flex items-center justify-between text-xs">
                             <span class="font-medium">Rango de Filas:</span>
-                            <div class="flex items-center gap:2">
+                            <div class="flex items-center gap: 2px">
                                 <label class="text-slate-400">Desde: <input type="number" id="rangoInicio" value="2" min="2" class="w-20 text-center text-xs py-0.5 px-1 ml-1"></label>
                                 <label class="text-slate-400">Hasta: <input type="number" id="rangoFin" value="9999" min="2" class="w-20 text-center text-xs py-0.5 px-1 ml-1"></label>
                             </div>
@@ -162,13 +164,11 @@
                 <div class="input-group">
                     <label id="label-uvas" class="label-seccion">Nombres y Detalles del Plato</label>
                     <input id="edit-es" class="input-estandar" placeholder="Nombre en Español">
-                    <!-- MODIFICADO: Corregido ID de '-es-uvas' a 'edit-es-uvas' para coincidir con app.js -->
                     <input id="edit-es-uvas" class="input-estandar input-uvas" placeholder="Detalles / Uvas (Español)" style="display: none;">
                 </div>
                 <div class="input-group">
                     <button id="btn-generar-en" class="btn-traducir-en" onclick="generarTraduccionEN()">🇬🇧 Generar opciones en Inglés con IA</button>
                     <input id="edit-en" class="input-estandar" placeholder="Nombre en Inglés">
-                    <!-- MODIFICADO: Corregido ID de 'en-uvas' a 'edit-en-uvas' para coincidir con app.js -->
                     <input id="edit-en-uvas" class="input-estandar input-uvas" placeholder="Detalles / Uvas (Inglés)" style="display: none;">
                 </div>
                 <button id="btn-autotraducir" class="btn-traductor-magico" onclick="ejecutarTraduccionAutomatica()" disabled>✨ Auto-Traducir resto de idiomas con Gemini</button>
@@ -358,7 +358,6 @@
         }
 
         if (!window.currentMode) {
-            // MODIFICADO: Corregido error de sintaxis fatal (doble igual '= =') que rompía todo el script inline
             window.currentMode = 'RG';
         }
         actualizarTextoBotonGuardar();
@@ -381,7 +380,8 @@
             ['RG', 'USOPEN'].forEach(modo => {
                 const state = window.optimisticState ? window.optimisticState[modo] : { t: 0, s: [] };
                 const timeSinceSave = Date.now() - state.t;
-                const isZone = timeSinceSave < 180000; // 3 minutos
+                // MODIFICADO: Usar variable global CONSISTENCY_WINDOW_MS inyectada desde config.js
+                const isZone = timeSinceSave < CONSISTENCY_WINDOW_MS; 
                 
                 sHtml += `<div style="margin-bottom: 4px; color: ${modo === window.currentMode ? '#f8fafc' : '#64748b'}">--- ${modo} ---</div>`;
                 sHtml += `<div>Hace: <span style="color: ${timeSinceSave < 10000 ? '#4ade80' : '#f87171'}">${Math.round(timeSinceSave/1000)}s</span></div>`;
