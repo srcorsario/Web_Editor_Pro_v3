@@ -4,7 +4,7 @@
     // NUEVO: Mapa de configuración unificado para evitar duplicar lógica
     const SUGERENCIAS_CONFIG = {
         RG: {
-            versionStr: 'v2.9.0-RG-Unified',
+            versionStr: 'v2.9.1-RG-Unified',
             versionKey: 'sugerencias_rg',
             containerId: 'sugerencias-contenido',
             logoSrc: 'logo RG_REST.png',
@@ -16,7 +16,7 @@
             defaultQrSelection: 'mod'
         },
         USOPEN: {
-            versionStr: 'v2.9.0-USOPEN-Unified',
+            versionStr: 'v2.9.1-USOPEN-Unified',
             versionKey: 'sugerencias_usopen',
             containerId: 'sugerencias-contenido-usopen',
             logoSrc: 'USOPEN_REST.png',
@@ -34,7 +34,7 @@
     // Inyectar estilos de impresión una sola vez de forma segura
     if (!document.getElementById('sugerencias-print-styles')) {
         const stylePrint = document.createElement('style');
-        stylePrint.id = 'sugerencias-print-styles'; // NUEVO: ID para evitar duplicados
+        stylePrint.id = 'sugerencias-print-styles'; // Evita duplicados
         stylePrint.innerHTML = `
             @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap');
             @page { size: A4; margin: 10mm; }
@@ -126,7 +126,7 @@
         const contenedor = document.getElementById(config.containerId);
         if (!contenedor) return;
 
-        // NUEVO: Registrar versión dinámicamente
+        // Registrar versión dinámicamente
         window.APP_VERSIONS = window.APP_VERSIONS || {};
         window.APP_VERSIONS[config.versionKey] = config.versionStr;
 
@@ -204,7 +204,7 @@
             }
         });
 
-        // NUEVO: Inyectar modo en la llamada a impresora
+        // Inyectar modo en la llamada a impresora
         let html = `
             <button onclick="window.imprimirSugerencias('${config.containerId.includes('usopen') ? 'USOPEN' : 'RG'}')" class="btn-imprimir-a4">🖨️ Imprimir Sugerencias ${config.containerId.includes('usopen') ? 'USOPEN' : 'RG'} (A4)</button>
             <div class="sugerencias-header-layout">
@@ -272,7 +272,7 @@
         html += renderCat("POSTRES / DESSERTS", postres, "sugerencias-seccion-postres");
         html += renderCat("BODEGA / WINE CELLAR", vinos, "sugerencias-seccion-vinos");
 
-        // NUEVO: Lógica dinámica para inyectar el selector de QR correcto
+        // NUEVO: Lógica dinámica para inyectar el selector de QR correcto blindado contra herencias CSS
         const modoQR = config.containerId.includes('usopen') ? 'usopen' : 'rg';
         
         html += `
@@ -285,14 +285,14 @@
                 <div class="sugerencias-qr-container">
                     <div class="qr-selector-wrapper" style="font-size: 0.75rem; color: #64748b; text-align: center; margin-bottom: 5px; user-select:none; display: flex; flex-direction: row; align-items: center; justify-content: center; flex-wrap: nowrap; gap: 8px; white-space: nowrap;">
                         Tipo de QR:
-                        <label style="cursor: pointer; color: #64748b; font-weight: normal;">
-                            <input type="radio" name="${config.qrRadioName}" value="none" onchange="window.toggleQR('none', '${modoQR}')"> Sin QR
+                        <label style="cursor: pointer; color: #64748b; font-weight: normal; pointer-events: auto;">
+                            <input type="radio" name="${config.qrRadioName}" value="none" style="pointer-events: auto; cursor: pointer;" onchange="window.toggleQR(this.value, '${modoQR}')"> Sin QR
                         </label>
-                        <label style="cursor: pointer; color: ${config.defaultQrSelection === 'default' ? '#0d5c63' : '#64748b'}; font-weight: ${config.defaultQrSelection === 'default' ? 'bold' : 'normal'};">
-                            <input type="radio" name="${config.qrRadioName}" value="default" ${config.defaultQrSelection === 'default' ? 'checked' : ''} onchange="window.toggleQR('default', '${modoQR}')"> Oficial
+                        <label style="cursor: pointer; color: ${config.defaultQrSelection === 'default' ? '#0d5c63' : '#64748b'}; font-weight: ${config.defaultQrSelection === 'default' ? 'bold' : 'normal'}; pointer-events: auto;">
+                            <input type="radio" name="${config.qrRadioName}" value="default" style="pointer-events: auto; cursor: pointer;" ${config.defaultQrSelection === 'default' ? 'checked' : ''} onchange="window.toggleQR(this.value, '${modoQR}')"> Oficial
                         </label>
-                        <label style="cursor: pointer; color: ${config.defaultQrSelection === 'mod' ? '#0d5c63' : '#64748b'}; font-weight: ${config.defaultQrSelection === 'mod' ? 'bold' : 'normal'};">
-                            <input type="radio" name="${config.qrRadioName}" value="mod" ${config.defaultQrSelection === 'mod' ? 'checked' : ''} onchange="window.toggleQR('mod', '${modoQR}')"> Alternativo
+                        <label style="cursor: pointer; color: ${config.defaultQrSelection === 'mod' ? '#0d5c63' : '#64748b'}; font-weight: ${config.defaultQrSelection === 'mod' ? 'bold' : 'normal'}; pointer-events: auto;">
+                            <input type="radio" name="${config.qrRadioName}" value="mod" style="pointer-events: auto; cursor: pointer;" ${config.defaultQrSelection === 'mod' ? 'checked' : ''} onchange="window.toggleQR(this.value, '${modoQR}')"> Alternativo
                         </label>
                     </div>
                     <img src="${config.defaultQrSelection === 'default' ? config.qrDefault : config.qrMod}" class="sugerencias-qr-img" id="${config.qrImgId}">
