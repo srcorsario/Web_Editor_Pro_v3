@@ -3,7 +3,7 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '1.0.43-SUPER-CONFIG'; 
+window.APP_VERSIONS.app = '1.0.44-DATA-EXTRACTED'; 
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
@@ -33,19 +33,8 @@ let esNuevoPlato = false;
 let datosTempNuevo = null; 
 let opcionesENActuales = [];
 
-// Lista de Alérgenos con Emojis Restaurados
-const ALERGENOS_LISTA = [
-    "🌾 GLUTEN", "🫘 SESAMO", "🥜 CACAHUETE", "🌱 SOJA", "🌰 FRUTOSCASCARA", 
-    "🥬 APIO", "🥚 HUEVO", "🐟 PESCADO", "🟡 MOSTAZA", "🐚 MOLUSCO", 
-    "🧪 SULFITOS", "🥛 LACTOSA", "🌼 ALTRAMUCES", "🦐 CRUSTACEO", 
-    "🌿 VEGANO", "🥗 VEGETARIANO"
-];
-
-const CROQUETAS_CONFIG = {
-    carne: ["Cecina de vaca", "Rabo de toro", "Pollo", "Jamón Ibérico", "Puchero de cerdo"],
-    pescado: ["Gamba al ajillo", "Chipirones"],
-    vegetariana: ["Setas", "Coliflor con curry"]
-};
+// MODIFICADO: Eliminadas las constantes ALERGENOS_LISTA y CROQUETAS_CONFIG.
+// Ahora se consumen directamente desde data.js como variables globales.
 
 function getWebAppUrlSafe() {
     if (typeof window.WEB_APP_URL !== 'undefined') return window.WEB_APP_URL;
@@ -271,11 +260,11 @@ function renderizar() {
 
 function moverPlato(id, direccion) {
     const idx = datosLocales.findIndex(x => x.id === id);
-    if (direccion === 'subir' && idx > 0) {
+    if (direction === 'subir' && idx > 0) {
         const temp = datosLocales[idx].id;
         datosLocales[idx].id = datosLocales[idx-1].id;
         datosLocales[idx-1].id = temp;
-    } else if (direccion === 'bajar' && idx < datosLocales.length - 1) {
+    } else if (direction === 'bajar' && idx < datosLocales.length - 1) {
         const temp = datosLocales[idx].id;
         datosLocales[idx].id = datosLocales[idx+1].id;
         datosLocales[idx+1].id = temp;
@@ -353,6 +342,7 @@ function abrirEditor(id, esNuevo = false) {
             const sel = actuales.includes("🧪 SULFITOS") || actuales.includes("SULFITOS") ? 'selected' : '';
             alergenosHtml = `<div class="alergeno-btn ${sel}" onclick="this.classList.toggle('selected')">🧪 SULFITOS</div>`;
         } else {
+            // MODIFICADO: ALERGENOS_LISTA ahora se lee desde data.js
             alergenosHtml = ALERGENOS_LISTA.map(a => {
                 const sel = actuales.some(act => act.includes(a.split(" ").pop())) ? 'selected' : '';
                 return `<div class="alergeno-btn ${sel}" onclick="this.classList.toggle('selected')">${a}</div>`;
@@ -369,6 +359,7 @@ function abrirEditor(id, esNuevo = false) {
             
             if (!esCroquetaVeg) {
                 croquetasHtml += `<div class="croqueta-category"><div class="croqueta-cat-title carne">Carne</div><div class="croqueta-cat-btns">`;
+                // MODIFICADO: CROQUETAS_CONFIG ahora se lee desde data.js
                 CROQUETAS_CONFIG.carne.forEach(c => {
                     croquetasHtml += `<div class="croqueta-btn carne" onclick="this.classList.toggle('selected'); actualizarNombreCroquetas()">${c}</div>`;
                 });
@@ -392,6 +383,7 @@ function abrirEditor(id, esNuevo = false) {
         containerCroquetas.innerHTML = croquetasHtml;
         
         if (esCroqueta && p['es']) {
+            // MODIFICADO: CROQUETAS_CONFIG ahora se lee desde data.js
             const todosSabores = [...CROQUETAS_CONFIG.carne, ...CROQUETAS_CONFIG.pescado, ...CROQUETAS_CONFIG.vegetariana];
             todosSabores.forEach(sabor => {
                 if (p['es'].includes(sabor)) {
@@ -421,6 +413,7 @@ function actualizarNombreCroquetas() {
         return;
     }
 
+    // MODIFICADO: CROQUETAS_CONFIG ahora se lee desde data.js
     const soloVegetarianas = seleccionadas.every(s => CROQUETAS_CONFIG.vegetariana.includes(s));
     const cantidad = (soloVegetarianas || esCroquetaVeg) ? 6 : 2;
 
