@@ -14,7 +14,7 @@
 
     <div class="container">
         <div class="header-admin">
-            <!-- MODIFICADO: Usamos un placeholder transparente y el JS de abajo inyecta la variable de config.js -->
+            <!-- MODIFICADO: Usar un placeholder transparente para evitar parpadeos, el script de abajo lo llenará -->
             <img id="header-logo-rg" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" class="header-logo header-logo-left" alt="Logo RG">
             
             <div class="header-center-wrapper">
@@ -48,15 +48,9 @@
                 </div>
             </div>
 
-            <!-- MODIFICADO: Usamos un placeholder transparente y el JS de abajo inyecta la variable de config.js -->
+            <!-- MODIFICADO: Usar un placeholder transparente para evitar parpadeos, el script de abajo lo llenará -->
             <img id="header-logo-usopen" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" class="header-logo header-logo-right" alt="Logo USOPEN">
         </div>
-
-        <!-- NUEVO: Script instantáneo para inyectar las variables de config.js sin parpadeos visuales -->
-        <script>
-            if (typeof LOGO_RG !== 'undefined') document.getElementById('header-logo-rg').src = LOGO_RG;
-            if (typeof LOGO_USOPEN !== 'undefined') document.getElementById('header-logo-usopen').src = LOGO_USOPEN;
-        </script>
 
         <div class="tabs-container">
             <button class="tab-btn active" onclick="switchTab('editor', this)">1. Editor Carta RG</button>
@@ -78,14 +72,16 @@
                         <div class="grid grid-cols-1 gap-1 text-sm mb-2">
                             <div class="flex gap-2 items-center"><label class="text-xs whitespace-nowrap font-bold text-slate-400">WEB RG:</label></div>
                             <div class="flex gap-1.5">
-                                <input type="text" id="sheetsUrlRG" value="https://docs.google.com/spreadsheets/d/e/2PACX-1vT9rPlxpax2lE0rN97c6Hoy_OxUwREqRb48juEBr9C91ZFY2UvaKgC8JdiRcwDrtBErXFVmFRh0Zr5e/pub?gid=0&single=true&output=csv" class="flex-1 text-xs py-1 px-2">
+                                <!-- MODIFICADO: Eliminado el value hardcodeado, el script de config lo llenará -->
+                                <input type="text" id="sheetsUrlRG" placeholder="Cargando URL RG desde config.js..." class="flex-1 text-xs py-1 px-2">
                                 <button id="loadSheetsBtnRG" class="btn btn-secondary text-xs py-1 px-2 whitespace-nowrap">Cargar web RG</button>
                             </div>
                         </div>
                         <div class="grid grid-cols-1 gap-1 text-sm mb-2">
                             <div class="flex gap-2 items-center"><label class="text-xs whitespace-nowrap font-bold text-slate-400">WEB USOPEN:</label></div>
                             <div class="flex gap-1.5">
-                                <input type="text" id="sheetsUrlUSOpen" value="https://docs.google.com/spreadsheets/d/e/2PACX-1vSOWewZgqWZEFYiIMh8DTUX5tr6EEXBwvUJGr7hrpkCG91UhE5xU8fDJ12qcRVrT69xfZ5NGGGyhNCE/pub?gid=0&single=true&output=csv" class="flex-1 text-xs py-1 px-2">
+                                <!-- MODIFICADO: Eliminado el value hardcodeado, el script de config lo llenará -->
+                                <input type="text" id="sheetsUrlUSOpen" placeholder="Cargando URL USOPEN desde config.js..." class="flex-1 text-xs py-1 px-2">
                                 <button id="loadSheetsBtnUSOpen" class="btn btn-secondary text-xs py-1 px-2 whitespace-nowrap">Cargar web USOpen</button>
                             </div>
                         </div>
@@ -226,6 +222,11 @@
 
     <!-- Carga de Librerías y Scripts -->
     <script src="config.js"></script>
+    <!-- MODIFICADO: Script instantáneo que inyecta las URLs de config.js en los inputs del Traductor Pro -->
+    <script>
+        if (typeof CSV_URL_RG !== 'undefined') document.getElementById('sheetsUrlRG').value = CSV_URL_RG;
+        if (typeof CSV_URL_USOPEN !== 'undefined') document.getElementById('sheetsUrlUSOpen').value = CSV_URL_USOPEN;
+    </script>
     <script src="languages.js"></script>
     <!-- NUEVO: Datos estáticos pesados del menú y configuraciones de UI -->
     <script src="data.js"></script>
@@ -388,7 +389,6 @@
             ['RG', 'USOPEN'].forEach(modo => {
                 const state = window.optimisticState ? window.optimisticState[modo] : { t: 0, s: [] };
                 const timeSinceSave = Date.now() - state.t;
-                // MODIFICADO: Usar variable global CONSISTENCY_WINDOW_MS inyectada desde config.js
                 const isZone = timeSinceSave < CONSISTENCY_WINDOW_MS; 
                 
                 sHtml += `<div style="margin-bottom: 4px; color: ${modo === window.currentMode ? '#f8fafc' : '#64748b'}">--- ${modo} ---</div>`;
