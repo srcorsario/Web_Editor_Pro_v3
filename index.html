@@ -14,8 +14,8 @@
 
     <div class="container">
         <div class="header-admin">
-            <!-- MODIFICADO: Ruta actualizada a la nueva carpeta de imágenes -->
-            <img src="imagenes/imagenes/logo RG_REST.png" class="header-logo header-logo-left" alt="Logo RG">
+            <!-- MODIFICADO: Usamos un placeholder transparente y el JS de abajo inyecta la variable de config.js -->
+            <img id="header-logo-rg" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" class="header-logo header-logo-left" alt="Logo RG">
             
             <div class="header-center-wrapper">
                 <h1>Web Editor Pro <span id="app-version" style="font-size: 0.65rem; color: #95a5a6; font-weight: 400; margin-left: 10px; vertical-align: middle; display: inline-block;"></span></h1>
@@ -48,9 +48,15 @@
                 </div>
             </div>
 
-            <!-- MODIFICADO: Ruta actualizada a la nueva carpeta de imágenes -->
-            <img src="imagenes/imagenes/USOPEN_REST.png" class="header-logo header-logo-right" alt="Logo USOPEN">
+            <!-- MODIFICADO: Usamos un placeholder transparente y el JS de abajo inyecta la variable de config.js -->
+            <img id="header-logo-usopen" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" class="header-logo header-logo-right" alt="Logo USOPEN">
         </div>
+
+        <!-- NUEVO: Script instantáneo para inyectar las variables de config.js sin parpadeos visuales -->
+        <script>
+            if (typeof LOGO_RG !== 'undefined') document.getElementById('header-logo-rg').src = LOGO_RG;
+            if (typeof LOGO_USOPEN !== 'undefined') document.getElementById('header-logo-usopen').src = LOGO_USOPEN;
+        </script>
 
         <div class="tabs-container">
             <button class="tab-btn active" onclick="switchTab('editor', this)">1. Editor Carta RG</button>
