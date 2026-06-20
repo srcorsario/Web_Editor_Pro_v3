@@ -26,7 +26,7 @@
             versionKey: 'sugerencias_usopen',
             containerId: 'sugerencias-contenido-usopen',
             logoSrc: 'USOPEN_REST.png',
-            logoFallback: 'https://z-ccdn-media.chatglm.cn/files/fc4b4919-b148-470d-97a2-c740c58d1178.png?auth_key=1881113734-9f1ef8e42c5a4eae8f4f0f9055730ecf-0-f7b585f0f08f5f78de683fb163bec75d',
+            logoFallback: 'https://z-cdn-media.chatglm.cn/files/fc4b4919-b148-470d-97a2-c740c58d1178.png?auth_key=1881113734-9f1ef8e42c5a4eae8f4f0f9055730ecf-0-f7b585f0f08f5f78de683fb163bec75d',
             qrImgId: 'img-qr-usopen',
             qrRadioName: 'qr-mode-usopen-footer',
             qrDefault: 'qr-usopen_oficial.png', // Oficial USOPEN
@@ -86,13 +86,8 @@
         document.head.appendChild(stylePrint);
     }
 
-    if (!window.desglosarNombre) {
-        window.desglosarNombre = function(texto) { 
-            if (!texto) return { nombre: "", uvas: "" };
-            const partes = texto.split('//');
-            return { nombre: partes[0] ? partes[0].trim() : "", uvas: partes[1] ? partes[1].trim() : "" };
-        };
-    }
+    // MODIFICADO: Bloque de inyección defensiva eliminado. 
+    // La función desglosarNombre ahora se carga de forma nativa desde utils.js
 
     // CORRECCIÓN CRÍTICA: Forzar modo a MAYÚSCULAS porque el config usa claves 'RG' y 'USOPEN'
     window.toggleQR = function(tipo, modo) {
