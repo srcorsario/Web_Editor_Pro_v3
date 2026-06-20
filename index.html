@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Editor Pro</title>
+    <link rel="icon" href="setting.png" type="image/png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <div class="container">
+        <!-- MODIFICADO: Estructura Flexbox para header con logos laterales -->
+        <div class="header-admin">
+            <img src="logo RG_REST.png" class="header-logo header-logo-left" alt="Logo RG">
+            
+            <div class="header-center-wrapper">
+                <h1>Web Editor Pro <span id="app-version" style="font-size: 0.65rem; color: #95a5a6; font-weight: 400; margin-left: 10px; vertical-align: middle; display: inline-block;"></span></h1>
+                
+                <!-- NUEVO: Contenedor Flex para alinear Status y Checkbox de Debug -->
+                <div style="display: flex; align-items: center; gap: 10px; width: 100%; margin-bottom: 10px;">
+                    <div id="status-carga" class="status-ok" style="flex: 1;">⏳ Conectando...</div>
+                    <!-- NUEVO: Checkbox para activar/desactivar la pantalla flotante de Debug -->
+                    <div style="font-size: 0.7rem; display: flex; align-items: center; gap: 4px; white-space: nowrap; background: #f8f9fa; padding: 4px 8px; border-radius: 4px; border: 1px solid #ddd;">
+                        <!-- MODIFICADO: Eliminado 'checked' para que inicie deshabilitado visualmente por defecto -->
+                        <input type="checkbox" id="toggle-debug-panel" style="cursor: pointer; margin: 0;">
+                        <label for="toggle-debug-panel" style="cursor: pointer; color: #555; font-weight: 600; margin: 0;">DEBUG</label>
+                    </div>
+                </div>
+                
+                <!-- NUEVO: Contador visual de consistencia optimista con modo dinámico y botón cancelar -->
+                <div id="optimistic-timer" style="display:none; font-size: 0.7rem; color: #c0392b; font-weight: bold; margin-top: 5px; background: #fce4e4; padding: 4px 8px; border-radius: 4px; align-items: center; gap: 5px;">
+                    🔒 Consistencia <span id="timer-mode" style="background:#c0392b; color:white; padding: 1px 4px; border-radius: 3px; font-size: 0.65rem;">RG</span>: <span id="timer-seconds">180</span>s
+                    <button onclick="cancelarModoOptimista()" style="margin-left: 10px; background: transparent; border: 1px solid #c0392b; color: #c0392b; padding: 1px 5px; border-radius: 3px; cursor: pointer; font-size: 0.6rem; font-weight: bold;">✕ CANCELAR</button>
+                </div>
+
+                <div class="api-keys-manager">
+                    <label class="label-seccion">Gestión de API Keys Gemini</label>
+                    <div class="api-keys-inputs">
+                        <input type="text" id="nuevaKey" placeholder="Pega tu Gemini Key aquí..." class="input-estandar">
+                        <button id="addKeyBtn" class="btn-add-key">Añadir Key</button>
+                    </div>
+                    <div class="api-keys-list">
+                        <div id="contenedorSelectKeys" class="flex-1">
+                            <select id="selectKeys" class="select-keys"></select>
+                        </div>
+                        <button id="btnEliminarKeySeleccionada" class="btn-delete-key" title="Eliminar key">✕</button>
+                    </div>
+                </div>
+            </div>
+
+            <img src="USOPEN_REST.png" class="header-logo header-logo-right" alt="Logo USOPEN">
+        </div>
+
+        <div class="tabs-container">
+            <!-- Grupo Izquierdo: Roland Garros -->
+            <button class="tab-btn active" onclick="switchTab('editor', this)">1. Editor Carta RG</button>
+            <button class="tab-btn" onclick="switchTab('sugerencias', this)">2. Sugerencias RG</button>
+
+            <!-- Grupo Central: Traductor Pro -->
+            <button class="tab-btn" onclick="switchTab('pro', this)" style="margin-left: auto; margin-right: auto;">3. Traductor Pro</button>
+
+            <!-- Grupo Derecho: US Open -->
+            <button class="tab-btn" onclick="switchTab('editor-usopen', this)">4. Editor Carta USOpen</button>
+            <button class="tab-btn" onclick="switchTab('sugerencias-usopen', this)">5. Sugerencias USOpen</button>
+        </div>
+
+        <div id="tab-editor" class="tab-content active">
+            <div id="editor-dinamico"></div>
+        </div>
+
+        <div id="tab-pro" class="tab-content pro-panel" style="display: none;">
+            
+            <div class="flex flex-col md:flex-row gap-4 mb-4">
+                
+                <div class="card md:w-3/10 flex-none flex flex-col justify-between h-[310px]" style="width: 30%; min-width: 330px;">
+                    <div class="space-y-1.5">
+                        <h3 class="text-sm font-semibold uppercase tracking-wider mb-2">1. Orígenes de Datos</h3>
+                        
+                        <!-- Carga Web RG -->
+                        <div class="grid grid-cols-1 gap-1 text-sm mb-2">
+                            <div class="flex gap-2 items-center">
+                                <label class="text-xs whitespace-nowrap font-bold text-slate-400">WEB RG:</label>
+                            </div>
+                            <div class="flex gap-1.5">
+                                <input type="text" id="sheetsUrlRG" value="https://docs.google.com/spreadsheets/d/e/2PACX-1vT9rPlxpax2lE0rN97c6Hoy_OxUwREqRb48juEBr9C91ZFY2UvaKgC8JdiRcwDrtBErXFVmFRh0Zr5e/pub?gid=0&single=true&output=csv" placeholder="URL CSV RG (Google Sheets)..." class="flex-1 text-xs py-1 px-2">
+                                <button id="loadSheetsBtnRG" class="btn btn-secondary text-xs py-1 px-2 whitespace-nowrap">Cargar web RG</button>
+                            </div>
+                        </div>
+
+                        <!-- Carga Web USOpen -->
+                        <div class="grid grid-cols-1 gap-1 text-sm mb-2">
+                            <div class="flex gap-2 items-center">
+                                <label class="text-xs whitespace-nowrap font-bold text-slate-400">WEB USOPEN:</label>
+                            </div>
+                            <div class="flex gap-1.5">
+                                <input type="text" id="sheetsUrlUSOpen" value="https://docs.google.com/spreadsheets/d/e/2PACX-1vSOWewZgqWZEFYiIMh8DTUX5tr6EEXBwvUJGr7hrpkCG91UhE5xU8fDJ12qcRVrT69xfZ5NGGGyhNCE/pub?gid=0&single=true&output=csv" placeholder="URL CSV USOpen (Google Sheets)..." class="flex-1 text-xs py-1 px-2">
+                                <button id="loadSheetsBtnUSOpen" class="btn btn-secondary text-xs py-1 px-2 whitespace-nowrap">Cargar web USOpen</button>
+                            </div>
+                        </div>
+
+                        <!-- Carga Local -->
+                        <div class="grid grid-cols-1 gap-1 text-sm">
+                            <div class="flex gap-2 items-center">
+                                <label class="text-xs whitespace-nowrap">CSV Local:</label>
+                                <input type="file" id="archivoLocal" accept=".csv" class="text-xs flex-1 p-0.5">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border-t pt-1.5 space-y-1.5 mt-2">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="font-medium">Rango de Filas:</span>
+                            <div class="flex items-center gap-2">
+                                <label class="text-slate-400">Desde: <input type="number" id="rangoInicio" value="2" min="2" class="w-20 text-center text-xs py-0.5 px-1 ml-1"></label>
+                                <label class="text-slate-400">Hasta: <input type="number" id="rangoFin" value="9999" min="2" class="w-20 text-center text-xs py-0.5 px-1 ml-1"></label>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-1.5 text-xs">
+                            <button id="btnIniciar" class="btn btn-success font-bold py-1 px-1 text-[11px] tracking-tight uppercase">Iniciar Traducción</button>
+                            <button id="btnPausa" class="btn btn-secondary font-bold py-1 px-1 uppercase">Pausar</button>
+                            <button id="btnCancelar" class="btn btn-danger font-bold py-1 px-1 uppercase">Cancelar</button>
+                            <button id="saveCsvBtn" class="btn btn-primary font-bold py-1 px-1 text-[11px] whitespace-nowrap uppercase">Descargar CSV</button>
+                        </div>
+                        
+                        <button id="btnSyncSheets" class="btn btn-success font-bold py-2 px-1 text-[11px] tracking-tight uppercase w-full col-span-2 mt-1 border border-emerald-400" style="grid-column: span 2;">
+                            ☁️ Sincronizar con Google Sheet
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card md:w-1/5 flex-none flex flex-col h-[310px]" style="width: 20%; min-width: 200px">
+                    <h3 class="text-sm font-semibold uppercase tracking-wider mb-2">2. Idioma Vista</h3>
+                    <div id="radiosIdiomas" class="w-full overflow-y-auto pr-1 flex-1"></div>
+                </div>
+
+                <div class="card flex-1 md:w-1/2 c-consola flex flex-col h-[310px]" style="width: 50%;">
+                    <h3 class="text-sm font-semibold uppercase tracking-wider mb-2">3. Monitor de Sistema</h3>
+                    <div id="consola"></div>
+                </div>
+
+            </div>
+
+            <div class="card overflow-x-auto">
+                <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Previsualización de Datos en Memoria</h3>
+                <div class="max-h-[580px] overflow-y-auto">
+                    <table class="w-full">
+                        <thead id="tableHeadRow" class="sticky top-0 z-10"></thead>
+                        <tbody id="tablaBody" class="text-sm text-selle-300">
+                            <tr>
+                                <td colspan="4" class="text-center py-8 text-slate-500 italic">Ningún archivo cargado en el sistema. Selecciona un origen arriba.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+        <div id="tab-sugerencias" class="tab-content" style="display: none;">
+            <div class="sugerencias-panel" id="sugerencias-contenido">
+                <!-- Contenido generado dinámicamente -->
+            </div>
+        </div>
+
+        <div id="tab-sugerencias-usopen" class="tab-content" style="display: none;">
+            <div class="sugerencias-panel" id="sugerencias-contenido-usopen">
+                <!-- Contenido generado dinámicamente -->
+            </div>
+        </div>
+
+    </div>
+
+    <button class="btn-add-float" onclick="abrirSelector()">+</button>
+    <button class="btn-guardar-main" id="btn-guardar-dinamico" onclick="enviarAlExcel()">GUARDAR CAMBIOS EN WEB</button>
+
+    <div id="modal-selector" class="modal">
+        <div class="modal-content">
+            <h2 style="margin-top:0;">Añadir Nuevo Plato</h2>
+            <div id="lista-agrupada"></div>
+            <button class="btn-modal-cancelar" onclick="cerrarModal('modal-selector')" style="margin-top:20px;">Cancelar</button>
+        </div>
+    </div>
+
+    <!-- NUEVO: Modal para seleccionar destino de importación local -->
+    <div id="modal-seleccionar-destino" class="modal">
+        <div class="modal-content" style="max-width: 400px; text-align: center; padding: 30px;">
+            <h3 style="margin-top:0; margin-bottom: 10px;">¿Destino de la Importación?</h3>
+            <p style="color: #666; margin-bottom: 25px;">Selecciona a qué restaurante deseas subir los datos del archivo seleccionado:</p>
+            
+            <div style="display: flex; gap: 15px; justify-content: center;">
+                <button class="btn-modal-aceptar" onclick="UI.confirmarImportacion('RG')" style="background-color: #e67e22; width: 100%; padding: 15px; font-size: 1.1rem;">
+                    RG (Roland Garros)
+                </button>
+                <button class="btn-modal-aceptar" onclick="UI.confirmarImportacion('USOPEN')" style="background-color: #2ecc71; width: 100%; padding: 15px; font-size: 1.1rem;">
+                    US Open
+                </button>
+            </div>
+            
+            <button class="btn-modal-cancelar" onclick="UI.cancelarImportacion()" style="margin-top: 25px;">Cancelar</button>
+        </div>
+    </div>
+
+    <div id="modal-editor" class="modal">
+        <div class="modal-content modal-full-layout">
+            
+            <div class="modal-col-izquierda">
+                <div class="input-group">
+                    <label id="label-uvas" class="label-seccion">Nombres y Detalles del Plato</label>
+                    <input id="edit-es" class="input-estandar" placeholder="Nombre en Español">
+                    <input id="edit-es-uvas" class="input-estandar input-uvas" placeholder="Detalles / Uvas (Español)" style="display: none;">
+                </div>
+                
+                <div class="input-group">
+                    <button id="btn-generar-en" class="btn-traducir-en" onclick="generarTraduccionEN()">🇬🇧 Generar opciones en Inglés con IA</button>
+                    <input id="edit-en" class="input-estandar" placeholder="Nombre en Inglés">
+                    <input id="edit-en-uvas" class="input-estandar input-uvas" placeholder="Detalles / Uvas (Inglés)" style="display: none;">
+                </div>
+
+                <button id="btn-autotraducir" class="btn-traductor-magico" onclick="ejecutarTraduccionAutomatica()" disabled>✨ Auto-Traducir resto de idiomas con Gemini</button>
+
+                <div class="input-group">
+                    <label class="label-seccion">Resto de Idiomas</label>
+                    <div id="contenedor-resto-idiomas"></div>
+                </div>
+            </div>
+
+            <div class="modal-col-derecha">
+                <div class="input-group">
+                    <label class="label-seccion">Configuración</label>
+                    <div class="panel-control-precio">
+                        <div class="input-group" style="margin-bottom: 0;">
+                            <label style="font-size:0.7rem; font-weight:bold; color:#7f8c8d;">Precio (€)</label>
+                            <input id="edit-precio" type="number" step="0.01" class="input-estandar input-precio-super-mini input-precio-mini">
+                        </div>
+                        <div class="input-group" style="margin-bottom: 0;">
+                            <label style="font-size:0.7rem; font-weight:bold; color:#7f8c8d;">Nombre Imagen</label>
+                            <input id="edit-imagen" class="input-estandar input-imagen-flexible" placeholder="ej: paella01.webp">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label class="label-seccion">Alérgenos</label>
+                    <div id="alergenos-grid" class="alergenos-grid"></div>
+                </div>
+
+                <div id="contenedor-croquetas"></div>
+
+                <div class="modal-acciones-footer">
+                    <button class="btn-modal-aceptar" onclick="aplicarCambiosPlato()">✅ Aplicar Cambios</button>
+                    <button class="btn-modal-cancelar" onclick="cerrarModal('modal-editor')">Cancelar</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="modal-traduccion-en" class="modal">
+        <div class="modal-content modal-box-en">
+            <h2 style="margin-top:0; margin-bottom: 10px;">Selecciona la mejor traducción al Inglés</h2>
+            <div id="opciones-en-container" class="opciones-en-scroll"></div>
+            <div class="footer-box-en">
+                <textarea id="editar-opcion-en" class="input-estandar" rows="3" placeholder="Puedes editar la opción seleccionada aquí antes de confirmar..."></textarea>
+                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                    <button class="btn-modal-aceptar" onclick="confirmarTraduccionEN()" style="margin:0;">Confirmar Selección</button>
+                    <button class="btn-modal-cancelar" onclick="cerrarModalTraduccionEN()" style="margin:0;">Cancelar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Carga de Librerías y Scripts -->
+    <script src="config.js"></script>
+    <script src="languages.js"></script>
+    <script src="state.js"></script>
+    <script src="app.js"></script>
+    <script type="module" src="ui.js"></script>
+    <script src="sugerencias-print-rg.js"></script>
+    <script src="sugerencias-print-usopen.js"></script>
+
+    <!-- NUEVO: Pantalla Flotante de Carga -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="spinner"></div>
+        <div class="loading-text">Cargando datos...</div>
+    </div>
+
+    <!-- NUEVO: Panel de Debug Visual Fijo -->
+    <!-- MODIFICADO: Añadido 'display: none;' para iniciar oculto por defecto junto al cursor: grab -->
+    <div id="debug-panel" style="display: none; position: fixed; bottom: 20px; left: 20px; background: #111827; color: #4ade80; padding: 12px; border-radius: 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11px; z-index: 9998; max-width: 320px; border: 1px solid #334155; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); line-height: 1.4; cursor: grab;">
+        <div style="color: #f8fafc; margin-bottom: 8px; font-weight: bold; border-bottom: 1px solid #334155; padding-bottom: 4px;">🐛 DEBUG MODE ACTIVO</div>
+        <div id="debug-versions" style="margin-bottom: 8px; color: #94a3b8;"></div>
+        <hr style="border-color: #334155; margin: 5px 0;">
+        <div id="debug-state"></div>
+    </div>
+
+    <script>
+        console.log("%c[Editor] Inicializando configuración de URLs...", "color: blue; font-weight: bold;");
+
+        // NUEVO: Función unificada para actualizar la etiqueta del botón basada en el modo global
+        function actualizarTextoBotonGuardar() {
+            const btn = document.getElementById('btn-guardar-dinamico');
+            if (!btn) return;
+
+            const modo = window.currentMode || 'RG';
+            btn.innerText = `GUARDAR CAMBIOS EN WEB ${modo}`;
+            console.log(`[Editor] Botón actualizado a contexto: ${modo}`);
+        }
+
+        // Lógica nativa de Pestañas (Tabs) con cambio de contexto de datos centralizado
+        async function switchTab(tabId, btnElement) {
+            console.log(`[Editor] Cambiando a pestaña: ${tabId}`);
+            
+            const loader = document.getElementById('loading-overlay');
+            if (loader) loader.style.display = 'flex';
+
+            try {
+                // 1. PREVENCIÓN DE PÉRDIDA DE DATOS
+                const esEditorActual = document.getElementById('tab-editor').style.display !== 'none' || document.getElementById('tab-editor').classList.contains('active');
+                
+                if (esEditorActual && window.hayCambiosSinGuardar) {
+                    const confirmarGuardar = confirm("⚠️ Tienes cambios sin guardar en esta pestaña. ¿Quieres guardarlos antes de cambiar?");
+                    if (confirmarGuardar) {
+                        await window.enviarAlExcel();
+                        return; 
+                    }
+                    console.log("[Editor] Usuario descartó cambios o guardado falló. Procediendo con cambio...");
+                }
+
+                // 2. Gestión Visual de Pestañas
+                document.querySelectorAll('.tab-content').forEach(el => {
+                    el.classList.remove('active');
+                    el.style.display = 'none';
+                });
+                document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+                
+                let targetTabId = tabId;
+                if (tabId === 'editor-usopen') {
+                    targetTabId = 'editor';
+                }
+                
+                const targetTab = document.getElementById('tab-' + targetTabId);
+                if (targetTab) {
+                    targetTab.classList.add('active');
+                    targetTab.style.display = 'block';
+                }
+
+                if(btnElement) btnElement.classList.add('active');
+
+                // 3. Visibilidad de Botones Flotantes (Solo en Editor)
+                const floatBtn = document.querySelector('.btn-add-float');
+                const saveBtn = document.getElementById('btn-guardar-dinamico');
+                
+                if (targetTabId === 'editor') {
+                    if(floatBtn) floatBtn.style.display = 'block';
+                    if(saveBtn) saveBtn.style.display = 'block';
+                } else {
+                    if(floatBtn) floatBtn.style.display = 'none';
+                    if(saveBtn) saveBtn.style.display = 'none';
+                }
+
+                // 4. Enrutamiento de Datos (Cambio de Restaurante)
+                let dataContext = "RG";
+
+                if (tabId === 'sugerencias-usopen' || tabId === 'editor-usopen') {
+                    window.currentMode = 'USOPEN';
+                    dataContext = "USOPEN";
+                } else {
+                    window.currentMode = 'RG';
+                    dataContext = "RG";
+                }
+
+                console.log(`[Editor] Contexto de datos establecido a: ${dataContext} (window.currentMode: ${window.currentMode})`);
+
+                const sheetsInput = document.getElementById('sheetsUrl');
+                if (sheetsInput && window.getCsvUrl) {
+                    if(!sheetsInput.value) sheetsInput.value = window.getCsvUrl();
+                }
+
+                actualizarTextoBotonGuardar();
+
+                // NUEVO: Control de visibilidad del timer optimista al cambiar de pestaña
+                const timerDiv = document.getElementById('optimistic-timer');
+                if (timerDiv) {
+                    // Mostrar solo si el modo al que llegamos tiene un temporizador activo
+                    if (window.optimisticTimers && window.optimisticTimers[window.currentMode]) {
+                        timerDiv.style.display = 'flex'; // Usamos flex por el align-items del botón cancelar
+                        const timerMode = document.getElementById('timer-mode');
+                        if(timerMode) timerMode.innerText = window.currentMode;
+                    } else {
+                        timerDiv.style.display = 'none';
+                    }
+                }
+
+                // 5. Recarga de Datos Obligatoria
+                if (typeof window.cargar === 'function') {
+                    try {
+                        await window.cargar();
+                    } catch (e) {
+                        console.error("[Editor] Error cargando datos:", e);
+                        alert("Error cargando datos: " + e.message);
+                    }
+                } else {
+                    console.error("[Editor] ERROR CRÍTICO: window.cargar NO está definido.");
+                }
+
+                // 6. Disparadores de Renderizado Específicos
+                if (tabId === 'sugerencias') {
+                    if (typeof window.renderCartaRG === 'function') window.renderCartaRG();
+                } else if (tabId === 'sugerencias-usopen') {
+                    if (typeof window.renderCartaUSOPEN === 'function') window.renderCartaUSOPEN();
+                }
+                
+                actualizarTextoBotonGuardar();
+            } finally {
+                if (loader) loader.style.display = 'none';
+            }
+        }
+
+        // Inicialización inicial
+        if (!window.currentMode) {
+            window.currentMode = 'RG';
+        }
+        actualizarTextoBotonGuardar();
+
+        // NUEVO: Sistema de actualización del panel Debug segregado
+        function updateDebugPanel() {
+            const vDiv = document.getElementById('debug-versions');
+            const sDiv = document.getElementById('debug-state');
+            if (!vDiv || !sDiv) return;
+
+            // 1. Pintar Versiones
+            let vHtml = '';
+            if (window.APP_VERSIONS) {
+                for (const [key, val] of Object.entries(window.APP_VERSIONS)) {
+                    vHtml += `<div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${key}: ${val}">${key}: <span style="color: #fbbf24;">${val}</span></div>`;
+                }
+            }
+            vDiv.innerHTML = vHtml;
+
+            // 2. Pintar Estado de Variables Críticas (Segregado)
+            let sHtml = `<div>Modo Activo: <span style="color: #60a5fa;">${window.currentMode || 'RG'}</span></div><hr style="border-color: #334155; margin: 4px 0;">`;
+            
+            ['RG', 'USOPEN'].forEach(modo => {
+                const state = window.optimisticState ? window.optimisticState[modo] : { t: 0, s: [] };
+                const timeSinceSave = Date.now() - state.t;
+                const isZone = timeSinceSave < 180000; // 3 minutos
+                
+                sHtml += `<div style="margin-bottom: 4px; color: ${modo === window.currentMode ? '#f8fafc' : '#64748b'}">--- ${modo} ---</div>`;
+                sHtml += `<div>Hace: <span style="color: ${timeSinceSave < 10000 ? '#4ade80' : '#f87171'}">${Math.round(timeSinceSave/1000)}s</span></div>`;
+                sHtml += `<div style="color: ${isZone ? '#f87171' : '#4ade80'}; font-weight: bold;">Zona Peligro: ${isZone ? '⛔ ACTIVA' : '✅ INACTIVA'}</div>`;
+                sHtml += `<div>Snapshot: <span style="color: #c084fc;">${state.s ? state.s.length : 0} items</span></div>`;
+            });
+
+            sHtml += `<hr style="border-color: #334155; margin: 4px 0;">`;
+            sHtml += `<div>Mem Local: <span style="color: #38bdf8;">${window.datosLocales ? window.datosLocales.length : 0} items</span></div>`;
+
+            sDiv.innerHTML = sHtml;
+        }
+
+        // NUEVO: Lógica nativa para hacer el panel de Debug arrastrable con el ratón
+        (function() {
+            const panel = document.getElementById('debug-panel');
+            if (!panel) return;
+
+            let isDragging = false;
+            let startX = 0, startY = 0;
+            let initialLeft = 0, initialTop = 0;
+
+            panel.addEventListener('mousedown', function(e) {
+                isDragging = true;
+                
+                // Obtener rectángulo actual para calcular offset preciso
+                const rect = panel.getBoundingClientRect();
+                startX = e.clientX;
+                startY = e.clientY;
+                initialLeft = rect.left;
+                initialTop = rect.top;
+                
+                // Convertir bottom/left a top/left absoluto para evitar saltos al arrastrar
+                panel.style.left = initialLeft + 'px';
+                panel.style.top = initialTop + 'px';
+                panel.style.bottom = 'auto';
+                panel.style.right = 'auto';
+                
+                panel.style.cursor = 'grabbing';
+                e.preventDefault(); // Prevenir selección de texto mientras se arrastra
+            });
+
+            document.addEventListener('mousemove', function(e) {
+                if (!isDragging) return;
+                
+                const dx = e.clientX - startX;
+                const dy = e.clientY - startY;
+                
+                // Aplicar nueva posición
+                panel.style.left = (initialLeft + dx) + 'px';
+                panel.style.top = (initialTop + dy) + 'px';
+            });
+
+            document.addEventListener('mouseup', function() {
+                if (!isDragging) return;
+                isDragging = false;
+                panel.style.cursor = 'grab'; // Restaurar cursor al liberar
+            });
+        })();
+
+        // NUEVO: Control de visibilidad estricta de la pantalla del panel Debug (No detiene el modo)
+        (function() {
+            const checkbox = document.getElementById('toggle-debug-panel');
+            const panel = document.getElementById('debug-panel');
+            if (checkbox && panel) {
+                checkbox.addEventListener('change', function() {
+                    panel.style.display = this.checked ? 'block' : 'none';
+                });
+            }
+        })();
+
+        // Actualizar cada segundo para que se vea el contador y el estado en tiempo real
+        setInterval(updateDebugPanel, 1000);
+        updateDebugPanel();
+    </script>
+</body>
+</html>

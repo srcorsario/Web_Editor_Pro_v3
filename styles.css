@@ -1,0 +1,706 @@
+/* Web Editor Pro - Styles CSS - Version 1.0.8 */
+:root { 
+    --primario: #e67e22; 
+    --fondo: #f4f7f6; 
+    --texto: #2c3e50; 
+    --verde: #27ae60; 
+    --rojo: #e74c3c; 
+}
+
+body { 
+    font-family: 'Montserrat', sans-serif; 
+    background: var(--fondo); 
+    margin: 0; 
+    padding: 10px 5px 140px; 
+    color: var(--texto); 
+}
+
+.container { width: 100%; max-width: 1200px; margin: 0 auto; }
+
+/* MODIFICADO: Header adaptado para logos laterales (Tamaño duplicado) */
+.header-admin { 
+    background: white; padding: 10px 20px; border-radius: 10px; 
+    margin-bottom: 15px; border-bottom: 4px solid var(--primario); 
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 15px;
+}
+
+.header-center-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.header-logo {
+    width: auto;
+    height: 160px; /* MODIFICADO: Aumentado a 160px (el doble) */
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+#status-carga { 
+    font-size: 0.75rem; padding: 8px; border-radius: 5px; 
+    margin-bottom: 10px; font-weight: bold; text-align: center; 
+}
+
+.status-ok { background: #d4edda; color: #155724; }
+.status-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
+/* NUEVO: ESTILOS PARA LAS PESTAÑAS */
+.tabs-container {
+    display: flex;
+    gap: 0;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #ddd;
+}
+
+.tab-btn {
+    padding: 12px 20px;
+    background: #eee;
+    border: 1px solid #ddd;
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    cursor: pointer;
+    font-weight: 700;
+    font-family: 'Montserrat', sans-serif;
+    color: #7f8c8d;
+    margin-right: 5px;
+    transition: all 0.2s;
+}
+
+.tab-btn.active {
+    background: white;
+    color: var(--primario);
+    border-bottom: 2px solid white;
+    margin-bottom: -2px;
+}
+
+.tab-content {
+    display: none; /* Por defecto oculto, el JS lo controla */
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* NUEVO: SCOPE DEL TEMA OSCURO PARA EL PANEL PRO */
+.pro-panel {
+    background-color: #0f172a;
+    color: #f8fafc;
+    padding: 20px;
+    border-radius: 0 0 10px 10px;
+    border: 1px solid #334155;
+    border-top: none;
+    font-family: system-ui, -apple-system, sans-serif;
+}
+
+.pro-panel .card { background-color: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 16px; }
+.pro-panel input, .pro-panel textarea, .pro-panel select { background-color: #334155; border: 1px solid #475569; color: white; border-radius: 4px; padding: 6px 12px; }
+.pro-panel input:focus { outline: 2px solid #3b82f6; }
+.pro-panel .btn { padding: 5px 12px; border-radius: 4px; font-weight: 600; cursor: pointer; transition: all 0.2s; text-align: center; }
+.pro-panel .btn-primary { background-color: #2563eb; color: white; }
+.pro-panel .btn-primary:hover { background-color: #1d4ed8; }
+.pro-panel .btn-success { background-color: #16a34a; color: white; }
+.pro-panel .btn-success:hover { background-color: #15803d; }
+.pro-panel .btn-danger { background-color: #dc2626; color: white; }
+.pro-panel .btn-danger:hover { background-color: #b91c1c; }
+.pro-panel .btn-secondary { background-color: #475569; color: white; }
+.pro-panel .btn-secondary:hover { background-color: #334155; }
+
+#consola { background-color: #020617; font-family: monospace; font-size: 13px; color: #38bdf8; overflow-y: auto; padding: 10px; border-radius: 6px; border: 1px solid #1e293b; flex: 1; }
+
+.pro-panel table { width: 100%; border-collapse: collapse; margin-top: 10px; table-layout: fixed; }
+.pro-panel th, .pro-panel td { padding: 10px; border: 1px solid #334155; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pro-panel th { background-color: #1e293b; color: #94a3b8; font-weight: 600; }
+.pro-panel tr:nth-child(even) { background-color: #1e293b; }
+.pro-panel tr:hover { background-color: #334155; }
+
+/* NUEVO: ESTILOS PARA LA PESTAÑA DE SUGERENCIAS (Estilo Carta Real Roland Garros) */
+.sugerencias-panel {
+    position: relative;
+    background: white;
+    padding: 40px 50px;
+    border-radius: 0 0 10px 10px;
+    border: 1px solid #ddd;
+    border-top: none;
+    max-width: 800px;
+    margin: 0 auto;
+    font-family: 'Montserrat', sans-serif;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    overflow: hidden;
+}
+
+/* NUEVO: Fila superior con Título y Logo */
+.sugerencias-top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+}
+
+.sugerencias-titulo-dia {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--texto);
+    text-transform: uppercase;
+    margin: 0;
+    line-height: 1.2;
+}
+
+/* NUEVO: Imagen del logo real más grande */
+.sugerencias-logo-img {
+    width: 120px;
+    height: auto;
+}
+
+/* NUEVO: Subcabecera con la imagen de texto original */
+.sugerencias-subheader {
+    text-align: center;
+    margin-bottom: 30px;
+    border-bottom: 2px solid var(--texto);
+    padding-bottom: 15px;
+}
+
+.sugerencias-header-img {
+    width: 100%;
+    max-width: 500px;
+    height: auto;
+    display: inline-block;
+}
+
+.sugerencias-seccion {
+    margin-bottom: 30px;
+}
+
+.sugerencias-seccion-titulo {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--primario);
+    text-transform: uppercase;
+    margin-bottom: 15px;
+    letter-spacing: 1px;
+}
+
+.sugerencias-plato {
+    display: flex;
+    align-items: baseline; /* Alinea la base del texto perfectamente */
+    margin-bottom: 12px;
+}
+
+.sugerencias-plato-nombres {
+    flex: 0 0 auto;
+    max-width: 75%;
+}
+
+.sugerencias-nombre-es {
+    font-weight: 600;
+    color: var(--texto);
+    font-size: 0.95rem;
+}
+
+.sugerencias-nombre-en {
+    font-size: 0.8rem;
+    color: #7f8c8d;
+    font-style: italic;
+    margin-top: 2px;
+}
+
+/* MODIFICADO: Línea de puntos estilo menú de restaurante */
+.sugerencias-puntos {
+    flex: 1;
+    border-bottom: 1px dotted #aaa;
+    margin: 0 8px;
+    position: relative;
+    top: -4px; /* Ajuste fino para alinear con la base del nombre */
+}
+
+.sugerencias-precio {
+    flex: 0 0 auto;
+    font-weight: 700;
+    color: var(--texto);
+    font-size: 1rem;
+}
+
+/* MODIFICADO: Separador visual elegante entre entrantes y principales */
+.sugerencias-separador {
+    height: 20px;
+    margin: 30px 0;
+    border-bottom: 1px solid var(--primario);
+}
+
+/* NUEVO: Footer legal de alérgenos y QR real */
+.sugerencias-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-top: 50px;
+    padding-top: 20px;
+    border-top: 1px solid #ddd;
+}
+
+.sugerencias-aviso {
+    flex: 1;
+    font-size: 0.75rem;
+    color: #7f8c8d;
+    line-height: 1.6;
+    padding-right: 20px;
+}
+
+/* MODIFICADO: QR más grande */
+.sugerencias-qr {
+    width: 140px;
+    height: 140px;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+/* NUEVO: Imagen del QR real */
+.sugerencias-qr-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.categoria-tarjeta { 
+    background: white; border-radius: 12px; margin-bottom: 20px; 
+    overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
+}
+
+.categoria-titulo { 
+    background: var(--primario); color: white; padding: 10px 15px; 
+    font-weight: 700; text-transform: uppercase; font-size: 0.8rem; 
+}
+
+.plato-item { display: flex; padding: 12px; border-bottom: 1px solid #f1f2f6; gap: 10px; align-items: center; }
+.plato-info { flex: 1; min-width: 0; }
+.plato-nombre { 
+    font-weight: 600; font-size: 0.9rem; display: block; overflow: hidden; 
+    text-overflow: ellipsis; white-space: nowrap; 
+}
+
+.plato-meta-footer { display: flex; align-items: center; gap: 8px; flex-shrink: 0; min-width: 210px; justify-content: flex-end; }
+
+.btn-config { background: #f8f9fa; border: 1px solid #ddd; border-radius: 6px; padding: 8px; cursor: pointer; }
+.btn-orden { background: #f8f9fa; border: 1px solid #ddd; border-radius: 6px; padding: 8px 10px; cursor: pointer; font-size: 0.85rem; }
+.btn-nav { background: #f8f9fa; border: 1px solid #ddd; border-radius: 6px; padding: 8px 10px; cursor: pointer; font-size: 0.85rem; }
+.btn-nav:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.btn-add-float { 
+    position: fixed; bottom: 85px; right: 20px; width: 60px; height: 60px; 
+    background: var(--primario); color: white; border-radius: 50%; border: none; 
+    font-size: 35px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 1000; cursor: pointer; 
+}
+
+.btn-guardar-main { 
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); 
+    background: #2c3e50; color: white; padding: 18px; border-radius: 50px; 
+    border: none; font-weight: 700; width: 90%; max-width: 450px; z-index: 1000; cursor: pointer; 
+}
+
+/* --- ESTILOS DEL SWITCH / BARRITA ACTIVADORA --- */
+.switch-container {
+    position: relative;
+    display: inline-block;
+    width: 42px;
+    height: 24px;
+    cursor: pointer;
+}
+.switch-container input { opacity: 0; width: 0; height: 0; }
+.slider-switch {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #ccc;
+    transition: .3s;
+    border-radius: 24px;
+}
+.slider-switch:before {
+    position: absolute;
+    content: "";
+    height: 18px; width: 18px;
+    left: 3px; bottom: 3px;
+    background-color: white;
+    transition: .3s;
+    border-radius: 50%;
+}
+input:checked + .slider-switch { background-color: var(--verde); }
+input:checked + .slider-switch:before { transform: translateX(18px); }
+
+/* Modales e Interfaz de Pantalla Completa del Editor */
+.modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(6px); overflow-y: auto; }
+.modal-content { background: white; width: 96%; max-width: 1000px; margin: 15px auto; border-radius: 15px; padding: 25px; box-sizing: border-box; }
+
+.modal-full-layout {
+    width: 100% !important;
+    max-width: 100vw !important;
+    height: 100vh !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    display: flex;
+    gap: 25px;
+    padding: 20px !important;
+    overflow: hidden;
+}
+
+.modal-col-izquierda {
+    flex: 0 0 75%;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow-y: auto;
+    padding-right: 15px;
+    border-right: 1px solid #eee;
+}
+
+.modal-col-derecha {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow-y: auto;
+    justify-content: flex-start;
+}
+
+.input-group { margin-bottom: 15px; }
+.label-seccion { display: block; font-size: 0.75rem; font-weight: 700; color: var(--primario); text-transform: uppercase; margin-bottom: 8px; }
+
+.input-row-lang { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+.lang-tag { background: #34495e; color: white; padding: 8px; border-radius: 5px; font-weight: bold; font-size: 0.8rem; width: 35px; text-align: center; flex-shrink: 0; }
+.input-estandar { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; margin-bottom: 5px; font-family: 'Montserrat', sans-serif; font-size: 0.9rem; }
+
+.input-nombre-corto { padding: 8px 10px; font-size: 0.9rem; max-height: 38px; }
+.input-uvas { background: #fff9f4; border: 1px dashed var(--primario); margin-top: 4px; font-size: 0.8rem; padding: 6px 10px; }
+
+.panel-control-precio { display: flex; gap: 12px; width: 100%; align-items: flex-start; margin-bottom: 15px; }
+.input-precio-super-mini { flex: 0 0 90px !important; }
+.input-precio-mini { text-align: center; font-weight: bold; padding: 8px; }
+.input-imagen-flexible { flex: 1; }
+
+.alergenos-grid { 
+    display: grid; 
+    grid-template-columns: repeat(auto-fill, minmax(115px, 1fr)); 
+    gap: 6px; 
+    margin-top: 5px;
+    max-height: 45vh;
+    overflow-y: auto;
+}
+
+.alergeno-btn { 
+    border: 1px solid #ddd; 
+    border-radius: 8px; 
+    padding: 8px 4px; 
+    font-size: 0.68rem; 
+    text-align: center; 
+    cursor: pointer; 
+    background: #fff; 
+    font-weight: 600; 
+    color: var(--texto);
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+    text-transform: uppercase;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.alergeno-btn:hover { background: #fdfefe; border-color: #bbb; }
+.alergeno-btn.selected { background: var(--primario); color: white; border-color: var(--primario); box-shadow: 0 2px 5px rgba(230, 126, 34, 0.3); }
+
+.btn-traductor-magico { width: 100%; padding: 12px; background: #9b59b6; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin: 10px 0; }
+.btn-traductor-magico:disabled { background: #bdc3c7; cursor: not-allowed; }
+
+.btn-traducir-en { 
+    width: 100%; padding: 10px; background: #34495e; color: white; border: none; border-radius: 8px; 
+    font-weight: bold; cursor: pointer; margin: 5px 0 2px; font-size: 0.9rem; transition: background 0.2s; 
+}
+.btn-traducir-en:hover { background: #2c3e50; }
+.btn-traducir-en:disabled { background: #bdc3c7; cursor: not-allowed; }
+
+.langs-fluid-container { display: flex; flex-direction: column; padding: 5px 0; background: transparent; }
+
+.modal-acciones-footer { display: flex; flex-direction: column; gap: 8px; margin-top: auto; padding-top: 15px; }
+.btn-modal-aceptar { background: var(--verde); color: white; padding: 15px; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; width: 100%; }
+.btn-modal-cancelar { background: #eee; color: var(--texto); padding: 12px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; width: 100%; }
+
+/* --- ESTILOS: PANEL DE API KEYS --- */
+.api-keys-manager { margin-top: 15px; padding: 12px; background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 8px; text-align: left; }
+.api-keys-inputs { display: flex; gap: 8px; margin-bottom: 8px; }
+.api-keys-inputs .input-estandar { margin-bottom: 0; font-size: 0.85rem; padding: 8px; }
+.btn-add-key { background: var(--primario); color: white; border: none; border-radius: 6px; padding: 8px 15px; font-weight: bold; cursor: pointer; white-space: nowrap; transition: background 0.2s; }
+.btn-add-key:hover { background: #d35400; }
+.api-keys-list { display: flex; gap: 8px; align-items: center; }
+.select-keys { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 6px; background: white; font-family: 'Montserrat', sans-serif; font-size: 0.8rem; color: var(--texto); cursor: pointer; }
+.select-keys:disabled { background: #f1f2f6; cursor: not-allowed; }
+.btn-delete-key { background: var(--rojo); color: white; border: none; border-radius: 6px; width: 35px; height: 35px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+.btn-delete-key:hover { background: #c0392b; }
+
+/* --- ESTILOS: MODAL DE TRADUCCIONES INGLÉS --- */
+#modal-traduccion-en { justify-content: center; align-items: center; }
+.modal-box-en { width: 95vw; height: 85vh; max-width: none; max-height: none; display: flex; flex-direction: column; overflow: hidden; border-radius: 20px; padding: 40px; box-shadow: 0 15px 40px rgba(0,0,0,0.4); }
+.opciones-en-scroll { flex: 1; display: flex; flex-direction: column; gap: 25px; margin: 25px 0; min-height: 0; }
+.footer-box-en { margin-top: auto; padding-top: 20px; border-top: 1px solid #eee; }
+.opcion-en-btn { width: 100%; flex: 1; text-align: left; padding: 0 35px; background: #f8f9fa; border: 2px solid #e0e0e0; border-radius: 12px; cursor: pointer; transition: all 0.2s; font-size: 1.4rem; font-family: 'Montserrat', sans-serif; color: var(--texto); display: flex; flex-direction: column; justify-content: center; }
+.opcion-en-btn:hover { border-color: var(--primario); background: #fff9f4; transform: translateY(-3px); box-shadow: 0 8px 20px rgba(230, 126, 34, 0.1); }
+.opcion-en-btn.selected { border-color: var(--primario); background: #fff4ec; font-weight: 600; box-shadow: 0 4px 15px rgba(230, 126, 34, 0.2); transform: translateY(0); }
+.opcion-en-label { display: block; font-size: 0.85rem; color: var(--primario); font-weight: 700; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 1px; }
+
+/* --- ESTILOS: SELECTOR DE CROQUETAS --- */
+.croquetas-grid { margin-top: 5px; }
+.croqueta-category { margin-bottom: 10px; }
+.croqueta-cat-title { font-size: 0.7rem; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; }
+.croqueta-cat-title.carne { color: #c0392b; }
+.croqueta-cat-title.pescado { color: #2980b9; }
+.croqueta-cat-title.vegetariana { color: #27ae60; }
+
+.croqueta-cat-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.croqueta-btn { 
+    border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 0.75rem; 
+    text-align: center; cursor: pointer; background: #fff; font-weight: 600; color: var(--texto);
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+.croqueta-btn.carne { border-color: #e6b0aa; color: #c0392b; }
+.croqueta-btn.pescado { border-color: #a9cce3; color: #2980b9; }
+.croqueta-btn.vegetariana { border-color: #a9dfbf; color: #27ae60; }
+
+.croqueta-btn:hover { transform: translateY(-1px); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+.croqueta-btn.selected.carne { background: #c0392b; color: white; border-color: #c0392b; }
+.croqueta-btn.selected.pescado { background: #2980b9; color: white; border-color: #2980b9; }
+.croqueta-btn.selected.vegetariana { background: #27ae60; color: white; border-color: #27ae60; }
+
+
+/* ======================================================= */
+/* --- MEDIA QUERIES: ADAPTACIÓN MÓVIL (Max-width 768px) --- */
+/* ======================================================= */
+
+@media (max-width: 768px) {
+    /* --- General --- */
+    body { padding: 5px 5px 130px; }
+    
+    /* --- Header Mobile --- */
+    .header-admin {
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        padding: 10px;
+    }
+
+    .header-logo {
+        height: 100px; /* MODIFICADO: Aumentado a 100px (el doble del móvil anterior) */
+    }
+
+    .header-center-wrapper {
+        width: 100%;
+    }
+
+    .api-keys-inputs, .api-keys-list { flex-direction: column; }
+    .btn-delete-key { width: 100%; height: 35px; }
+
+    /* --- Listado Principal (MÓVIL OPTIMIZADO) --- */
+    .btn-config {
+        display: none !important;
+    }
+
+    .plato-orden-btns {
+        display: none !important;
+    }
+
+    .plato-info > div:last-child {
+        display: none !important;
+    }
+
+    .plato-item {
+        display: flex;
+        flex-wrap: wrap;
+        padding: 12px 15px;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .plato-info {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .plato-nombre {
+        font-size: 0.95rem;
+        margin: 0;
+        padding-right: 10px;
+    }
+
+    .plato-meta-footer {
+        min-width: unset;
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px solid #f1f2f6;
+    }
+    
+    .plato-meta-footer > div:first-child small {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #555;
+    }
+
+    /* --- Modal Editor Principal (MÓVIL) --- */
+    .modal-full-layout {
+        flex-direction: column; 
+        height: auto !important; 
+        min-height: 100vh;
+        overflow-y: visible !important; 
+        padding: 20px 15px !important;
+        gap: 15px;
+    }
+
+    .modal-col-izquierda {
+        flex: none;
+        width: 100%;
+        height: auto;
+        overflow-y: visible;
+        border-right: none;
+        border-bottom: 1px solid #eee;
+        padding-right: 0;
+        padding-bottom: 20px;
+    }
+
+    .modal-col-derecha {
+        flex: none;
+        width: 100%;
+        height: auto;
+        overflow-y: visible;
+    }
+    
+    .alergenos-grid {
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); 
+        max-height: none; 
+    }
+
+    /* --- Modal Traducción Inglés (MÓVIL) --- */
+    .modal-box-en {
+        width: 100vw;
+        height: 100vh;
+        max-width: 100vw;
+        max-height: 100vh;
+        border-radius: 0;
+        padding: 20px 15px;
+    }
+
+    .opciones-en-scroll {
+        flex: 1;
+        gap: 15px;
+        margin: 15px 0;
+        overflow-y: auto; 
+    }
+
+    .opcion-en-btn {
+        padding: 20px 15px; 
+        font-size: 1.1rem;
+    }
+
+    .footer-box-en {
+        padding-top: 15px;
+    }
+
+    /* --- Botones Flotantes (MÓVIL) --- */
+    .btn-add-float {
+        bottom: 80px;
+        right: 15px;
+        width: 50px;
+        height: 50px;
+        font-size: 28px;
+    }
+    
+    .btn-guardar-main {
+        width: 95%;
+        padding: 14px;
+    }
+
+    /* --- Pestaña Sugerencias (MÓVIL) --- */
+    .sugerencias-panel {
+        padding: 20px;
+    }
+    
+    /* NUEVO: Ajuste del layout en móvil */
+    .sugerencias-top-row {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 15px;
+    }
+    
+    .sugerencias-logo-img {
+        width: 90px;
+    }
+    
+    .sugerencias-footer {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    
+    .sugerencias-aviso {
+        padding-right: 0;
+        margin-bottom: 20px;
+    }
+}
+
+/* --- ESTILOS: PANTALLA FLOTANTE DE CARGA --- */
+.loading-overlay {
+    display: none; /* Se controla con JS */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.9); /* Fondo blanco semitransparente */
+    z-index: 9999; /* Por encima de todo */
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    backdrop-filter: blur(5px); /* Efecto de desenfoque de fondo */
+    animation: fadeIn 0.2s ease-in;
+}
+
+.loading-text {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 700;
+    color: var(--primario);
+    font-size: 1.5rem;
+    margin-top: 20px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.spinner {
+    border: 8px solid #f3f3f3;
+    border-top: 8px solid var(--primario); /* Color primario de la marca */
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
