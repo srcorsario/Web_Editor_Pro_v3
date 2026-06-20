@@ -1,8 +1,9 @@
 // [🔒 ARCHIVO DIVIDIDO - PARTE 1 DE 3 - POR FAVOR UNIR MENTALMENTE]
+// [🔒 ARCHIVO DIVIDIDO - PARTE 1 DE 3 - POR FAVOR UNIR MENTALMENTE]
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '1.0.42-SPLIT-3MIN-CANCEL'; 
+window.APP_VERSIONS.app = '1.0.43-SUPER-CONFIG'; 
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
@@ -63,7 +64,7 @@ function getCsvUrlSafe() {
 // movidas a utils.js para limpiar este archivo y evitar duplicidades.
 
 async function cargar(retryCount = 0) {
-    const CONSISTENCY_WINDOW_MS = 180000; // NUEVO: Ventana de 3 minutos (180s)
+    // MODIFICADO: Usar variable global CONSISTENCY_WINDOW_MS inyectada desde config.js
     const modo = window.currentMode || 'RG';
     const state = window.optimisticState[modo];
     
@@ -168,7 +169,7 @@ async function cargar(retryCount = 0) {
 
 // NUEVO: Sistema de contador visual segregado por restaurante
 function iniciarContadorOptimista(modo) {
-    const CONSISTENCY_WINDOW_MS = 180000; // 3 minutos
+    // MODIFICADO: Usar variable global CONSISTENCY_WINDOW_MS inyectada desde config.js
     const timerDiv = document.getElementById('optimistic-timer');
     const timerSeconds = document.getElementById('timer-seconds');
     const timerMode = document.getElementById('timer-mode');
@@ -445,6 +446,7 @@ function comprobarRequisitosTraduccion() {
 async function generarTraduccionEN() {
     const nombreEs = document.getElementById('edit-es').value.trim();
     const esVino = (platoEditandoId >= 13000);
+
     const uvasEs = esVino ? document.getElementById('edit-es-uvas').value.trim() : "";
     
     if (!nombreEs) {
@@ -968,4 +970,5 @@ if (editPrecioInput) {
     });
 }
 
+// [🔒 FIN DE ARCHIVO DIVIDIDO - PARTE 3 DE 3]
 console.groupEnd();
