@@ -1,7 +1,7 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '1.0.45-IMAGENES-FIX'; 
+window.APP_VERSIONS.app = '1.0.46-IMAGENES-FIX-EMOJI'; 
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
@@ -149,7 +149,6 @@ async function cargar(retryCount = 0) {
             statusCarga.className = "status-error";
         }
     }
-// CORREGIDO: Falta la llave de cierre de la función cargar()
 }
 
 function iniciarContadorOptimista(modo) {
@@ -216,8 +215,9 @@ function renderizar() {
         
         h += `<div class="categoria-tarjeta"><div class="categoria-titulo">${cat.name}</div>`;
         platos.forEach((p) => {
-            // MODIFICADO: Mostrar imagen real usando PATH_IMAGENES de config.js en lugar de un span de texto
-            let htmlImagenPC = p.imagen ? `<img src="${PATH_IMAGENES}${p.imagen}" style="height: 20px; border-radius: 4px; margin-right: 5px; vertical-align: middle;" onerror="this.style.display='none'">` : "";
+            // CORREGIDO: Revertido a indicador visual de cámara (emoji). 
+            // No se deben cargar las imágenes físicas reales en el proyecto del Editor.
+            let htmlImagenPC = p.imagen ? `<span style="margin-right: 5px;">📷</span>` : "";
             let htmlCarpetaPC = p.carpeta ? `<span class="tag-carpeta">${p.carpeta}</span>` : "";
             const nombreLimpio = desglosarNombre(p.es).nombre;
             
