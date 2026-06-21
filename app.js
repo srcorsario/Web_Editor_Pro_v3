@@ -1,7 +1,7 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '1.0.48-ALIAS-SYSTEM'; 
+window.APP_VERSIONS.app = '1.0.49-CENTRALIZED-IA-URL'; 
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
@@ -458,7 +458,7 @@ async function generarTraduccionEN() {
 
     const textoCompletoEs = (nombreEs + (uvasEs ? ' // ' + uvasEs : '')).replace(/"/g, "'");
 
-    const URL_MODELO = "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent";
+    // MODIFICADO: Eliminada la variable local URL_MODELO. Ahora usa GEMINI_ENDPOINT_URL de config.js
     const instruccion = `Actúa como un translator profesional de menús de restaurantes. Te paso un elemento en español: "${textoCompletoEs}".
     ${esVino ? 'Es un vino. El separador "//" distingue el nombre del vino de la variedad de uva o detalles. Debes traducir ambas partes y mantener el separador "//" en el resultado. El nombre del vino debe ir en MAYÚSCULAS, pero el contenido entre paréntesis (como la D.O.) debe mantener su formato original (ej: EL COTO (D.O. Rioja)).' : ''}
     Necesito que me des EXACTAMENTE 3 opciones de traducción al inglés con diferentes enfoques para un menú:
@@ -477,7 +477,7 @@ async function generarTraduccionEN() {
     while (!exito && intentos < keys.length) {
         try {
             const apiKey = keys[intentos];
-            const response = await fetch(`${URL_MODELO}?key=${apiKey}`, {
+            const response = await fetch(`${GEMINI_ENDPOINT_URL}?key=${apiKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ contents: [{ parts: [{ text: instruccion }] }] })
@@ -619,8 +619,8 @@ async function ejecutarTraduccionAutomatica() {
     const textoCompletoEn = (nombreEn + (uvasEn ? ' // ' + uvasEn : '')).replace(/"/g, "'");
     
     const idiomasObjetivo = window.IDIOMAS_ORDEN ? window.IDIOMAS_ORDEN.filter(l => l !== 'es' && l !== 'en') : [];
-    const URL_MODELO = "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent";
     
+    // MODIFICADO: Eliminada la variable local URL_MODELO. Ahora usa GEMINI_ENDPOINT_URL de config.js
     const instruccion = `Actúa como un traductor experto de menús de restaurantes. Traduce el siguiente elemento basándote en su texto en Español: "${textoCompletoEs}" ${textoCompletoEn ? `y su texto en Inglés (como referencia): "${textoCompletoEn}"` : ''}.
     ${esVino ? 'Es un vino. El separador "//" distingue el nombre del vino de la variedad de uva o detalles. Debes traducir ambas partes y mantener el separador "//" en el resultado para todos los idiomas. El nombre del vino debe ir en MAYÚSCULAS, pero el contenido entre paréntesis (como la D.O.) debe mantener su formato original en todos los idiomas (ej: EL COTO (D.O. Rioja)).' : ''}
     
@@ -637,7 +637,7 @@ async function ejecutarTraduccionAutomatica() {
     while (!exito && intentos < keys.length) {
         try {
             const apiKey = keys[intentos];
-            const response = await fetch(`${URL_MODELO}?key=${apiKey}`, {
+            const response = await fetch(`${GEMINI_ENDPOINT_URL}?key=${apiKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ contents: [{ parts: [{ text: instruccion }] }] })
