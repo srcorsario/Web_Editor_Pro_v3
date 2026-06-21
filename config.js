@@ -1,7 +1,7 @@
 // --- config.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.config = '1.4.0'; // Incrementado por centralización de Endpoint IA
+window.APP_VERSIONS.config = '1.5.0'; // Incrementado por extracción de TRADUCCION_TAMANO_LOTE
 
 // =====================================================================
 // NUEVO: SISTEMA DE ALIAS DE MARCA (Desacoplamiento Visual)
@@ -12,8 +12,8 @@ window.APP_VERSIONS.config = '1.4.0'; // Incrementado por centralización de End
 
 // NUEVO: Diccionario de Presentación. Cambia estos valores para renombrar los restaurantes en toda la UI.
 const MODOS_ALIAS = {
-    RG: 'Roland Garros1',
-    USOPEN: 'US Open2'
+    RG: 'Roland Garros',
+    USOPEN: 'US Open'
 };
 
 // NUEVO: Función helper para obtener el nombre visual seguro
@@ -62,6 +62,10 @@ function getCsvUrl(modo) {
 // Cambiar aquí la versión o el modelo afectará a todas las traducciones automáticas del sistema.
 const GEMINI_ENDPOINT_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent";
 
+// NUEVO: Cantidad de filas que se envían en cada petición a la IA durante la traducción masiva.
+// Aumentar mejora velocidad pero consume más cuota. Disminuir reduce consumo pero es más lento.
+const TRADUCCION_TAMANO_LOTE = 3;
+
 
 // =====================================================================
 // NUEVO: CONFIGURACIÓN CENTRALIZADA DE ASSETS (Rutas e Imágenes)
@@ -81,7 +85,7 @@ const LOGO_USOPEN = PATH_IMAGENES + 'USOPEN_REST.png';
 const QR_RG_DEFAULT = PATH_IMAGENES + 'qr-code-RG-MOD.png'; // Oficial RG
 const QR_RG_MOD = PATH_IMAGENES + 'qr-code.png';           // Alternativo RG
 
-// Códigos QR US Open
+// Código QR US Open
 const QR_USOPEN_DEFAULT = PATH_IMAGENES + 'qr-usopen_oficial.png'; // Oficial USOPEN
 const QR_USOPEN_MOD = PATH_IMAGENES + 'qr-usopen_mod.png';         // Alternativo USOPEN
 
