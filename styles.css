@@ -1,4 +1,4 @@
-/* Web Editor Pro - Styles CSS - Version 1.1.0 */
+/* Web Editor Pro - Styles CSS - Version 1.2.0 */
 :root { 
     --primario: #e67e22; 
     --fondo: #f4f7f6; 
@@ -564,6 +564,52 @@ input:checked + .slider-switch:before { transform: translateX(18px); }
     box-sizing: border-box;
 }
 
+/* NUEVO: ESTILOS PARA LOS BOTONES DE ACCIÓN DEL ORGANIZADOR */
+.org-action-btns {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+}
+
+.org-btn-icon {
+    width: 26px;
+    height: 26px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, color 0.2s;
+    line-height: 1;
+}
+
+.org-btn-add {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.org-btn-add:hover {
+    background: #28a745;
+    color: white;
+    border-color: #28a745;
+}
+
+.org-btn-del {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.org-btn-del:hover {
+    background: #dc3545;
+    color: white;
+    border-color: #dc3545;
+}
+
 /* MODIFICADO: Aumentado el max-width para acomodar IDs de 5 dígitos sin recortar */
 .org-table input[type="number"] {
     max-width: 120px;
@@ -766,6 +812,12 @@ input:checked + .slider-switch:before { transform: translateX(18px); }
     .sugerencias-aviso {
         padding-right: 0;
         margin-bottom: 20px;
+    }
+
+    /* NUEVO: Ajuste responsive para la nueva columna en el organizador */
+    .org-table th:nth-child(4), 
+    .org-table td:nth-child(4) {
+        display: none; /* Oculta la columna Carpeta en móviles para dar espacio a Acciones */
     }
 }
 
