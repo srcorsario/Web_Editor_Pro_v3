@@ -59,6 +59,8 @@
             <button class="tab-btn" onclick="switchTab('pro', this)" style="margin-left: auto; margin-right: auto;">3. Traductor Pro</button>
             <button id="tab-btn-usopen" class="tab-btn" onclick="switchTab('editor-usopen', this)">4. Editor Carta USOpen</button>
             <button id="tab-btn-sug-usopen" class="tab-btn" onclick="switchTab('sugerencias-usopen', this)">5. Sugerencias USOpen</button>
+            <!-- NUEVO: Pestaña Organizador IDs -->
+            <button id="tab-btn-organizador" class="tab-btn" onclick="switchTab('organizador', this)">6. Organizador IDs</button>
         </div>
 
         <div id="tab-editor" class="tab-content active">
@@ -137,6 +139,25 @@
 
         <div id="tab-sugerencias-usopen" class="tab-content" style="display: none;">
             <div class="sugerencias-panel" id="sugerencias-contenido-usopen"></div>
+        </div>
+
+        <!-- NUEVO: Contenedor de la Pestaña Organizador IDs -->
+        <div id="tab-organizador" class="tab-content" style="display: none;">
+            <div class="card org-container">
+                <div class="org-header">
+                    <h3 style="margin:0 0 15px 0; color: var(--primario);">Organizador de Rangos y Categorías</h3>
+                    <div style="display: flex; gap: 10px; margin-bottom: 15px; align-items: center;">
+                        <button id="org-tab-rg" class="org-tab-btn active-org-tab">Carta 01 (RG)</button>
+                        <button id="org-tab-usopen" class="org-tab-btn">Carta 02 (USOPEN)</button>
+                        <div style="flex:1"></div>
+                        <button id="org-btn-aplicar" class="btn btn-success" style="padding: 8px 16px; font-size: 0.85rem;">✅ Aplicar Estructura en Memoria</button>
+                    </div>
+                    <p style="font-size: 0.8rem; color: #7f8c8d; margin: 0 0 15px 0;">Modifica los IDs o nombres de las categorías. Al pulsar 'Aplicar', el Editor Principal usará esta nueva estructura. Los cambios se pierden al recargar la página si no se guardan.</p>
+                </div>
+                <div id="org-table-container" class="org-table-wrapper">
+                    <div class="text-center py-8 text-slate-500 italic">Cargando estructura...</div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -288,6 +309,8 @@
     <script type="module" src="ui.js"></script>
     <!-- Impresión Unificada -->
     <script src="sugerencias-print.js"></script>
+    <!-- NUEVO: Organizador visual de IDs/Categorías -->
+    <script src="organizador.js"></script>
 
     <!-- Pantalla Flotante de Carga -->
     <div id="loading-overlay" class="loading-overlay">
@@ -389,13 +412,16 @@
                     }
                 }
 
-                if (typeof window.cargar === 'function') {
+                // NUEVO: Evitar recarga innecesaria si estamos en el organizador
+                if (typeof window.cargar === 'function' && tabId !== 'organizador') {
                     try {
                         await window.cargar();
                     } catch (e) {
                         console.error("[Editor] Error cargando datos:", e);
                         alert("Error cargando datos: " + e.message);
                     }
+                } else if (tabId === 'organizador') {
+                    console.log("[Editor] Modo organizador activo. Omitiendo recarga de Google Sheets.");
                 } else {
                     console.error("[Editor] ERROR CRÍTICO: window.cargar NO está definido.");
                 }
