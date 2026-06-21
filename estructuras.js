@@ -125,11 +125,11 @@ const ESTRUCTURA_USOPEN = [
     { id: 2000, name: "2- Ensaladas", rango: 999, sub: [
         { id: 2000, name: "Clasicas", folder: "ensaladas" },         // 2000-2099
         { id: 2100, name: "Pokes", folder: "ensaladas" },            // 2100-2199
-        { id: 2200, name: "Otras", folder: "ensaladas" }             // 2200-2299
+        { id: 2200, name: "Tacos", folder: "ensaladas" }             // 2200-2299
     ]},
-    // --- RANGO 3000-3999: ARROZ Y PASTA ---
-    { id: 3000, name: "3- Arroz y Pasta", rango: 999, sub: [
-        { id: 3000, name: "Risotto", folder: "arroz" },              // 3000-3099
+    // --- RANGO 3000-3999: PASTA ---
+    { id: 3000, name: "3- Pasta", rango: 999, sub: [
+        { id: 3000, name: "Pasta", folder: "arroz" },              // 3000-3099
         { id: 3100, name: "Arroz", folder: "arroz" },               // 3100-3199
         { id: 3200, name: "Fideuá", folder: "pasta" },              // 3200-3299
         { id: 3300, name: "Pasta", folder: "pasta" }                // 3300-3399
