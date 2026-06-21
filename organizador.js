@@ -7,7 +7,7 @@
 
     // Registro de versión
     window.APP_VERSIONS = window.APP_VERSIONS || {};
-    window.APP_VERSIONS.organizador = '1.0.1'; // MODIFICADO: Incrementado por ajuste de UI
+    window.APP_VERSIONS.organizador = '1.1.0'; // MODIFICADO: Incrementado por aislamiento de nombres por modo
 
     // Estado interno del módulo
     const estadoOrganizador = {
@@ -29,29 +29,26 @@
         
         est.forEach(cat => {
             if (cat.sub && cat.sub.length > 0) {
-                // Categoría Principal con subcategorías
                 flat.push({
                     id: cat.id,
                     name: cat.name,
-                    max: cat.id + (cat.rango || 99), // Calculamos el máximo basándonos en el rango
+                    max: cat.id + (cat.rango || 99), 
                     folder: cat.folder || '',
                     level: 0,
                     hasChildren: true
                 });
                 
-                // Subcategorías
                 cat.sub.forEach(sub => {
                     flat.push({
                         id: sub.id,
                         name: sub.name,
                         max: sub.max || (sub.id + 99), 
-                        folder: sub.folder || cat.folder || '', // Hereda la carpeta del padre si no tiene
+                        folder: sub.folder || cat.folder || '', 
                         level: 1,
                         hasChildren: false
                     });
                 });
             } else {
-                // Categoría sin subcategorías (ej. Niños, Cafés)
                 flat.push({
                     id: cat.id,
                     name: cat.name,
@@ -79,7 +76,6 @@
             return;
         }
 
-        // MODIFICADO: Ajustado el ancho de las columnas de ID a 120px para visualizar correctamente 5 dígitos
         let html = `<table class="org-table">
             <thead>
                 <tr>
@@ -123,10 +119,6 @@
         container.innerHTML = html;
     }
 
-    /**
-     * Función auxiliar expuesta a window para actualizar el estado interno desde los inputs
-     * sin usar eval ni generar funciones anónimas masivamente en el HTML.
-     */
     window._orgUpdateItem = function(index, key, value) {
         const data = estadoOrganizador.data[estadoOrganizador.activeTab];
         if (!data || !data[index]) return;
@@ -138,13 +130,9 @@
         }
     };
 
-    /**
-     * Cambia la pestaña visual interna del organizador (Carta 01 vs Carta 02)
-     */
     function switchOrgTab(modo) {
         estadoOrganizador.activeTab = modo;
         
-        // Actualizar clases visuales
         document.querySelectorAll('.org-tab-btn').forEach(btn => {
             btn.classList.remove('active-org-tab');
         });
@@ -156,93 +144,73 @@
 
     /**
      * Reconstruye el árbol jerárquico desde la tabla aplanada y sobrescribe la ESTRUCTURA global.
-     * Expuesta a window para el onclick del botón "Aplicar".
+     * MODIFICADO: Ahora aplica ÚNICAMENTE los NOMBRES de forma aislada por modo (Carta 01 vs Carta 02)
+     * mediante el diccionario CATEGORY_OVERRIDES, evitando que un cambio de texto pise al otro restaurante.
      */
     window.aplicarEstructuraOrg = function() {
         const flatData = estadoOrganizador.data[estadoOrganizador.activeTab];
         if (!flatData || flatData.length === 0) return;
 
-        const newEstructura = [];
-        let currentParent = null;
-
+        const modo = estadoOrganizador.activeTab;
+        
+        // Asegurar que el sistema de overrides existe
+        if (!window.CATEGORY_OVERRIDES) {
+            window.CATEGORY_OVERRIDES = { RG: {}, USOPEN: {} };
+        }
+        
+        // Limpiar overrides anteriores para este modo y aplicar los nuevos nombres
+        window.CATEGORY_OVERRIDES[modo] = {};
         flatData.forEach(item => {
-            if (item.level === 0) {
-                // Para las categorías principales, ESTRUCTURA usa 'rango', no 'max'
-                currentParent = {
-                    id: item.id,
-                    name: item.name,
-                    rango: Math.max(0, item.max - item.id), // NUEVO: Recalculamos el rango dinámicamente
-                    folder: item.folder,
-                    sub: []
-                };
-                newEstructura.push(currentParent);
-            } else if (item.level === 1) {
-                // Las subcategorías usan 'max' explícito
-                if (currentParent && currentParent.sub) {
-                    currentParent.sub.push({
-                        id: item.id,
-                        name: item.name,
-                        max: item.max,
-                        folder: item.folder || currentParent.folder // Si está vacío, hereda del padre
-                    });
-                }
-            }
+            // Guardar el nombre personalizado exclusivamente para este modo
+            window.CATEGORY_OVERRIDES[modo][item.id] = item.name;
         });
 
-        // Sobrescribir la estructura global que usa app.js
-        window.ESTRUCTURA = newEstructura;
-
-        // Forzar la recarga visual del Editor Principal (Pestaña 1 y botón flotante +)
+        // Forzar la recarga visual del Editor Principal
+        // Para que renderice con el override correcto, forzamos temporalmente el modo activo
+        const previousMode = window.currentMode;
+        window.currentMode = modo; 
+        
         if (typeof window.renderizar === 'function') window.renderizar();
         if (typeof window.generarMenuAgrupado === 'function') window.generarMenuAgrupado();
 
+        window.currentMode = previousMode; // Restaurar contexto real
+
         // Feedback visual en la consola del sistema
-        const alias = (typeof getModoAlias === 'function') ? getModoAlias(estadoOrganizador.activeTab) : estadoOrganizador.activeTab;
+        const alias = (typeof getModoAlias === 'function') ? getModoAlias(modo) : modo;
         if (typeof window.UI !== 'undefined' && typeof window.UI.log === 'function') {
-            window.UI.log(`[Organizador] ✅ Estructura de ${alias} aplicada en memoria local. (Nota: Al recargar la página se restaurá la original de data.js a menos que la guardes en el servidor).`);
+            window.UI.log(`[Organizador] ✅ Nombres de ${alias} aplicados de forma aislada. La Carta 01 no se ha visto afectada. (Recargar la página restaura los nombres originales).`);
         } else {
-            alert(`✅ Estructura de ${alias} aplicada en memoria local.`);
+            alert(`✅ Nombres de ${alias} aplicados de forma aislada.`);
         }
     };
 
-    /**
-     * Inicialización del módulo
-     */
     function inicializarOrganizador() {
-        // Esperar a que data.js inyecte la estructura global
         if (!window.ESTRUCTURA) {
             console.warn("[Organizador] ESTRUCTURA global no encontrada. Abortando inicialización.");
             return;
         }
 
-        // Como actualmente solo hay una ESTRUCTURA en data.js, inicializamos ambas pestañas 
-        // con la misma base para que el usuario pueda bifurcarlas y editarlas por separado.
         estadoOrganizador.data.RG = aplanarEstructura(window.ESTRUCTURA);
         estadoOrganizador.data.USOPEN = aplanarEstructura(window.ESTRUCTURA);
 
-        // Vincular eventos de pestañas
         const btnRG = document.getElementById('org-tab-rg');
         const btnUSOPEN = document.getElementById('org-tab-usopen');
         
         if (btnRG) btnRG.onclick = () => switchOrgTab('RG');
         if (btnUSOPEN) btnUSOPEN.onclick = () => switchOrgTab('USOPEN');
 
-        // Vincular evento de aplicar (Ya está en el HTML como onclick, pero por consistencia)
         const btnAplicar = document.getElementById('org-btn-aplicar');
         if (btnAplicar) {
             btnAplicar.onclick = () => window.aplicarEstructuraOrg();
         }
 
-        // Renderizar estado inicial
         renderOrganizador();
         console.log("[Organizador] Módulo inicializado correctamente.");
     }
 
-    // Ejecutar cuando el DOM esté listo
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', inicializarOrganizador);
     } else {
-        // Si el script se carga al final del body, el DOM ya existe
         inicializarOrganizador();
     }
 
