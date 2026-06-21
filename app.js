@@ -1,7 +1,7 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '1.0.51-ISOLATED-CATEGORY-NAMES'; // MODIFICADO: Incrementado por sistema de nombres aislados
+window.APP_VERSIONS.app = '1.1.0-DYNAMIC-STRUCTURE-V2'; // MODIFICADO: Incrementado por soporte de ESTRUCTURA_CUSTOM
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
@@ -227,9 +227,14 @@ function renderizar() {
     let h = "";
     datosLocales.sort((a, b) => a.id - b.id);
     
-    if (!window.ESTRUCTURA) return;
+    // NUEVO: Usar estructura custom dinámica si existe para el modo actual, si no, usar la base de data.js
+    const estructuraActual = (window.ESTRUCTURA_CUSTOM && window.ESTRUCTURA_CUSTOM[window.currentMode]) 
+                             ? window.ESTRUCTURA_CUSTOM[window.currentMode] 
+                             : window.ESTRUCTURA;
 
-    ESTRUCTURA.forEach(cat => {
+    if (!estructuraActual) return;
+
+    estructuraActual.forEach(cat => {
         const platos = datosLocales.filter(p => p.id >= cat.id && p.id <= (cat.id + cat.rango));
         if (platos.length === 0) return;
         
@@ -428,6 +433,7 @@ function actualizarNombreCroquetas() {
     const textoCroquetas = seleccionadas.map(s => `${cantidad} ${s}`).join(' - ');
     
     let titulo = esCroquetaVeg ? "Croquetas Vegetarianas:" : "Surtido de Croquetas:";
+
     if (!esCroquetaVeg && soloVegetarianas) titulo = "Croquetas Vegetarianas:";
 
     const editEs = document.getElementById('edit-es');
@@ -752,10 +758,15 @@ function aplicarCambiosPlato() {
 }
 
 function generarMenuAgrupado() {
-    if (!window.ESTRUCTURA) return;
+    // NUEVO: Usar estructura custom dinámica si existe para el modo actual, si no, usar la base de data.js
+    const estructuraActual = (window.ESTRUCTURA_CUSTOM && window.ESTRUCTURA_CUSTOM[window.currentMode]) 
+                             ? window.ESTRUCTURA_CUSTOM[window.currentMode] 
+                             : window.ESTRUCTURA;
+
+    if (!estructuraActual) return;
     
     let h = "";
-    ESTRUCTURA.forEach(cat => {
+    estructuraActual.forEach(cat => {
         // MODIFICADO: Usar helper getCategoryName para soportar nombres independientes por carta
         h += `<div style="margin-bottom:10px;"><div style="background:#eee;padding:5px;font-size:0.7rem;font-weight:bold;text-transform:uppercase;">${getCategoryName(cat.id, cat.name)}</div>`;
         if (cat.sub) {
@@ -773,10 +784,15 @@ function generarMenuAgrupado() {
 }
 
 function prepararNuevoPlato(baseId, folder) {
-    if (!window.ESTRUCTURA) return;
+    // NUEVO: Usar estructura custom dinámica si existe para el modo actual, si no, usar la base de data.js
+    const estructuraActual = (window.ESTRUCTURA_CUSTOM && window.ESTRUCTURA_CUSTOM[window.currentMode]) 
+                             ? window.ESTRUCTURA_CUSTOM[window.currentMode] 
+                             : window.ESTRUCTURA;
+
+    if (!estructuraActual) return;
 
     let maxPermitido = baseId + 99;
-    ESTRUCTURA.forEach(cat => {
+    estructuraActual.forEach(cat => {
         if (cat.sub) {
             const sub = cat.sub.find(s => s.id === baseId);
             if (sub && sub.max) maxPermitido = sub.max;
