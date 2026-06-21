@@ -1,7 +1,7 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '1.0.46-IMAGENES-FIX-EMOJI'; 
+window.APP_VERSIONS.app = '1.0.47-DECOUPLED-CONFIG'; 
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
@@ -34,16 +34,18 @@ let opcionesENActuales = [];
 // MODIFICADO: Eliminadas las constantes ALERGENOS_LISTA y CROQUETAS_CONFIG.
 // Ahora se consumen directamente desde data.js como variables globales.
 
+// MODIFICADO: Safe wrappers ahora inyectan el modo actual explícitamente a config.js
 function getWebAppUrlSafe() {
+    const modoActual = window.currentMode || 'RG';
     if (typeof window.WEB_APP_URL !== 'undefined') return window.WEB_APP_URL;
-    if (typeof window.getWebAppUrl === 'function') return window.getWebAppUrl();
+    if (typeof window.getWebAppUrl === 'function') return window.getWebAppUrl(modoActual);
     return '';
 }
 
 function getCsvUrlSafe() {
-    // Prioridad a la variable global dinámica (controlada por index.html/pestañas)
+    const modoActual = window.currentMode || 'RG';
     if (typeof window.CSV_URL !== 'undefined') return window.CSV_URL;
-    if (typeof window.getCsvUrl === 'function') return window.getCsvUrl();
+    if (typeof window.getCsvUrl === 'function') return window.getCsvUrl(modoActual);
     return '';
 }
 
