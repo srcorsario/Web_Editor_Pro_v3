@@ -1,7 +1,7 @@
 // ui.js (Web_Editor_Pro)
 // Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.ui = '1.0.16-CLEAN-URLS'; 
+window.APP_VERSIONS.ui = '1.0.17-CENTRALIZED-IA-URL'; 
 
 // NUEVO: Referencias globales reestablecidas para compatibilidad con version antigua
 window.APP_VERSIONS.config = window.APP_VERSIONS.config || '1.0.0';
@@ -558,7 +558,7 @@ export const UI = {
         const rangoInicio = selectorInicio ? (parseInt(selectorInicio.value) - 2 || 0) : 0;
         const rangoFin = selectorFin ? (parseInt(selectorFin.value) - 1 || activeStateContainer.csvData.length) : activeStateContainer.csvData.length;
 
-        const ENDPOINT_GATEWAY = "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent";
+        // MODIFICADO: Eliminada la variable local ENDPOINT_GATEWAY. Ahora usa GEMINI_ENDPOINT_URL de config.js
         const columnasIdiomasDestino = activeStateContainer.headers.map((h, i) => (h && h.toUpperCase().startsWith("NOMBRE_") && h.toUpperCase() !== "NOMBRE_ES") ? i : -1).filter(i => i !== -1);
         const indiceCastellanoBase = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === 'NOMBRE_ES');
 
@@ -618,7 +618,7 @@ export const UI = {
                     Ejemplo de formato de respuesta esperado:
                     {"lote": [{"id_fila": 8, "traducciones": {"EN": "Children menu", "FR": "Menu enfant"}} ]}`;
 
-                    const callResponse = await fetch(`${ENDPOINT_GATEWAY}?key=${listaClavesAPI[currentKeyIndex]}`, {
+                    const callResponse = await fetch(`${GEMINI_ENDPOINT_URL}?key=${listaClavesAPI[currentKeyIndex]}`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ contents: [{ parts: [{ text: instruccionesEstructuralesIA }] }] })
