@@ -1,7 +1,7 @@
 // --- config.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.config = '1.3.0'; // Incrementado por sistema de Alias de Marca
+window.APP_VERSIONS.config = '1.4.0'; // Incrementado por centralización de Endpoint IA
 
 // =====================================================================
 // NUEVO: SISTEMA DE ALIAS DE MARCA (Desacoplamiento Visual)
@@ -52,6 +52,15 @@ function getCsvUrl(modo) {
     }
     return CSV_URL_RG;
 }
+
+
+// =====================================================================
+// NUEVO: CONFIGURACIÓN DE INTELIGENCIA ARTIFICIAL (Gemini)
+// =====================================================================
+
+// NUEVO: Endpoint centralizado del modelo de IA. 
+// Cambiar aquí la versión o el modelo afectará a todas las traducciones automáticas del sistema.
+const GEMINI_ENDPOINT_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent";
 
 
 // =====================================================================
