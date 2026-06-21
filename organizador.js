@@ -7,7 +7,7 @@
 
     // Registro de versión
     window.APP_VERSIONS = window.APP_VERSIONS || {};
-    window.APP_VERSIONS.organizador = '1.0.0'; 
+    window.APP_VERSIONS.organizador = '1.0.1'; // MODIFICADO: Incrementado por ajuste de UI
 
     // Estado interno del módulo
     const estadoOrganizador = {
@@ -79,11 +79,12 @@
             return;
         }
 
+        // MODIFICADO: Ajustado el ancho de las columnas de ID a 120px para visualizar correctamente 5 dígitos
         let html = `<table class="org-table">
             <thead>
                 <tr>
-                    <th style="width: 90px;">ID Inicio</th>
-                    <th style="width: 90px;">ID Fin (Max)</th>
+                    <th style="width: 120px;">ID Inicio</th>
+                    <th style="width: 120px;">ID Fin (Max)</th>
                     <th>Nombre Categoría</th>
                     <th style="width: 130px;">Carpeta</th>
                 </tr>
