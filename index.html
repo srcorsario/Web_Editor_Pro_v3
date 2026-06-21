@@ -49,7 +49,7 @@
             </div>
 
             <!-- MODIFICADO: Usar un placeholder transparente para evitar parpadeos, el script de abajo lo llenará -->
-            <img id="header-logo-usopen" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" class="header-logo header-logo-right" alt="Logo USOPEN">
+            <img id="header-logo-usopen" src="data:image/gif;base64,R0lGODlhAQABAAD/ACWAAAAAAQABAAACADs=" class="header-logo header-logo-right" alt="Logo USOPEN">
         </div>
 
         <div class="tabs-container">
@@ -222,10 +222,16 @@
 
     <!-- Carga de Librerías y Scripts -->
     <script src="config.js"></script>
-    <!-- MODIFICADO: Script instantáneo que inyecta las URLs de config.js en los inputs del Traductor Pro -->
+    <!-- MODIFICADO: Script instantáneo que inyecta las URLs y Logos de config.js en los inputs y header -->
     <script>
         if (typeof CSV_URL_RG !== 'undefined') document.getElementById('sheetsUrlRG').value = CSV_URL_RG;
         if (typeof CSV_URL_USOPEN !== 'undefined') document.getElementById('sheetsUrlUSOpen').value = CSV_URL_USOPEN;
+        
+        // NUEVO: Inyección de Logos del Header desde config.js
+        const logoRGEl = document.getElementById('header-logo-rg');
+        const logoUSOPENEl = document.getElementById('header-logo-usopen');
+        if (typeof LOGO_RG !== 'undefined' && logoRGEl) logoRGEl.src = LOGO_RG;
+        if (typeof LOGO_USOPEN !== 'undefined' && logoUSOPENEl) logoUSOPENEl.src = LOGO_USOPEN;
     </script>
     <script src="languages.js"></script>
     <!-- NUEVO: Datos estáticos pesados del menú y configuraciones de UI -->
@@ -325,10 +331,7 @@
 
                 console.log(`[Editor] Contexto de datos establecido a: ${dataContext} (window.currentMode: ${window.currentMode})`);
 
-                const sheetsInput = document.getElementById('sheetsUrl');
-                if (sheetsInput && window.getCsvUrl) {
-                    if(!sheetsInput.value) sheetsInput.value = window.getCsvUrl();
-                }
+                // MODIFICADO: Eliminada referencia muerta al ID inexistente 'sheetsUrl' para evitar confusiones
 
                 actualizarTextoBotonGuardar();
 
