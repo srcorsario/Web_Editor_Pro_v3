@@ -12,8 +12,8 @@ window.APP_VERSIONS.config = '1.3.0'; // Incrementado por sistema de Alias de Ma
 
 // NUEVO: Diccionario de Presentación. Cambia estos valores para renombrar los restaurantes en toda la UI.
 const MODOS_ALIAS = {
-    RG: 'Roland Garros',
-    USOPEN: 'US Open'
+    RG: 'Roland Garros1',
+    USOPEN: 'US Open2'
 };
 
 // NUEVO: Función helper para obtener el nombre visual seguro
