@@ -141,18 +141,18 @@
             <div class="sugerencias-panel" id="sugerencias-contenido-usopen"></div>
         </div>
 
-        <!-- NUEVO: Contenedor de la Pestaña Organizador IDs -->
+        <!-- MODIFICADO: Contenedor de la Pestaña Organizador IDs actualizado con texto aislado -->
         <div id="tab-organizador" class="tab-content" style="display: none;">
             <div class="card org-container">
                 <div class="org-header">
-                    <h3 style="margin:0 0 15px 0; color: var(--primario);">Organizador de Rangos y Categorías</h3>
+                    <h3 style="margin:0 0 15px 0; color: var(--primario);">Organizador de Nombres de Categorías</h3>
                     <div style="display: flex; gap: 10px; margin-bottom: 15px; align-items: center;">
                         <button id="org-tab-rg" class="org-tab-btn active-org-tab">Carta 01 (RG)</button>
                         <button id="org-tab-usopen" class="org-tab-btn">Carta 02 (USOPEN)</button>
                         <div style="flex:1"></div>
-                        <button id="org-btn-aplicar" class="btn btn-success" style="padding: 8px 16px; font-size: 0.85rem;">✅ Aplicar Estructura en Memoria</button>
+                        <button id="org-btn-aplicar" class="btn btn-success" style="padding: 8px 16px; font-size: 0.85rem;">✅ Aplicar Nombres en esta Carta</button>
                     </div>
-                    <p style="font-size: 0.8rem; color: #7f8c8d; margin: 0 0 15px 0;">Modifica los IDs o nombres de las categorías. Al pulsar 'Aplicar', el Editor Principal usará esta nueva estructura. Los cambios se pierden al recargar la página si no se guardan.</p>
+                    <p style="font-size: 0.8rem; color: #7f8c8d; margin: 0 0 15px 0;">Modifica los NOMBRES de las categorías aquí y pulsa 'Aplicar'. El cambio se guardará <strong>únicamente para la carta seleccionada</strong> (Carta 01 o Carta 02) sin afectar a la otra. Nota: Los IDs se mantienen globales. Los cambios se pierden al recargar la página.</p>
                 </div>
                 <div id="org-table-container" class="org-table-wrapper">
                     <div class="text-center py-8 text-slate-500 italic">Cargando estructura...</div>
