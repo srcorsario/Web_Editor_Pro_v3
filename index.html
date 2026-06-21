@@ -53,11 +53,12 @@
         </div>
 
         <div class="tabs-container">
-            <button class="tab-btn active" onclick="switchTab('editor', this)">1. Editor Carta RG</button>
-            <button class="tab-btn" onclick="switchTab('sugerencias', this)">2. Sugerencias RG</button>
+            <!-- MODIFICADO: Añadidos IDs para inyección dinámica de Alias -->
+            <button id="tab-btn-rg" class="tab-btn active" onclick="switchTab('editor', this)">1. Editor Carta RG</button>
+            <button id="tab-btn-sug-rg" class="tab-btn" onclick="switchTab('sugerencias', this)">2. Sugerencias RG</button>
             <button class="tab-btn" onclick="switchTab('pro', this)" style="margin-left: auto; margin-right: auto;">3. Traductor Pro</button>
-            <button class="tab-btn" onclick="switchTab('editor-usopen', this)">4. Editor Carta USOpen</button>
-            <button class="tab-btn" onclick="switchTab('sugerencias-usopen', this)">5. Sugerencias USOpen</button>
+            <button id="tab-btn-usopen" class="tab-btn" onclick="switchTab('editor-usopen', this)">4. Editor Carta USOpen</button>
+            <button id="tab-btn-sug-usopen" class="tab-btn" onclick="switchTab('sugerencias-usopen', this)">5. Sugerencias USOpen</button>
         </div>
 
         <div id="tab-editor" class="tab-content active">
@@ -153,8 +154,8 @@
             <h3 style="margin-top:0; margin-bottom: 10px;">¿Destino de la Importación?</h3>
             <p style="color: #666; margin-bottom: 25px;">Selecciona a qué restaurante deseas subir los datos del archivo seleccionado:</p>
             <div style="display: flex; gap: 15px; justify-content: center;">
-                <button class="btn-modal-aceptar" onclick="UI.confirmarImportacion('RG')" style="background-color: #e67e22; width: 100%; padding: 15px; font-size: 1.1rem;">RG (Roland Garros)</button>
-                <button class="btn-modal-aceptar" onclick="UI.confirmarImportacion('USOPEN')" style="background-color: #2ecc71; width: 100%; padding: 15px; font-size: 1.1rem;">US Open</button>
+                <button class="btn-modal-aceptar" id="modal-dest-rg" onclick="UI.confirmarImportacion('RG')" style="background-color: #e67e22; width: 100%; padding: 15px; font-size: 1.1rem;">RG (Roland Garros)</button>
+                <button class="btn-modal-aceptar" id="modal-dest-usopen" onclick="UI.confirmarImportacion('USOPEN')" style="background-color: #2ecc71; width: 100%; padding: 15px; font-size: 1.1rem;">US Open</button>
             </div>
             <button class="btn-modal-cancelar" onclick="UI.cancelarImportacion()" style="margin-top: 25px;">Cancelar</button>
         </div>
@@ -222,7 +223,7 @@
 
     <!-- Carga de Librerías y Scripts -->
     <script src="config.js"></script>
-    <!-- MODIFICADO: Script instantáneo que inyecta las URLs y Logos de config.js en los inputs y header -->
+    <!-- MODIFICADO: Script instantáneo que inyecta las URLs, Logos y ALIAS de config.js en los inputs, header y pestañas -->
     <script>
         if (typeof CSV_URL_RG !== 'undefined') document.getElementById('sheetsUrlRG').value = CSV_URL_RG;
         if (typeof CSV_URL_USOPEN !== 'undefined') document.getElementById('sheetsUrlUSOpen').value = CSV_URL_USOPEN;
@@ -232,6 +233,28 @@
         const logoUSOPENEl = document.getElementById('header-logo-usopen');
         if (typeof LOGO_RG !== 'undefined' && logoRGEl) logoRGEl.src = LOGO_RG;
         if (typeof LOGO_USOPEN !== 'undefined' && logoUSOPENEl) logoUSOPENEl.src = LOGO_USOPEN;
+
+        // NUEVO: Inyección de ALIAS en las pestañas y botones de modales
+        if (typeof getModoAlias === 'function') {
+            const tabRG = document.getElementById('tab-btn-rg');
+            if (tabRG) tabRG.innerText = `1. Editor Carta ${getModoAlias('RG')}`;
+            
+            const tabSugRG = document.getElementById('tab-btn-sug-rg');
+            if (tabSugRG) tabSugRG.innerText = `2. Sugerencias ${getModoAlias('RG')}`;
+            
+            const tabUSOPEN = document.getElementById('tab-btn-usopen');
+            if (tabUSOPEN) tabUSOPEN.innerText = `4. Editor Carta ${getModoAlias('USOPEN')}`;
+            
+            const tabSugUSOPEN = document.getElementById('tab-btn-sug-usopen');
+            if (tabSugUSOPEN) tabSugUSOPEN.innerText = `5. Sugerencias ${getModoAlias('USOPEN')}`;
+
+            // NUEVO: Inyección de Alias en los botones del modal de importación
+            const modalDestRG = document.getElementById('modal-dest-rg');
+            if (modalDestRG) modalDestRG.innerText = getModoAlias('RG');
+
+            const modalDestUSOPEN = document.getElementById('modal-dest-usopen');
+            if (modalDestUSOPEN) modalDestUSOPEN.innerText = getModoAlias('USOPEN');
+        }
     </script>
     <script src="languages.js"></script>
     <!-- NUEVO: Datos estáticos pesados del menú y configuraciones de UI -->
@@ -267,7 +290,8 @@
             const btn = document.getElementById('btn-guardar-dinamico');
             if (!btn) return;
             const modo = window.currentMode || 'RG';
-            btn.innerText = `GUARDAR CAMBIOS EN WEB ${modo}`;
+            // MODIFICADO: Uso de getModoAlias para el texto visual
+            btn.innerText = `GUARDAR CAMBIOS EN WEB ${getModoAlias(modo)}`;
             console.log(`[Editor] Botón actualizado a contexto: ${modo}`);
         }
 
@@ -331,8 +355,6 @@
 
                 console.log(`[Editor] Contexto de datos establecido a: ${dataContext} (window.currentMode: ${window.currentMode})`);
 
-                // MODIFICADO: Eliminada referencia muerta al ID inexistente 'sheetsUrl' para evitar confusiones
-
                 actualizarTextoBotonGuardar();
 
                 const timerDiv = document.getElementById('optimistic-timer');
@@ -340,7 +362,8 @@
                     if (window.optimisticTimers && window.optimisticTimers[window.currentMode]) {
                         timerDiv.style.display = 'flex';
                         const timerMode = document.getElementById('timer-mode');
-                        if(timerMode) timerMode.innerText = window.currentMode;
+                        // MODIFICADO: Inyectar alias visual en el timer también
+                        if(timerMode && typeof getModoAlias === 'function') timerMode.innerText = getModoAlias(window.currentMode);
                     } else {
                         timerDiv.style.display = 'none';
                     }
@@ -387,7 +410,9 @@
             }
             vDiv.innerHTML = vHtml;
 
-            let sHtml = `<div>Modo Activo: <span style="color: #60a5fa;">${window.currentMode || 'RG'}</span></div><hr style="border-color: #334155; margin: 4px 0;">`;
+            // MODIFICADO: Mostrar Alias junto al modo interno en el panel Debug
+            const modoAliasDebug = (typeof getModoAlias === 'function') ? getModoAlias(window.currentMode || 'RG') : '';
+            let sHtml = `<div>Modo Activo: <span style="color: #60a5fa;">${window.currentMode || 'RG'}</span> ${modoAliasDebug ? `(${modoAliasDebug})` : ''}</div><hr style="border-color: #334155; margin: 4px 0;">`;
             
             ['RG', 'USOPEN'].forEach(modo => {
                 const state = window.optimisticState ? window.optimisticState[modo] : { t: 0, s: [] };
