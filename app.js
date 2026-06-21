@@ -1,7 +1,7 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '1.0.49-CENTRALIZED-IA-URL'; 
+window.APP_VERSIONS.app = '1.0.50-FIX-LAST-SAVE-ATTEMPT'; // MODIFICADO: Incrementado por corrección de sincronía
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
@@ -439,6 +439,7 @@ async function generarTraduccionEN() {
     }
 
     let keys = [];
+
     if (typeof getKeys === 'function') {
         keys = getKeys();
     } else if (window.UI && typeof window.UI.getKeysList === 'function') {
@@ -810,6 +811,9 @@ async function enviarAlExcel() {
     
     window.optimisticState[modo].t = Date.now();
     window.optimisticState[modo].s = JSON.parse(JSON.stringify(datosLocales));
+    
+    // NUEVO: Sincronizar lastSaveAttempt para la Zona de Peligro en ui.js
+    window.lastSaveAttempt = Date.now();
     
     sessionStorage.setItem('optState_' + modo, JSON.stringify(window.optimisticState[modo]));
     
