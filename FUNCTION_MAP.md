@@ -1,5 +1,5 @@
 ```markdown
-// [🔒 ARCHIVO REESCRITO COMPLETAMENTE - VERSIÓN ACTUALIZADA v6.0 - SISTEMA DE NOMBRES AISLADOS POR CARTA]
+// [🔒 ARCHIVO REESCRITO COMPLETAMENTE - VERSIÓN ACTUALIZADA v8.0 - ARQUITECTURA DIRECTA POR ARCHIVOS]
 ```javascript
 Regla de Oro: Antes de renombrar, mover o eliminar una función/variable listada aquí, verifica su sección ⚠️ DEPENDENCIAS CRUZADAS para evitar romper otros módulos o los onclick del HTML.
 
@@ -15,12 +15,13 @@ window.datosLocales          Array     app.js                app.js (cargar)    
 window.hayCambiosSinGuardar  Boolean   app.js                app.js (moverPlato, aplicarCambiosPlato, toggleActivo, cargar...)      index.html (switchTab)
 window.optimisticState       Object    app.js                app.js (cargar, enviarAlExcel, cancelarModoOptimista)                   app.js, sugerencias-print.js, index.html
 window.optimisticTimers      Object    app.js                app.js (iniciarContadorOptimista, cancelarModoOptimista)               index.html (switchTab, updateDebugPanel)
-window.APP_VERSIONS          Object    Varios                app.js, ui.js, sugerencias-print.js, organizador.js                     index.html (updateDebugPanel)
+window.APP_VERSIONS          Object    Varios                app.js, ui.js, sugerencias-print.js, organizador.js, estructuras.js   index.html (updateDebugPanel)
 window.UI.tempImportFile     File      ui.js                 ui.js (listener archivoLocal)                                            ui.js (confirmarImportacion, cancelarImportacion)
 window.lastSaveAttempt       Number    app.js, ui.js         app.js (enviarAlExcel), ui.js (sincronizarConGoogleSheets)             ui.js (cargarGoogleSheets - Zona de Peligro)
 
-// NUEVO: Diccionario de Nombres Aislados por Carta
-window.CATEGORY_OVERRIDES    Object    app.js                app.js (inicialización), organizador.js (aplicarEstructuraOrg)       app.js (getCategoryName)
+// NUEVO: Árboles de Estructura Dinámicos por Carta (Fuentes de verdad del Editor)
+window.ESTRUCTURA_RG         Array     estructuras.js       estructuras.js (init), organizador.js (ediciones)                 app.js (via getEstructuraActual)
+window.ESTRUCTURA_USOPEN     Array     estructuras.js       estructuras.js (init), organizador.js (ediciones)                 app.js (via getEstructuraActual)
 
 // --- Funciones inyectadas explícitamente en window ---
 window.cancelarModoOptimista Function app.js                app.js (asignación)                                                     index.html (botón inline onclick)
@@ -28,8 +29,14 @@ window.renderCarta           Function sugerencias-print.js sugerencias-print.js 
 window.imprimirSugerencias   Function sugerencias-print.js sugerencias-print.js (asignación)                                      sugerencias-print.js (HTML dinámico onclick)
 window.toggleQR              Function sugerencias-print.js sugerencias-print.js (asignación)                                      sugerencias-print.js (HTML dinámico onchange)
 window.UI                    Object    ui.js                 ui.js (asignación final)                                                app.js, index.html (onclick modales)
+window.getEstructuraActual    Function estructuras.js     estructuras.js (asignación)                                            app.js (renderizar, generarMenuAgrupado, prepararNuevoPlato)
 window.aplicarEstructuraOrg   Function organizador.js       organizador.js (asignación)                                            index.html (botón inline onclick)
-window._orgUpdateItem        Function organizador.js       organizador.js (asignación)                                            organizador.js (HTML dinámico onchange)
+window.restaurarEstructuraBase Function organizador.js       organizador.js (asignación)                                            index.html (botón inline onclick)
+window._orgUpdateCat         Function organizador.js       organizador.js (asignación)                                            organizador.js (HTML dinámico onchange)
+window._orgUpdateSub         Function organizador.js       organizador.js (asignación)                                            organizador.js (HTML dinámico onchange)
+window._orgAddSub            Function organizador.js       organizador.js (asignación)                                            organizador.js (HTML dinámico onclick)
+window._orgRemoveCat         Function organizador.js       organizador.js (asignación)                                            organizador.js (HTML dinámico onclick)
+window._orgRemoveSub         Function organizador.js       organizador.js (asignación)                                            organizador.js (HTML dinámico onclick)
 
 // --- Variables de Super-Config (Inyectadas por config.js) ---
 CONSISTENCY_WINDOW_MS        Number    config.js             (Estática)                                                                app.js, index.html, sugerencias-print.js
@@ -152,14 +159,31 @@ Lectores: app.js (carga, renderizado, traducción), ui.js (carga de columnas, re
 ================================================================================
 No usa módulos. Se ejecuta en el scope global. Archivo puramente declarativo.
 
-- ESTRUCTURA (Array): Arbol de categorías, subcategorías, IDs y rangos.
+- ESTRUCTURA (Array): Arbol de categorías, subcategorías, IDs y rangos. (ACTÚA COMO FÁBRICA BASE).
 - categoriesList, subCatsLang (Object/Array): Diccionarios de traducción de categorías.
 - ALERGENOS_LISTA (Array): Lista de alérgenos con emojis.
   Es usado por: app.js (abrirEditor, renderizado de modal).
 - CROQUETAS_CONFIG (Object): Configuración de sabores de croquetas.
   Es usado por: app.js (abrirEditor, actualizarNombreCroquetas).
 
-Lectores: app.js (carga, renderizado, traducción), ui.js (carga de columnas, render de radios), organizador.js (carga inicial de estructura).
+Lectores: estructuras.js (copia base inicial), app.js (legacy/fallback), ui.js (carga de columnas, render de radios), organizador.js (restaurar fábrica).
+
+
+================================================================================
+📁 estructuras.js (NUEVO)
+================================================================================
+No usa módulos. Se ejecuta en el scope global. Actúa como puente entre data.js, localStorage y app.js.
+
+- window.ESTRUCTURA_RG (Array): Árbol final para Carta 01. Si existe en localStorage usa ese, si no, clona ESTRUCTURA de data.js.
+- window.ESTRUCTURA_USOPEN (Array): Árbol final para Carta 02. Si existe en localStorage usa ese, si no, clona ESTRUCTURA de data.js.
+  Escritores: estructuras.js (init), organizador.js (al editar y guardar, o al restaurar fábrica).
+  Lectores: app.js (indirectamente a través de getEstructuraActual).
+
+- getEstructuraActual()
+  Retorna: Array (El árbol de la carta activa según window.currentMode)
+  Lee: window.currentMode, window.ESTRUCTURA_RG, window.ESTRUCTURA_USOPEN
+  Es usado por: app.js (renderizar, generarMenuAgrupado, prepararNuevoPlato).
+  ⚠️ AISLAMIENTO CRÍTICO: sugerencias-print.js NO usa esta función. Usa sus propios rangos hardcodeados.
 
 
 ================================================================================
@@ -189,7 +213,7 @@ Funciones de Red y Estado
   Es usado por: Internamente en app.js (cargar).
 
 - cargar(retryCount)
-  Lee: getCsvUrlSafe(), window.optimisticState, window.ESTRUCTURA, window.IDIOMAS_ORDEN, window.IDIOMAS_CSV_INDICES, CONSISTENCY_WINDOW_MS (GLOBAL)
+  Lee: getCsvUrlSafe(), window.optimisticState, window.IDIOMAS_ORDEN, window.IDIOMAS_CSV_INDICES, CONSISTENCY_WINDOW_MS (GLOBAL)
   Escribe en: window.datosLocales, window.hayCambiosSinGuardar, DOM (#status-carga usando getModoAlias, #editor-dinamico)
   Es usado por: index.html (switchTab), se auto-invoca al final del archivo.
 
@@ -209,17 +233,12 @@ Funciones de Red y Estado
 
 Funciones de Renderizado y UI
 
-- getCategoryName(catId, defaultName) [NUEVA]
-  Retorna: String
-  Lee: window.currentMode, window.CATEGORY_OVERRIDES (GLOBAL)
-  Es usado por: app.js (renderizar, generarMenuAgrupado)
-
 - renderizar()
-  Lee: datosLocales, window.ESTRUCTURA, getCategoryName (Interna)
+  Lee: datosLocales, getEstructuraActual() (desde estructuras.js), cat.name directamente
   Escribe en: DOM (#editor-dinamico)
 
 - generarMenuAgrupado()
-  Lee: datosLocales, window.ESTRUCTURA, getCategoryName (Interna)
+  Lee: datosLocales, getEstructuraActual() (desde estructuras.js), cat.name / sub.name directamente
   Escribe en: DOM (#lista-agrupada)
 
 - moverPlato(id, direccion)
@@ -257,7 +276,7 @@ Funciones de Renderizado y UI
   Es usado por: index.html (botón flotante onclick, botones de modal)
 
 - prepararNuevoPlato(baseId, folder)
-  Lee: window.ESTRUCTURA, datosLocales
+  Lee: getEstructuraActual() (desde estructuras.js), datosLocales
   Escribe en: datosTempNuevo
   Es usado por: HTML generado en generarMenuAgrupado() (botones inline onclick)
 
@@ -320,7 +339,7 @@ Variables Internas
 - UI.cargarGoogleSheets(targetUrl, retryCount)
   Lee: window.Papa, window.lastSaveAttempt (GLOBAL), targetUrl (Parámetro)
   Escribe en: stateContainer, DOM (#consola)
-  Es usado por: Listeners internos de loadSheetsBtnRG y loadSheetsBtnUSOpen
+  Es usado por: Listeners internos de loadSheetsBtnRG y loadSheetsBtnUSOPEN
 
 - UI.actualizarTextoBotonSync()
   Lee: stateContainer.currentProMode
@@ -333,7 +352,7 @@ Variables Internas
   Es usado por: Listener interno de btnSyncSheets
 
 - UI.inicializarAjustesExpertos()
-  Escribe en: Listeners de DOM para loadSheetsBtnRG, loadSheetsBtnUSOpen, btnIniciar, btnPausa, btnCancelar, saveCsvBtn, btnSyncSheets, archivoLocal.
+  Escribe en: Listeners de DOM para loadSheetsBtnRG, loadSheetsBtnUSOPEN, btnIniciar, btnPausa, btnCancelar, saveCsvBtn, btnSyncSheets, archivoLocal.
   Es usado por: ui.js (DOMContentLoaded)
 
 - UI.confirmarImportacion(mode) / UI.cancelarImportacion()
@@ -353,47 +372,71 @@ Variables Internas
 ================================================================================
 📁 organizador.js (IIFE Unificada)
 ================================================================================
-Módulo aislado para la gestión visual de Estructuras (IDs y Categorías) por restaurante.
-Se ejecuta en scope global pero encapsula su estado internamente.
+Módulo aislado para la gestión visual y estructural de Categorías por restaurante.
+Se ejecuta en scope global pero encapsula su estado internamente. Arquitectura Directa v3.0.
 
-- estadoOrganizador (Variable Interna)
-  Tipo: Object { activeTab: String, data: { RG: Array, USOPEN: Array } }
-  Función: Almacena una copia "aplanada" de las estructuras para editar sin mutar el original hasta confirmar.
+- activeTab (Variable Interna)
+  Tipo: String ('RG' o 'USOPEN')
+  Función: Controla qué árbol se está modificando en la tabla.
 
-- inicializarOrganizador() [Interna - DOMContentLoaded]
-  Lee: window.ESTRUCTURA
-  Escribe en: estadoOrganizador (copia inicial), DOM (listeners de tabs y botón aplicar)
-  Es usado por: Auto-invocación.
+- getTree() [Interna]
+  Retorna: Array (Referencia directa a window.ESTRUCTURA_RG o window.ESTRUCTURA_USOPEN)
+  Es usado por: Todas las funciones de edición y renderizado.
 
-- switchOrgTab(modo) [Interna]
-  Escribe en: estadoOrganizador.activeTab, DOM (clases activas en botones)
-  Es usado por: Listeners de botones internos del HTML.
-
-- aplanarEstructura(est) [Interna]
-  Lee: est (Array de objetos con posibles `sub`)
-  Retorna: Array plano de objetos { id, name, max, folder, level }
-  Es usado por: renderOrganizador()
+- saveTree() [Interna]
+  Escribe en: localStorage (ORG_STRUCT_CUSTOM_RG u ORG_STRUCT_CUSTOM_USOPEN)
+  Es usado por: Todas las funciones de edición tras modificar un valor.
 
 - renderOrganizador() [Interna]
-  Lee: estadoOrganizador, getModoAlias (GLOBAL)
+  Lee: getTree(), getModoAlias (GLOBAL)
   Escribe en: DOM (#org-table-container)
-  Es usado por: inicializarOrganizador(), switchOrgTab()
+  Es usado por: inicializarOrganizador(), switchOrgTab(), y tras cualquier edición.
 
-- window._orgUpdateItem(index, key, value) [Expuesta a window]
-  Escribe en: estadoOrganizador.data (Array)
-  Es usado por: HTML dinámico (inputs onchange)
+- window._orgUpdateCat(catId, key, value) [Expuesta a window]
+  Escribe en: getTree() (Modifica propiedad en el objeto de nivel 0 directamente), localStorage
+  Es usado por: HTML dinámico (inputs onchange de categorías principales)
+
+- window._orgUpdateSub(catId, subId, key, value) [Expuesta a window]
+  Escribe en: getTree() (Modifica propiedad en el objeto de nivel 1 directamente), localStorage
+  Es usado por: HTML dinámico (inputs onchange de subcategorías)
+
+- window._orgAddSub(catId) [Expuesta a window]
+  Lee: getTree()
+  Escribe en: getTree() (Añade objeto al array `sub`), localStorage, DOM (via renderOrganizador)
+  Es usado por: HTML dinámico (botón "+" onclick)
+
+- window._orgRemoveCat(catId) [Expuesta a window]
+  Lee: getTree()
+  Escribe en: getTree() (Elimina categoría principal y sus sub), localStorage, DOM (via renderOrganizador)
+  Es usado por: HTML dinámico (botón "✕" onclick en nivel 0)
+
+- window._orgRemoveSub(catId, subId) [Expuesta a window]
+  Lee: getTree()
+  Escribe en: getTree() (Elimina subcategoría específica), localStorage, DOM (via renderOrganizador)
+  Es usado por: HTML dinámico (botón "✕" onclick en nivel 1)
+
+- window.restaurarEstructuraBase() [Expuesta a window]
+  Lee: window.ESTRUCTURA (de data.js)
+  Escribe en: localStorage (elimina clave), window.ESTRUCTURA_RG/USOPEN (clona fábrica), DOM (via renderOrganizador)
+  Es usado por: index.html (botón #org-btn-restaurar inline onclick)
 
 - window.aplicarEstructuraOrg() [Expuesta a window]
-  Lee: estadoOrganizador, getModoAlias (GLOBAL)
-  Escribe en: window.CATEGORY_OVERRIDES (GLOBAL) para el modo activo, DOM (llamando a renderizar y generarMenuAgrupado de app.js)
-  ⚠️ IMPORTANTE: Ya NO sobrescribe window.ESTRUCTURA. Solo inyecta nombres personalizados aislados por modo (Carta 01 vs Carta 02).
+  Lee: getModoAlias (GLOBAL)
+  Escribe en: DOM (llamando a renderizar y generarMenuAgrupado de app.js para refrescar la vista)
   Es usado por: index.html (botón #org-btn-aplicar inline onclick)
+  ⚠️ IMPORTANTE: Ya NO muta estructuras, solo fuerza que el editor principal vuelva a leer el árbol que ya se autoguardó en localStorage.
+
+- switchOrgTab(modo) [Interna]
+  Escribe en: activeTab, DOM (clases activas en botones)
+  Es usado por: Listeners de botones internos del HTML.
 
 
 ================================================================================
 📁 sugerencias-print.js (IIFE Unificada)
 ================================================================================
 IIFE (Invocación Inmediata). Se ejecuta en scope aislado pero inyecta en window. Sustituye a los antiguos archivos separados de RG y USOPEN.
+⚠️ AISLAMIENTO SEGURO: Este archivo NO utiliza getEstructuraActual(), ESTRUCTURA_RG ni ESTRUCTURA_USOPEN. 
+Tiene sus propios rangos hardcodeados (12000-12999) para garantizar que la impresión A4 nunca se rompa por ediciones en el Organizador.
 
 SUGERENCIAS_CONFIG (Variable Interna de Configuración)
 - Tipo: Object
