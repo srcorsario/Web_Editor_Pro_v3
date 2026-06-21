@@ -1,7 +1,7 @@
 // ui.js (Web_Editor_Pro)
 // Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.ui = '1.0.13-BRUTE-FORCE-RETRY'; 
+window.APP_VERSIONS.ui = '1.0.14-DECOUPLED-CONFIG'; 
 
 // NUEVO: Referencias globales reestablecidas para compatibilidad con version antigua
 window.APP_VERSIONS.config = window.APP_VERSIONS.config || '1.0.0';
@@ -314,19 +314,18 @@ export const UI = {
         }
 
         try {
-            // NUEVO: Determinar URL basada en currentProMode
-            let urlDestino = '';
-            // MODIFICADO: Forzamos el uso de config.js basado en nuestro estado local
-            if (stateContainer.currentProMode === 'USOPEN') {
-                 // Hack temporal para asegurar que config.js devuelva la correcta
-                 const originalMode = window.currentMode;
-                 window.currentMode = 'USOPEN';
-                 urlDestino = window.getWebAppUrl ? window.getWebAppUrl() : 'https://script.google.com/macros/s/AKfycbzfA3OnavQcmM3IG-7-PeHJw3U44UH5CREnLtwypxDxNQehQ4ZuM6iYqu5lt0VmUnKn/exec';
-                 window.currentMode = originalMode; // Restaurar
-            } else {
-                 urlDestino = window.getWebAppUrl ? window.getWebAppUrl() : 'https://script.google.com/macros/s/AKfycbxBdhrRWx9GNYU_oub52jQcRrG-XRhcDIjdHHW_CYQlob3PNButhNinqw-JLNES_3Ci-w/exec';
+            // MODIFICADO: Uso de inyección de dependencia directa. Ya no se manipula window.currentMode
+            const modoSincronizacion = stateContainer.currentProMode || 'RG';
+            let urlDestino = window.getWebAppUrl ? window.getWebAppUrl(modoSincronizacion) : '';
+            
+            // Fallback hardcodeado por seguridad extrema si config.js falla
+            if (!urlDestino) {
+                if (modoSincronizacion === 'USOPEN') {
+                    urlDestino = 'https://script.google.com/macros/s/AKfycbzfA3OnavQcmM3IG-7-PeHJw3U44UH5CREnLtwypxDxNQehQ4ZuM6iYqu5lt0VmUnKn/exec';
+                } else {
+                    urlDestino = 'https://script.google.com/macros/s/AKfycbxBdhrRWx9GNYU_oub52jQcRrG-XRhcDIjdHHW_CYQlob3PNButhNinqw-JLNES_3Ci-w/exec';
+                }
             }
-
             
             UI.log(`[Sincro-Debug] URL de destino: ${urlDestino}`);
             
