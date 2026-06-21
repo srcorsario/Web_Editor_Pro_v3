@@ -1,4 +1,4 @@
-/* Web Editor Pro - Styles CSS - Version 1.2.1 */
+/* Web Editor Pro - Styles CSS - Version 1.2.2 */
 :root { 
     --primario: #e67e22; 
     --fondo: #f4f7f6; 
@@ -626,7 +626,7 @@ input:checked + .slider-switch:before { transform: translateX(18px); }
     display: flex;
     align-items: center;
     gap: 4px;
-    max-width: 0; /* Truco CSS para forzar a flexbox a respetar el ancho del padre table-layout: fixed */
+    width: 100%; /* CORREGIDO: En lugar de max-width: 0 que colapsaba el input, usamos width: 100% */
 }
 
 .org-td-name input {
