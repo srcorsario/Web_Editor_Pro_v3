@@ -71,7 +71,8 @@
                     <div class="space-y-1.5">
                         <h3 class="text-sm font-semibold uppercase tracking-wider mb-2">1. Orígenes de Datos</h3>
                         <div class="grid grid-cols-1 gap-1 text-sm mb-2">
-                            <div class="flex gap-2 items-center"><label class="text-xs whitespace-nowrap font-bold text-slate-400">WEB RG:</label></div>
+                            <!-- NUEVO: Añadido ID para inyección de Alias -->
+                            <div class="flex gap-2 items-center"><label id="label-web-rg" class="text-xs whitespace-nowrap font-bold text-slate-400">WEB RG:</label></div>
                             <div class="flex gap-1.5">
                                 <!-- MODIFICADO: Eliminado el value hardcodeado, el script de config lo llenará -->
                                 <input type="text" id="sheetsUrlRG" placeholder="Cargando URL RG desde config.js..." class="flex-1 text-xs py-1 px-2">
@@ -79,7 +80,8 @@
                             </div>
                         </div>
                         <div class="grid grid-cols-1 gap-1 text-sm mb-2">
-                            <div class="flex gap-2 items-center"><label class="text-xs whitespace-nowrap font-bold text-slate-400">WEB USOPEN:</label></div>
+                            <!-- NUEVO: Añadido ID para inyección de Alias -->
+                            <div class="flex gap-2 items-center"><label id="label-web-usopen" class="text-xs whitespace-nowrap font-bold text-slate-400">WEB USOPEN:</label></div>
                             <div class="flex gap-1.5">
                                 <!-- MODIFICADO: Eliminado el value hardcodeado, el script de config lo llenará -->
                                 <input type="text" id="sheetsUrlUSOpen" placeholder="Cargando URL USOPEN desde config.js..." class="flex-1 text-xs py-1 px-2">
@@ -223,7 +225,7 @@
 
     <!-- Carga de Librerías y Scripts -->
     <script src="config.js"></script>
-    <!-- MODIFICADO: Script instantáneo que inyecta las URLs, Logos y ALIAS de config.js en los inputs, header y pestañas -->
+    <!-- MODIFICADO: Script instantáneo que inyecta las URLs, Logos y ALIAS de config.js en inputs, header, pestañas y panel Pro -->
     <script>
         if (typeof CSV_URL_RG !== 'undefined') document.getElementById('sheetsUrlRG').value = CSV_URL_RG;
         if (typeof CSV_URL_USOPEN !== 'undefined') document.getElementById('sheetsUrlUSOpen').value = CSV_URL_USOPEN;
@@ -234,7 +236,7 @@
         if (typeof LOGO_RG !== 'undefined' && logoRGEl) logoRGEl.src = LOGO_RG;
         if (typeof LOGO_USOPEN !== 'undefined' && logoUSOPENEl) logoUSOPENEl.src = LOGO_USOPEN;
 
-        // NUEVO: Inyección de ALIAS en las pestañas y botones de modales
+        // NUEVO: Inyección de ALIAS en las pestañas, botones de modales y panel Pro
         if (typeof getModoAlias === 'function') {
             const tabRG = document.getElementById('tab-btn-rg');
             if (tabRG) tabRG.innerText = `1. Editor Carta ${getModoAlias('RG')}`;
@@ -254,6 +256,24 @@
 
             const modalDestUSOPEN = document.getElementById('modal-dest-usopen');
             if (modalDestUSOPEN) modalDestUSOPEN.innerText = getModoAlias('USOPEN');
+
+            // NUEVO: Inyección de Alias en la Pestaña Traductor Pro
+            const labelWebRG = document.getElementById('label-web-rg');
+            if (labelWebRG) labelWebRG.innerText = `WEB ${getModoAlias('RG')}:`;
+
+            const btnLoadRG = document.getElementById('loadSheetsBtnRG');
+            if (btnLoadRG) btnLoadRG.innerText = `Cargar web ${getModoAlias('RG')}`;
+
+            const labelWebUSOPEN = document.getElementById('label-web-usopen');
+            if (labelWebUSOPEN) labelWebUSOPEN.innerText = `WEB ${getModoAlias('USOPEN')}:`;
+
+            const btnLoadUSOPEN = document.getElementById('loadSheetsBtnUSOpen');
+            if (btnLoadUSOPEN) btnLoadUSOPEN.innerText = `Cargar web ${getModoAlias('USOPEN')}`;
+
+            // El botón de sincronizar se actualiza desde ui.js dinámicamente al cambiar modo, 
+            // pero inyectamos un estado inicial coherente usando el modo por defecto (RG).
+            const btnSyncSheets = document.getElementById('btnSyncSheets');
+            if (btnSyncSheets) btnSyncSheets.innerText = `☁️ Sincronizar con Google Sheet ${getModoAlias('RG')}`;
         }
     </script>
     <script src="languages.js"></script>
