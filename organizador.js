@@ -7,7 +7,7 @@
 
     // Registro de versión
     window.APP_VERSIONS = window.APP_VERSIONS || {};
-    window.APP_VERSIONS.organizador = '1.1.0'; // MODIFICADO: Incrementado por aislamiento de nombres por modo
+    window.APP_VERSIONS.organizador = '1.2.0'; // MODIFICADO: Incrementado por auto-cálculo de rangos
 
     // Estado interno del módulo
     const estadoOrganizador = {
@@ -119,12 +119,60 @@
         container.innerHTML = html;
     }
 
+    /**
+     * Función auxiliar expuesta a window para actualizar el estado interno desde los inputs.
+     * MODIFICADO: Ahora incluye auto-cálculo de rangos para evitar solapamientos matemáticos.
+     */
     window._orgUpdateItem = function(index, key, value) {
         const data = estadoOrganizador.data[estadoOrganizador.activeTab];
         if (!data || !data[index]) return;
         
-        if (key === 'id' || key === 'max') {
-            data[index][key] = parseInt(value) || 0;
+        if (key === 'id') {
+            const newId = parseInt(value) || 0;
+            data[index].id = newId;
+            
+            // 1. Calcular el nuevo 'max' basado en el inicio de la categoría siguiente
+            let nuevoMaxCalculado = newId + 99; // Fallback por defecto
+            if (index < data.length - 1) {
+                // Buscar el siguiente elemento de nivel 0 (Categoría Principal)
+                let nextMainIndex = index + 1;
+                while (nextMainIndex < data.length && data[nextMainIndex].level !== 0) {
+                    nextMainIndex++;
+                }
+                
+                if (nextMainIndex < data.length) {
+                    const nextId = data[nextMainIndex].id;
+                    if (newId >= nextId) {
+                        // El nuevo ID pisa o supera al siguiente. Forzamos el máximo al límite seguro.
+                        nuevoMaxCalculado = nextId - 1;
+                    } else {
+                        // Hay espacio. El máximo puede ser el del siguiente ID menos 1.
+                        nuevoMaxCalculado = nextId - 1;
+                    }
+                }
+            }
+            
+            data[index].max = nuevoMaxCalculado;
+            
+            // 2. Ajustar el 'max' de la categoría ANTERIOR para que no queden huecos
+            if (index > 0) {
+                let prevMainIndex = index - 1;
+                // Si el anterior es una subcategoría, subimos hasta encontrar la principal
+                while (prevMainIndex > 0 && data[prevMainIndex].level !== 0) {
+                    prevMainIndex--;
+                }
+                
+                if (prevMainIndex >= 0 && data[prevMainIndex].level === 0) {
+                    // El máximo de la categoría anterior debe ser el ID actual menos 1
+                    data[prevMainIndex].max = newId - 1;
+                }
+            }
+            
+            // Forzar re-render para que el usuario vea los límites ajustados al instante
+            renderOrganizador();
+            
+        } else if (key === 'max') {
+            data[index].max = parseInt(value) || 0;
         } else {
             data[index][key] = value;
         }
@@ -144,8 +192,8 @@
 
     /**
      * Reconstruye el árbol jerárquico desde la tabla aplanada y sobrescribe la ESTRUCTURA global.
-     * MODIFICADO: Ahora aplica ÚNICAMENTE los NOMBRES de forma aislada por modo (Carta 01 vs Carta 02)
-     * mediante el diccionario CATEGORY_OVERRIDES, evitando que un cambio de texto pise al otro restaurante.
+     * MODIFICADO: Aplica ÚNICAMENTE los NOMBRES de forma aislada por modo (Carta 01 vs Carta 02)
+     * mediante el diccionario CATEGORY_OVERRIDES. Los IDs se mantienen intactos para proteger la estructura global compartida.
      */
     window.aplicarEstructuraOrg = function() {
         const flatData = estadoOrganizador.data[estadoOrganizador.activeTab];
