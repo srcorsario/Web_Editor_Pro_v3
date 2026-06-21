@@ -1,4 +1,3 @@
-// [🔒 ARCHIVO UNIFICADO - PARTE 1 DE 3 - POR FAVOR UNIR MENTALMENTE]
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
@@ -150,6 +149,8 @@ async function cargar(retryCount = 0) {
             statusCarga.className = "status-error";
         }
     }
+// CORREGIDO: Falta la llave de cierre de la función cargar()
+}
 
 function iniciarContadorOptimista(modo) {
     // MODIFICADO: Usar variable global CONSISTENCY_WINDOW_MS inyectada desde config.js
@@ -250,12 +251,12 @@ function renderizar() {
 
 function moverPlato(id, direccion) {
     const idx = datosLocales.findIndex(x => x.id === id);
-    if (direction === 'subir' && idx > 0) {
+    // CORREGIDO: Error de tipeo anterior (direction -> direccion)
+    if (direccion === 'subir' && idx > 0) {
         const temp = datosLocales[idx].id;
         datosLocales[idx].id = datosLocales[idx-1].id;
         datosLocales[idx-1].id = temp;
-    // CORREGIDO: Error de tipeo anterior (datosLoceras -> datosLocales)
-    } else if (direction === 'bajar' && idx < datosLocales.length - 1) {
+    } else if (direccion === 'bajar' && idx < datosLocales.length - 1) {
         const temp = datosLocales[idx].id;
         datosLocales[idx].id = datosLocales[idx+1].id;
         datosLocales[idx+1].id = temp;
@@ -447,6 +448,7 @@ async function generarTraduccionEN() {
 
     const btn = document.getElementById('btn-generar-en');
     const originalText = btn.innerText;
+
     btn.innerText = "🇬🇧 Generando opciones...";
     btn.disabled = true;
 
