@@ -1,7 +1,7 @@
 // ui.js (Web_Editor_Pro)
 // Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.ui = '1.0.15-ALIAS-SYSTEM'; 
+window.APP_VERSIONS.ui = '1.0.16-CLEAN-URLS'; 
 
 // NUEVO: Referencias globales reestablecidas para compatibilidad con version antigua
 window.APP_VERSIONS.config = window.APP_VERSIONS.config || '1.0.0';
@@ -316,13 +316,10 @@ export const UI = {
             const modoSincronizacion = stateContainer.currentProMode || 'RG';
             let urlDestino = window.getWebAppUrl ? window.getWebAppUrl(modoSincronizacion) : '';
             
-            // Fallback hardcodeado por seguridad extrema si config.js falla
+            // ELIMINADO: Fallback hardcodeado. Si config.js falla, se aborta con un error visible.
+            // Esto asegura que config.js sea la ÚNICA fuente de verdad.
             if (!urlDestino) {
-                if (modoSincronizacion === 'USOPEN') {
-                    urlDestino = 'https://script.google.com/macros/s/AKfycbzfA3OnavQcmM3IG-7-PeHJw3U44UH5CREnLtwypxDxNQehQ4ZuM6iYqu5lt0VmUnKn/exec';
-                } else {
-                    urlDestino = 'https://script.google.com/macros/s/AKfycbxBdhrRWx9GNYU_oub52jQcRrG-XRhcDIjdHHW_CYQlob3PNButhNinqw-JLNES_3Ci-w/exec';
-                }
+                return UI.log(`[Error Crítico] La función getWebAppUrl() de config.js no devolvió una URL para el modo '${modoSincronizacion}'. Sincronización cancelada.`);
             }
             
             UI.log(`[Sincro-Debug] URL de destino: ${urlDestino}`);
