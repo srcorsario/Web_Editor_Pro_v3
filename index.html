@@ -59,8 +59,6 @@
             <button class="tab-btn" onclick="switchTab('pro', this)" style="margin-left: auto; margin-right: auto;">3. Traductor Pro</button>
             <button id="tab-btn-usopen" class="tab-btn" onclick="switchTab('editor-usopen', this)">4. Editor Carta USOpen</button>
             <button id="tab-btn-sug-usopen" class="tab-btn" onclick="switchTab('sugerencias-usopen', this)">5. Sugerencias USOpen</button>
-            <!-- NUEVO: Pestaña Organizador IDs -->
-            <button id="tab-btn-organizador" class="tab-btn" onclick="switchTab('organizador', this)">6. Organizador IDs</button>
         </div>
 
         <div id="tab-editor" class="tab-content active">
@@ -141,114 +139,93 @@
             <div class="sugerencias-panel" id="sugerencias-contenido-usopen"></div>
         </div>
 
-        <!-- MODIFICADO: Organizador directo (Arquitectura limpia por archivo) -->
-        <div id="tab-organizador" class="tab-content" style="display: none;">
-            <div class="card org-container">
-                <div class="org-header">
-                    <h3 style="margin:0 0 15px 0; color: var(--primario);">Organizador de Categorías por Carta</h3>
-                    <div style="display: flex; gap: 10px; margin-bottom: 15px; align-items: center; flex-wrap: wrap;">
-                        <button id="org-tab-rg" class="org-tab-btn active-org-tab">Carta 01</button>
-                        <button id="org-tab-usopen" class="org-tab-btn">Carta 02</button>
-                        <div style="flex:1"></div>
-                        <button id="org-btn-restaurar" class="org-tab-btn" style="border-color: #e74c3c; color: #e74c3c;" title="Borra los cambios locales de esta carta y vuelve a la estructura original">🗑️ Restaurar Fábrica</button>
-                        <button id="org-btn-aplicar" class="btn btn-success" style="padding: 8px 16px; font-size: 0.85rem;">✅ Refrescar Vista Editor</button>
+        <button class="btn-add-float" onclick="abrirSelector()">+</button>
+        <button class="btn-guardar-main" id="btn-guardar-dinamico" onclick="enviarAlExcel()">GUARDAR CAMBIOS EN WEB</button>
+
+        <div id="modal-selector" class="modal">
+            <div class="modal-content">
+                <h2 style="margin-top:0;">Añadir Nuevo Plato</h2>
+                <div id="lista-agrupada"></div>
+                <button class="btn-modal-cancelar" onclick="cerrarModal('modal-selector')" style="margin-top:20px;">Cancelar</button>
+            </div>
+        </div>
+
+        <div id="modal-seleccionar-destino" class="modal">
+            <div class="modal-content" style="max-width: 400px; text-align: center; padding: 30px;">
+                <h3 style="margin-top:0; margin-bottom: 10px;">¿Destino de la Importación?</h3>
+                <p style="color: #666; margin-bottom: 25px;">Selecciona a qué restaurante deseas subir los datos del archivo seleccionado:</p>
+                <div style="display: flex; gap: 15px; justify-content: center;">
+                    <button class="btn-modal-aceptar" id="modal-dest-rg" onclick="UI.confirmarImportacion('RG')" style="background-color: #e67e22; width: 100%; padding: 15px; font-size: 1.1rem;">RG (Roland Garros)</button>
+                    <button class="btn-modal-aceptar" id="modal-dest-usopen" onclick="UI.confirmarImportacion('USOPEN')" style="background-color: #2ecc71; width: 100%; padding: 15px; font-size: 1.1rem;">US Open</button>
+                </div>
+                <button class="btn-modal-cancelar" onclick="UI.cancelarImportacion()" style="margin-top: 25px;">Cancelar</button>
+            </div>
+        </div>
+
+        <div id="modal-editor" class="modal">
+            <div class="modal-content modal-full-layout">
+                <div class="modal-col-izquierda">
+                    <div class="input-group">
+                        <label id="label-uvas" class="label-seccion">Nombres y Detalles del Plato</label>
+                        <input id="edit-es" class="input-estandar" placeholder="Nombre en Español">
+                        <input id="edit-es-uvas" class="input-estandar input-uvas" placeholder="Detalles / Uvas (Español)" style="display: none;">
                     </div>
-                    <p style="font-size: 0.8rem; color: #7f8c8d; margin: 0 0 15px 0;">Edita directamente los nombres, añade subcategorías con <strong>+</strong> o elimínalas con <strong>✕</strong>. <br><strong style="color:#27ae60;">Los cambios se auto-guardan en tu navegador y sobreviven al recargar (F5).</strong> Al pulsar "Refrescar Vista Editor", la pestaña de edición principal se actualizará al instante.</p>
-                </div>
-                <div id="org-table-container" class="org-table-wrapper">
-                    <div class="text-center py-8 text-slate-500 italic">Cargando estructura...</div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <button class="btn-add-float" onclick="abrirSelector()">+</button>
-    <button class="btn-guardar-main" id="btn-guardar-dinamico" onclick="enviarAlExcel()">GUARDAR CAMBIOS EN WEB</button>
-
-    <div id="modal-selector" class="modal">
-        <div class="modal-content">
-            <h2 style="margin-top:0;">Añadir Nuevo Plato</h2>
-            <div id="lista-agrupada"></div>
-            <button class="btn-modal-cancelar" onclick="cerrarModal('modal-selector')" style="margin-top:20px;">Cancelar</button>
-        </div>
-    </div>
-
-    <div id="modal-seleccionar-destino" class="modal">
-        <div class="modal-content" style="max-width: 400px; text-align: center; padding: 30px;">
-            <h3 style="margin-top:0; margin-bottom: 10px;">¿Destino de la Importación?</h3>
-            <p style="color: #666; margin-bottom: 25px;">Selecciona a qué restaurante deseas subir los datos del archivo seleccionado:</p>
-            <div style="display: flex; gap: 15px; justify-content: center;">
-                <button class="btn-modal-aceptar" id="modal-dest-rg" onclick="UI.confirmarImportacion('RG')" style="background-color: #e67e22; width: 100%; padding: 15px; font-size: 1.1rem;">RG (Roland Garros)</button>
-                <button class="btn-modal-aceptar" id="modal-dest-usopen" onclick="UI.confirmarImportacion('USOPEN')" style="background-color: #2ecc71; width: 100%; padding: 15px; font-size: 1.1rem;">US Open</button>
-            </div>
-            <button class="btn-modal-cancelar" onclick="UI.cancelarImportacion()" style="margin-top: 25px;">Cancelar</button>
-        </div>
-    </div>
-
-    <div id="modal-editor" class="modal">
-        <div class="modal-content modal-full-layout">
-            <div class="modal-col-izquierda">
-                <div class="input-group">
-                    <label id="label-uvas" class="label-seccion">Nombres y Detalles del Plato</label>
-                    <input id="edit-es" class="input-estandar" placeholder="Nombre en Español">
-                    <input id="edit-es-uvas" class="input-estandar input-uvas" placeholder="Detalles / Uvas (Español)" style="display: none;">
-                </div>
-                <div class="input-group">
-                    <button id="btn-generar-en" class="btn-traducir-en" onclick="generarTraduccionEN()">🇬🇧 Generar opciones en Inglés con IA</button>
-                    <input id="edit-en" class="input-estandar" placeholder="Nombre en Inglés">
-                    <input id="edit-en-uvas" class="input-estandar input-uvas" placeholder="Detalles / Uvas (Inglés)" style="display: none;">
-                </div>
-                <button id="btn-autotraducir" class="btn-traductor-magico" onclick="ejecutarTraduccionAutomatica()" disabled>✨ Auto-Traducir resto de idiomas con Gemini</button>
-                <div class="input-group">
-                    <label class="label-seccion">Resto de Idiomas</label>
-                    <div id="contenedor-resto-idiomas"></div>
-                </div>
-            </div>
-            <div class="modal-col-derecha">
-                <div class="input-group">
-                    <label class="label-seccion">Configuración</label>
-                    <div class="panel-control-precio">
-                        <div class="input-group" style="margin-bottom: 0;">
-                            <label style="font-size:0.7rem; font-weight:bold; color:#7f8c8d;">Precio (€)</label>
-                            <input id="edit-precio" type="number" step="0.01" class="input-estandar input-precio-super-mini input-precio-mini">
-                        </div>
-                        <div class="input-group" style="margin-bottom: 0;">
-                            <label style="font-size:0.7rem; font-weight:bold; color:#7f8c8d;">Nombre Imagen</label>
-                            <input id="edit-imagen" class="input-estandar input-imagen-flexible" placeholder="ej: paella01.webp">
-                        </div>
+                    <div class="input-group">
+                        <button id="btn-generar-en" class="btn-traducir-en" onclick="generarTraduccionEN()">🇬🇧 Generar opciones en Inglés con IA</button>
+                        <input id="edit-en" class="input-estandar" placeholder="Nombre en Inglés">
+                        <input id="edit-en-uvas" class="input-estandar input-uvas" placeholder="Detalles / Uvas (Inglés)" style="display: none;">
+                    </div>
+                    <button id="btn-autotraducir" class="btn-traductor-magico" onclick="ejecutarTraduccionAutomatica()" disabled>✨ Auto-Traducir resto de idiomas con Gemini</button>
+                    <div class="input-group">
+                        <label class="label-seccion">Resto de Idiomas</label>
+                        <div id="contenedor-resto-idiomas"></div>
                     </div>
                 </div>
-                <div class="input-group">
-                    <label class="label-seccion">Alérgenos</label>
-                    <div id="alergenos-grid" class="alergenos-grid"></div>
-                </div>
-                <div id="contenedor-croquetas"></div>
-                <div class="modal-acciones-footer">
-                    <button class="btn-modal-aceptar" onclick="aplicarCambiosPlato()">✅ Aplicar Cambios</button>
-                    <button class="btn-modal-cancelar" onclick="cerrarModal('modal-editor')">Cancelar</button>
+                <div class="modal-col-derecha">
+                    <div class="input-group">
+                        <label class="label-seccion">Configuración</label>
+                        <div class="panel-control-precio">
+                            <div class="input-group" style="margin-bottom: 0;">
+                                <label style="font-size:0.7rem; font-weight:bold; color:#7f8c8d;">Precio (€)</label>
+                                <input id="edit-precio" type="number" step="0.01" class="input-estandar input-precio-super-mini input-precio-mini">
+                            </div>
+                            <div class="input-group" style="margin-bottom: 0;">
+                                <label style="font-size:0.7rem; font-weight:bold; color:#7f8c8d;">Nombre Imagen</label>
+                                <input id="edit-imagen" class="input-estandar input-imagen-flexible" placeholder="ej: paella01.webp">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label class="label-seccion">Alérgenos</label>
+                        <div id="alergenos-grid" class="alergenos-grid"></div>
+                    </div>
+                    <div id="contenedor-croquetas"></div>
+                    <div class="modal-acciones-footer">
+                        <button class="btn-modal-aceptar" onclick="aplicarCambiosPlato()">✅ Aplicar Cambios</button>
+                        <button class="btn-modal-cancelar" onclick="cerrarModal('modal-editor')">Cancelar</button>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <div id="modal-traduccion-en" class="modal">
-        <div class="modal-content modal-box-en">
-            <h2 style="margin-top:0; margin-bottom: 10px;">Selecciona la mejor traducción al Inglés</h2>
-            <div id="opciones-en-container" class="opciones-en-scroll"></div>
-            <div class="footer-box-en">
-                <textarea id="editar-opcion-en" class="input-estandar" rows="3" placeholder="Puedes editar la opción seleccionada aquí antes de confirmar..."></textarea>
-                <div style="display: flex; gap: 10px; margin-top: 10px;">
-                    <button class="btn-modal-aceptar" onclick="confirmarTraduccionEN()" style="margin:0;">Confirmar Selección</button>
-                    <button class="btn-modal-cancelar" onclick="cerrarModalTraduccionEN()" style="margin:0;">Cancelar</button>
+        <div id="modal-traduccion-en" class="modal">
+            <div class="modal-content modal-box-en">
+                <h2 style="margin-top:0; margin-bottom: 10px;">Selecciona la mejor traducción al Inglés</h2>
+                <div id="opciones-en-container" class="opciones-en-scroll"></div>
+                <div class="footer-box-en">
+                    <textarea id="editar-opcion-en" class="input-estandar" rows="3" placeholder="Puedes editar la opción seleccionada aquí antes de confirmar..."></textarea>
+                    <div style="display: flex; gap: 10px; margin-top: 10px;">
+                        <button class="btn-modal-aceptar" onclick="confirmarTraduccionEN()" style="margin:0;">Confirmar Selección</button>
+                        <button class="btn-modal-cancelar" onclick="cerrarModalTraduccionEN()" style="margin:0;">Cancelar</button>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Carga de Librerías y Scripts -->
-    <script src="config.js"></script>
-    <!-- MODIFICADO: Script instantáneo que inyecta las URLs, Logos y ALIAS de config.js en inputs, header, pestañas y panel Pro -->
-    <script>
+        <!-- Carga de Librerías y Scripts -->
+        <script src="config.js"></script>
+        <!-- MODIFICADO: Script instantáneo que inyecta las URLs, Logos y ALIAS de config.js en inputs, header, pestañas y panel Pro -->
+        <script>
         if (typeof CSV_URL_RG !== 'undefined') document.getElementById('sheetsUrlRG').value = CSV_URL_RG;
         if (typeof CSV_URL_USOPEN !== 'undefined') document.getElementById('sheetsUrlUSOpen').value = CSV_URL_USOPEN;
         
@@ -312,8 +289,6 @@
     <script type="module" src="ui.js"></script>
     <!-- Impresión Unificada -->
     <script src="sugerencias-print.js"></script>
-    <!-- NUEVO: Organizador visual de IDs/Categorías -->
-    <script src="organizador.js"></script>
 
     <!-- Pantalla Flotante de Carga -->
     <div id="loading-overlay" class="loading-overlay">
@@ -415,18 +390,14 @@
                     }
                 }
 
-                // NUEVO: Evitar recarga innecesaria si estamos en el organizador
-                if (typeof window.cargar === 'function' && tabId !== 'organizador') {
+                // MODIFICADO: Lógica de carga directa sin excepciones para pestañas eliminadas
+                if (typeof window.cargar === 'function') {
                     try {
                         await window.cargar();
                     } catch (e) {
                         console.error("[Editor] Error cargando datos:", e);
                         alert("Error cargando datos: " + e.message);
                     }
-                } else if (tabId === 'organizador') {
-                    console.log("[Editor] Modo organizador activo. Omitiendo recarga de Google Sheets.");
-                } else {
-                    console.error("[Editor] ERROR CRÍTICO: window.cargar NO está definido.");
                 }
 
                 if (tabId === 'sugerencias') {
