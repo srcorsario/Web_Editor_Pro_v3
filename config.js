@@ -1,7 +1,7 @@
 // --- config.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.config = '1.1.0'; // Incrementado por centralización de assets
+window.APP_VERSIONS.config = '1.1.1'; // Incrementado por corrección de ruta de alérgenos
 
 // =====================================================================
 // CONFIGURACIÓN DE REDES (Google Sheets & Web Apps)
@@ -38,8 +38,8 @@ function getCsvUrl() {
 // Path base general para imágenes y recursos estáticos
 const PATH_IMAGENES = 'imagenes/imagenes/';
 
-// Path específico para los iconos de alérgenos
-const PATH_ALERGENOS = PATH_IMAGENES + 'alergenos/';
+// MODIFICADO: Path específico para los iconos de alérgenos (corregido para evitar doble carpeta)
+const PATH_ALERGENOS = 'imagenes/alergenos/';
 
 // Logos Principales (Header del Editor)
 const LOGO_RG = PATH_IMAGENES + 'logo RG_REST.png';
