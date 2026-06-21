@@ -1,7 +1,28 @@
 // --- config.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.config = '1.2.0'; // Incrementado por inyección de dependencia (Desacoplamiento de window.currentMode)
+window.APP_VERSIONS.config = '1.3.0'; // Incrementado por sistema de Alias de Marca
+
+// =====================================================================
+// NUEVO: SISTEMA DE ALIAS DE MARCA (Desacoplamiento Visual)
+// =====================================================================
+// MODIFICADO: Identificadores lógicos internos (NO CAMBIAR NUNCA, se usan para claves y sessionStorage)
+// const MODO_RG = 'RG'; 
+// const MODO_USOPEN = 'USOPEN';
+
+// NUEVO: Diccionario de Presentación. Cambia estos valores para renombrar los restaurantes en toda la UI.
+const MODOS_ALIAS = {
+    RG: 'Roland Garros',
+    USOPEN: 'US Open'
+};
+
+// NUEVO: Función helper para obtener el nombre visual seguro
+function getModoAlias(modoInterno) {
+    // MODIFICADO: Fallback por si se llama antes de cargar o con un modo desconocido
+    if (typeof modoInterno === 'undefined' || modoInterno === null) return '';
+    return MODOS_ALIAS[modoInterno] || modoInterno;
+}
+
 
 // =====================================================================
 // CONFIGURACIÓN DE REDES (Google Sheets & Web Apps)
