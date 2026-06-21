@@ -1,5 +1,5 @@
 // --- organizador.js ---
-// NUEVO: Módulo de gestión visual de Estructuras (IDs y Categorías)
+// NUEVO: Módulo de gestión visual y estructural de Categorías por restaurante.
 // Se ejecuta en scope aislado pero expone funciones clave a window para los onclick del HTML.
 
 (function() {
@@ -7,7 +7,7 @@
 
     // Registro de versión
     window.APP_VERSIONS = window.APP_VERSIONS || {};
-    window.APP_VERSIONS.organizador = '1.2.0'; // MODIFICADO: Incrementado por auto-cálculo de rangos
+    window.APP_VERSIONS.organizador = '2.0.0'; // MODIFICADO: Salto mayor por estructura dinámica completa
 
     // Estado interno del módulo
     const estadoOrganizador = {
@@ -63,6 +63,41 @@
         return flat;
     }
 
+    // NUEVO: Reconstruye el árbol jerárquico desde la tabla aplanada para inyectarlo en el Editor
+    function reconstruirArbol(flatData) {
+        let tree = [];
+        let currentCat = null;
+        
+        flatData.forEach(item => {
+            if (item.level === 0) {
+                currentCat = { 
+                    id: item.id, 
+                    name: item.name, 
+                    rango: (item.max - item.id), 
+                    folder: item.folder || ''
+                };
+                tree.push(currentCat);
+            } else if (item.level === 1 && currentCat) {
+                if (!currentCat.sub) currentCat.sub = [];
+                currentCat.sub.push({
+                    id: item.id,
+                    name: item.name,
+                    max: item.max,
+                    folder: item.folder
+                });
+            }
+        });
+        
+        // Limpiar sub vacíos para mantener compatibilidad estricta con data.js (ej. categoría 7000 sin subs)
+        tree.forEach(cat => {
+            if (cat.sub && cat.sub.length === 0) {
+                delete cat.sub;
+            }
+        });
+        
+        return tree;
+    }
+
     /**
      * Renderiza la tabla de edición basada en la pestaña activa actual
      */
@@ -76,13 +111,15 @@
             return;
         }
 
+        // NUEVO: Añadida columna de Acciones
         let html = `<table class="org-table">
             <thead>
                 <tr>
-                    <th style="width: 120px;">ID Inicio</th>
-                    <th style="width: 120px;">ID Fin (Max)</th>
+                    <th style="width: 100px;">ID Inicio</th>
+                    <th style="width: 100px;">ID Fin (Max)</th>
                     <th>Nombre Categoría</th>
-                    <th style="width: 130px;">Carpeta</th>
+                    <th style="width: 120px;">Carpeta</th>
+                    <th style="width: 70px;">Acciones</th>
                 </tr>
             </thead>
             <tbody>`;
@@ -112,6 +149,10 @@
                            onchange="window._orgUpdateItem(${index}, 'folder', this.value)"
                            ${disabledAttr}>
                 </td>
+                <td class="org-action-btns">
+                    ${item.level === 0 ? `<button class="org-btn-icon org-btn-add" onclick="window._orgAddSub(${index})" title="Añadir Subcategoría">+</button>` : ''}
+                    <button class="org-btn-icon org-btn-del" onclick="window._orgRemoveItem(${index})" title="Eliminar elemento">✕</button>
+                </td>
             </tr>`;
         });
 
@@ -121,7 +162,6 @@
 
     /**
      * Función auxiliar expuesta a window para actualizar el estado interno desde los inputs.
-     * MODIFICADO: Ahora incluye auto-cálculo de rangos para evitar solapamientos matemáticos.
      */
     window._orgUpdateItem = function(index, key, value) {
         const data = estadoOrganizador.data[estadoOrganizador.activeTab];
@@ -143,10 +183,8 @@
                 if (nextMainIndex < data.length) {
                     const nextId = data[nextMainIndex].id;
                     if (newId >= nextId) {
-                        // El nuevo ID pisa o supera al siguiente. Forzamos el máximo al límite seguro.
                         nuevoMaxCalculado = nextId - 1;
                     } else {
-                        // Hay espacio. El máximo puede ser el del siguiente ID menos 1.
                         nuevoMaxCalculado = nextId - 1;
                     }
                 }
@@ -157,18 +195,15 @@
             // 2. Ajustar el 'max' de la categoría ANTERIOR para que no queden huecos
             if (index > 0) {
                 let prevMainIndex = index - 1;
-                // Si el anterior es una subcategoría, subimos hasta encontrar la principal
                 while (prevMainIndex > 0 && data[prevMainIndex].level !== 0) {
                     prevMainIndex--;
                 }
                 
                 if (prevMainIndex >= 0 && data[prevMainIndex].level === 0) {
-                    // El máximo de la categoría anterior debe ser el ID actual menos 1
                     data[prevMainIndex].max = newId - 1;
                 }
             }
             
-            // Forzar re-render para que el usuario vea los límites ajustados al instante
             renderOrganizador();
             
         } else if (key === 'max') {
@@ -176,6 +211,62 @@
         } else {
             data[index][key] = value;
         }
+    };
+
+    // NUEVO: Función para añadir una subcategoría debajo de una categoría principal
+    window._orgAddSub = function(parentIndex) {
+        const data = estadoOrganizador.data[estadoOrganizador.activeTab];
+        const parent = data[parentIndex];
+        if (!parent || parent.level !== 0) return;
+
+        // Calcular el primer ID disponible dentro del rango del padre
+        let usedIds = new Set();
+        usedIds.add(parent.id);
+        let insertIndex = parentIndex + 1;
+        
+        // Avanzar hasta pasar todos los hijos actuales de este padre
+        while (insertIndex < data.length && data[insertIndex].level === 1) {
+            usedIds.add(data[insertIndex].id);
+            insertIndex++;
+        }
+        
+        // Encontrar un ID libre secuencialmente
+        let newId = parent.id;
+        while(usedIds.has(newId)) newId++;
+
+        const newSub = {
+            id: newId,
+            name: "Nueva Subcategoría",
+            max: parent.max, // Hereda el máximo del padre por defecto
+            folder: parent.folder,
+            level: 1,
+            hasChildren: false
+        };
+        
+        // Insertar en la posición calculada
+        data.splice(insertIndex, 0, newSub);
+        renderOrganizador();
+    };
+
+    // NUEVO: Función para eliminar una categoría o subcategoría
+    window._orgRemoveItem = function(index) {
+        const data = estadoOrganizador.data[estadoOrganizador.activeTab];
+        const item = data[index];
+        if (!item) return;
+        
+        if (item.level === 0) {
+            if (!confirm(`¿Eliminar la categoría principal "${item.name}" y todas sus subcategorías asociadas?`)) return;
+            // Contar cuántos hijos (level 1) tienen que borrarse también
+            let deleteCount = 1;
+            while (index + deleteCount < data.length && data[index + deleteCount].level === 1) {
+                deleteCount++;
+            }
+            data.splice(index, deleteCount);
+        } else {
+            if (!confirm(`¿Eliminar la subcategoría "${item.name}"?`)) return;
+            data.splice(index, 1);
+        }
+        renderOrganizador();
     };
 
     function switchOrgTab(modo) {
@@ -191,9 +282,9 @@
     }
 
     /**
-     * Reconstruye el árbol jerárquico desde la tabla aplanada y sobrescribe la ESTRUCTURA global.
-     * MODIFICADO: Aplica ÚNICAMENTE los NOMBRES de forma aislada por modo (Carta 01 vs Carta 02)
-     * mediante el diccionario CATEGORY_OVERRIDES. Los IDs se mantienen intactos para proteger la estructura global compartida.
+     * Reconstruye el árbol jerárquico desde la tabla aplanada.
+     * MODIFICADO: Ahora inyecta el árbol completo en window.ESTRUCTURA_CUSTOM 
+     * para que el Editor Principal lo use de forma segura sin romper data.js ni sugerencias-print.js
      */
     window.aplicarEstructuraOrg = function() {
         const flatData = estadoOrganizador.data[estadoOrganizador.activeTab];
@@ -201,20 +292,25 @@
 
         const modo = estadoOrganizador.activeTab;
         
-        // Asegurar que el sistema de overrides existe
+        // 1. Asegurar que el sistema de estructura custom existe
+        if (!window.ESTRUCTURA_CUSTOM) {
+            window.ESTRUCTURA_CUSTOM = { RG: null, USOPEN: null };
+        }
+        
+        // 2. Reconstruir el árbol y guardarlo EXCLUSIVAMENTE para este modo
+        const nuevoArbol = reconstruirArbol(flatData);
+        window.ESTRUCTURA_CUSTOM[modo] = nuevoArbol;
+        
+        // 3. Mantener el sistema de overrides por compatibilidad (aunque el árbol custom ya tiene los nombres)
         if (!window.CATEGORY_OVERRIDES) {
             window.CATEGORY_OVERRIDES = { RG: {}, USOPEN: {} };
         }
-        
-        // Limpiar overrides anteriores para este modo y aplicar los nuevos nombres
         window.CATEGORY_OVERRIDES[modo] = {};
         flatData.forEach(item => {
-            // Guardar el nombre personalizado exclusivamente para este modo
             window.CATEGORY_OVERRIDES[modo][item.id] = item.name;
         });
 
-        // Forzar la recarga visual del Editor Principal
-        // Para que renderice con el override correcto, forzamos temporalmente el modo activo
+        // 4. Forzar la recarga visual del Editor Principal usando el modo temporal de la carta aplicada
         const previousMode = window.currentMode;
         window.currentMode = modo; 
         
@@ -223,12 +319,12 @@
 
         window.currentMode = previousMode; // Restaurar contexto real
 
-        // Feedback visual en la consola del sistema
+        // 5. Feedback visual en la consola del sistema
         const alias = (typeof getModoAlias === 'function') ? getModoAlias(modo) : modo;
         if (typeof window.UI !== 'undefined' && typeof window.UI.log === 'function') {
-            window.UI.log(`[Organizador] ✅ Nombres de ${alias} aplicados de forma aislada. La Carta 01 no se ha visto afectada. (Recargar la página restaura los nombres originales).`);
+            window.UI.log(`[Organizador] ✅ Estructura de ${alias} reconstruida y aplicada dinámicamente. La otra carta no se ha visto afectada.`);
         } else {
-            alert(`✅ Nombres de ${alias} aplicados de forma aislada.`);
+            alert(`✅ Estructura de ${alias} aplicada exitosamente.`);
         }
     };
 
@@ -238,6 +334,7 @@
             return;
         }
 
+        // Cargar la estructura base en ambos modos
         estadoOrganizador.data.RG = aplanarEstructura(window.ESTRUCTURA);
         estadoOrganizador.data.USOPEN = aplanarEstructura(window.ESTRUCTURA);
 
@@ -253,7 +350,7 @@
         }
 
         renderOrganizador();
-        console.log("[Organizador] Módulo inicializado correctamente.");
+        console.log("[Organizador] Módulo v2.0 inicializado correctamente (Estructuras dinámicas habilitadas).");
     }
 
     if (document.readyState === 'loading') {
