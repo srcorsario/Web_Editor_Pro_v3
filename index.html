@@ -141,18 +141,19 @@
             <div class="sugerencias-panel" id="sugerencias-contenido-usopen"></div>
         </div>
 
-        <!-- MODIFICADO: Contenedor de la Pestaña Organizador IDs actualizado con texto aislado -->
+        <!-- MODIFICADO: Organizador directo (Arquitectura limpia por archivo) -->
         <div id="tab-organizador" class="tab-content" style="display: none;">
             <div class="card org-container">
                 <div class="org-header">
-                    <h3 style="margin:0 0 15px 0; color: var(--primario);">Organizador de Nombres de Categorías</h3>
-                    <div style="display: flex; gap: 10px; margin-bottom: 15px; align-items: center;">
-                        <button id="org-tab-rg" class="org-tab-btn active-org-tab">Carta 01 (RG)</button>
-                        <button id="org-tab-usopen" class="org-tab-btn">Carta 02 (USOPEN)</button>
+                    <h3 style="margin:0 0 15px 0; color: var(--primario);">Organizador de Categorías por Carta</h3>
+                    <div style="display: flex; gap: 10px; margin-bottom: 15px; align-items: center; flex-wrap: wrap;">
+                        <button id="org-tab-rg" class="org-tab-btn active-org-tab">Carta 01</button>
+                        <button id="org-tab-usopen" class="org-tab-btn">Carta 02</button>
                         <div style="flex:1"></div>
-                        <button id="org-btn-aplicar" class="btn btn-success" style="padding: 8px 16px; font-size: 0.85rem;">✅ Aplicar Nombres en esta Carta</button>
+                        <button id="org-btn-restaurar" class="org-tab-btn" style="border-color: #e74c3c; color: #e74c3c;" title="Borra los cambios locales de esta carta y vuelve a la estructura original">🗑️ Restaurar Fábrica</button>
+                        <button id="org-btn-aplicar" class="btn btn-success" style="padding: 8px 16px; font-size: 0.85rem;">✅ Refrescar Vista Editor</button>
                     </div>
-                    <p style="font-size: 0.8rem; color: #7f8c8d; margin: 0 0 15px 0;">Modifica los NOMBRES de las categorías aquí y pulsa 'Aplicar'. El cambio se guardará <strong>únicamente para la carta seleccionada</strong> (Carta 01 o Carta 02) sin afectar a la otra. Nota: Los IDs se mantienen globales. Los cambios se pierden al recargar la página.</p>
+                    <p style="font-size: 0.8rem; color: #7f8c8d; margin: 0 0 15px 0;">Edita directamente los nombres, añade subcategorías con <strong>+</strong> o elimínalas con <strong>✕</strong>. <br><strong style="color:#27ae60;">Los cambios se auto-guardan en tu navegador y sobreviven al recargar (F5).</strong> Al pulsar "Refrescar Vista Editor", la pestaña de edición principal se actualizará al instante.</p>
                 </div>
                 <div id="org-table-container" class="org-table-wrapper">
                     <div class="text-center py-8 text-slate-500 italic">Cargando estructura...</div>
@@ -303,6 +304,8 @@
     <script src="state.js"></script>
     <!-- NUEVO: Utilidades puras de procesamiento de texto (Sin dependencias) -->
     <script src="utils.js"></script>
+    <!-- NUEVO: Estructuras separadas por carta (Carga antes de app.js) -->
+    <script src="estructuras.js"></script>
     <!-- Lógica principal del Editor -->
     <script src="app.js"></script>
     <!-- Lógica del Traductor Pro (Módulo ES) -->
