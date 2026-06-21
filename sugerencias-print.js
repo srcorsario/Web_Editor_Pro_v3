@@ -5,7 +5,7 @@
     // MODIFICADO: Ahora consume las variables globales inyectadas por config.js
     const SUGERENCIAS_CONFIG = {
         RG: {
-            versionStr: 'v2.9.4-RG-SuperConfig',
+            versionStr: 'v2.9.5-Alias-System',
             versionKey: 'sugerencias_rg',
             containerId: 'sugerencias-contenido',
             logoSrc: LOGO_RG,
@@ -23,7 +23,7 @@
             ]
         },
         USOPEN: {
-            versionStr: 'v2.9.4-USOPEN-SuperConfig',
+            versionStr: 'v2.9.5-Alias-System',
             versionKey: 'sugerencias_usopen',
             containerId: 'sugerencias-contenido-usopen',
             logoSrc: LOGO_USOPEN,
@@ -41,8 +41,6 @@
             ]
         }
     };
-
-    // MODIFICADO: Eliminado el PATH_ALERGENOS local. Ahora usa la variable global inyectada por config.js
 
     // Inyectar estilos de impresión una sola vez de forma segura
     if (!document.getElementById('sugerencias-print-styles')) {
@@ -86,9 +84,6 @@
         `;
         document.head.appendChild(stylePrint);
     }
-
-    // MODIFICADO: Bloque de inyección defensiva eliminado. 
-    // La función desglosarNombre ahora se carga de forma nativa desde utils.js
 
     // CORRECCIÓN CRÍTICA: Forzar modo a MAYÚSCULAS porque el config usa claves 'RG' y 'USOPEN'
     window.toggleQR = function(tipo, modo) {
@@ -185,8 +180,9 @@
             else { entrantes.push(p); }
         });
 
+        // MODIFICADO: Uso de getModoAlias en el botón de imprimir
         let html = `
-            <button onclick="window.imprimirSugerencias('${modoSeguro}')" class="btn-imprimir-a4">🖨️ Imprimir Sugerencias ${modoSeguro} (A4)</button>
+            <button onclick="window.imprimirSugerencias('${modoSeguro}')" class="btn-imprimir-a4">🖨️ Imprimir Sugerencias ${getModoAlias(modoSeguro)} (A4)</button>
             <div class="sugerencias-header-layout">
                 <span class="sugerencias-version-tag" style="display:none;">Módulo ${config.versionStr}</span>
                 <div class="sugerencias-brand-title-group">
@@ -272,8 +268,9 @@
         if (!contenedor) return;
         
         const styleContent = document.getElementById('sugerencias-print-styles').innerHTML;
+        // MODIFICADO: Uso de getModoAlias en el título de la ventana de impresión
         const pWin = window.open('', '_blank', 'width=800,height=1000');
-        pWin.document.write(`<html><head><title>Sugerencias ${modoSeguro}</title><style>${styleContent}</style></head><body><div class="sugerencias-panel">${contenedor.innerHTML}</div><script>setTimeout(() => { window.print(); window.close(); }, 500);<\/script></body></html>`);
+        pWin.document.write(`<html><head><title>Sugerencias ${getModoAlias(modoSeguro)}</title><style>${styleContent}</style></head><body><div class="sugerencias-panel">${contenedor.innerHTML}</div><script>setTimeout(() => { window.print(); window.close(); }, 500);<\/script></body></html>`);
         pWin.document.close();
     };
 
