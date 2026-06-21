@@ -1,7 +1,7 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '1.0.47-DECOUPLED-CONFIG'; 
+window.APP_VERSIONS.app = '1.0.48-ALIAS-SYSTEM'; 
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
@@ -65,7 +65,7 @@ async function cargar(retryCount = 0) {
         console.log("[Editor] URL Objetivo: " + url.substring(0, 50) + "...");
         
         if (typeof UI !== 'undefined' && typeof UI.log === 'function') {
-            UI.log(`[Editor] Conectando con Google Sheets remoto (${modo})...`);
+            UI.log(`[Editor] Conectando con Google Sheets remoto (${getModoAlias(modo)})...`);
         }
         
         // Parámetro 'zx' y cabeceras forzadas
@@ -122,7 +122,7 @@ async function cargar(retryCount = 0) {
 
             if (parchesAplicados > 0) {
                 if (typeof UI !== 'undefined' && typeof UI.log === 'function') {
-                    UI.log(`[Alerta] CDN ${modo} desactualizado. Asegurando ${parchesAplicados} ediciones locales.`);
+                    UI.log(`[Alerta] CDN ${getModoAlias(modo)} desactualizado. Asegurando ${parchesAplicados} ediciones locales.`);
                 }
             }
         }
@@ -134,7 +134,8 @@ async function cargar(retryCount = 0) {
 
         const statusCarga = document.getElementById('status-carga');
         if (statusCarga) {
-            statusCarga.innerText = `✅ Datos Sincronizados ${modo} (${window.IDIOMAS_ORDEN ? window.IDIOMAS_ORDEN.length : 0} Idiomas)`;
+            // MODIFICADO: Uso de getModoAlias para el texto visual
+            statusCarga.innerText = `✅ Datos Sincronizados ${getModoAlias(modo)} (${window.IDIOMAS_ORDEN ? window.IDIOMAS_ORDEN.length : 0} Idiomas)`;
             statusCarga.className = "status-ok";
         }
         
@@ -171,7 +172,8 @@ function iniciarContadorOptimista(modo) {
         if (window.currentMode === modo) {
             if (timerDiv) timerDiv.style.display = 'block';
             if (timerSeconds) timerSeconds.innerText = remaining;
-            if (timerMode) timerMode.innerText = modo;
+            // MODIFICADO: Mostrar alias en el contador visual
+            if (timerMode) timerMode.innerText = getModoAlias(modo);
         }
         
         if (remaining <= 0) {
@@ -844,7 +846,8 @@ async function enviarAlExcel() {
             console.warn("[Editor] Modo 'no-cors' activo: No se puede confirmar la respuesta del servidor.");
         }
         
-        alert(`✅ Petición enviada para ${modo}. Memoria local bloqueada por 3 min.`);
+        // MODIFICADO: Uso de getModoAlias para el texto visual del alert
+        alert(`✅ Petición enviada para ${getModoAlias(modo)}. Memoria local bloqueada por 3 min.`);
         
         window.hayCambiosSinGuardar = false;
         btn.innerText = textoOriginal;
