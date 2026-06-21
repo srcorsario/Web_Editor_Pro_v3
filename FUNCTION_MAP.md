@@ -1,3 +1,4 @@
+```markdown
 Regla de Oro: Antes de renombrar, mover o eliminar una función/variable listada aquí, verifica su sección ⚠️ DEPENDENCIAS CRUZADAS para evitar romper otros módulos o los onclick del HTML.
 
 ================================================================================
@@ -18,7 +19,7 @@ window.lastSaveAttempt     Number   No definido      -                          
 
 --- NUEVAS VARIABLES DE SUPER-CONFIG (Inyectadas por config.js) ---
 CONSISTENCY_WINDOW_MS      Number   config.js       (Estática)                                                         app.js (cargar, iniciarContadorOptimista), index.html (updateDebugPanel), sugerencias-print.js (aplicarParcheOptimista)
-PATH_IMAGENES              String   config.js       (Estática)                                                         index.html (rutas de logos en header)
+PATH_IMAGENES              String   config.js       (Estática)                                                         index.html (rutas de logos en header), app.js (rutas imágenes en renderizar)
 PATH_ALERGENOS             String   config.js       (Estática)                                                         sugerencias-print.js (procesarYRender)
 LOGO_RG                    String   config.js       (Estática)                                                         index.html (header img src), sugerencias-print.js (SUGERENCIAS_CONFIG)
 LOGO_USOPEN                String   config.js       (Estática)                                                         index.html (header img src), sugerencias-print.js (SUGERENCIAS_CONFIG)
@@ -26,6 +27,12 @@ QR_RG_DEFAULT              String   config.js       (Estática)                 
 QR_RG_MOD                  String   config.js       (Estática)                                                         sugerencias-print.js (SUGERENCIAS_CONFIG)
 QR_USOPEN_DEFAULT          String   config.js       (Estática)                                                         sugerencias-print.js (SUGERENCIAS_CONFIG)
 QR_USOPEN_MOD              String   config.js       (Estática)                                                         sugerencias-print.js (SUGERENCIAS_CONFIG)
+
+--- NUEVAS VARIABLES DE UTILIDADES (Inyectadas por utils.js) ---
+window.desglosarNombre     Function utils.js       (Estática)                                                         app.js, sugerencias-print.js
+window.superLimpiar        Function utils.js       (Estática)                                                         app.js
+window.formatWineName      Function utils.js       (Estática)                                                         app.js
+window.extraerJSON         Function utils.js       (Estática)                                                         app.js
 
 
 ================================================================================
@@ -114,6 +121,23 @@ Lectores: app.js (carga, renderizado, traducción), ui.js (carga de columnas, re
 
 
 ================================================================================
+📁 data.js
+================================================================================
+No usa módulos. Se ejecuta en el scope global. Archivo puramente declarativo.
+
+- ESTRUCTURA (Object): Re-definición o complemento del árbol de categorías (verificar integración con languages.js).
+- categoriesList, subCatsLang (Object/Array): Diccionarios de traducción de categorías.
+
+NUEVAS: Constantes de UI del Editor
+- ALERGENOS_LISTA (Array): Lista de alérgenos con emojis.
+  Es usado por: app.js (abrirEditor, renderizado de modal).
+- CROQUETAS_CONFIG (Object): Configuración de sabores de croquetas.
+  Es usado por: app.js (abrirEditor, actualizarNombreCroquetas).
+
+Lectores: app.js (carga, renderizado, traducción), ui.js (carga de columnas, render de radios).
+
+
+================================================================================
 📁 app.js
 ================================================================================
 No usa módulos. Se ejecuta en el scope global. Contiene la lógica principal del Editor.
@@ -122,7 +146,6 @@ Variables Locales (Scope de archivo)
 - datosLocales (Array): Reflejo local de window.datosLocales.
 - platoEditandoId (Number), esNuevoPlato (Boolean), datosTempNuevo (Object): Estado del modal editor.
 - opcionesENActuales (Array): Almacena temporalmente las opciones de IA de traducción EN.
-- ALERGENOS_LISTA (Array), CROQUETAS_CONFIG (Object): Constantes estáticas de configuración de UI.
 
 Funciones Utilitarias (Compartidas)
 Nota: Estas funciones se han movido a utils.js. app.js las consume desde ahí.
@@ -157,7 +180,7 @@ Funciones de Red y Estado
 Funciones de Renderizado y UI
 
 - renderizar()
-  Lee: datosLocales, window.ESTRUCTURA
+  Lee: datosLocales, window.ESTRUCTURA, PATH_IMAGENES (GLOBAL)
   Escribe en: DOM (#editor-dinamico)
 
 - generarMenuAgrupado()
@@ -165,7 +188,7 @@ Funciones de Renderizado y UI
   Escribe en: DOM (#lista-agrupada)
 
 - abrirEditor(id, esNuevo)
-  Lee: window.datosLocales, window.IDIOMAS_ORDEN, window.IDIOMAS_CONFIG
+  Lee: window.datosLocales, window.IDIOMAS_ORDEN, window.IDIOMAS_CONFIG, ALERGENOS_LISTA (GLOBAL), CROQUETAS_CONFIG (GLOBAL)
   Escribe en: Variables locales (platoEditandoId, esNuevoPlato), DOM (inputs del modal)
   Es usado por: app.js (prepararNuevoPlato), index.html (botones dinámicos onclick)
 
@@ -266,7 +289,7 @@ SUGERENCIAS_CONFIG (Variable Interna de Configuración)
 
 - window.renderCarta(modo)
   Contrato de modo: String. DEBE ser 'RG' o 'USOPEN' (La función aplica .toUpperCase() por seguridad interna, pero el contrato es mayúsculas).
-  Lee: SUGERENCIAS_CONFIG[modo], window.datosLocales, window.optimisticState[modo]
+  Lee: SUGERENCIAS_CONFIG[modo], window.datosLocales, window.optimisticState[modo], window.desglosarNombre (desde utils.js), PATH_ALERGENOS (desde config.js)
   Escribe en: window.APP_VERSIONS, DOM (contenedor configurado en SUGERENCIAS_CONFIG)
   Es usado por: index.html (switchTab -> window.renderCarta('RG') o window.renderCarta('USOPEN'))
 
@@ -319,3 +342,4 @@ Listeners de Toggle (Debug Panel)
 - Objetivo: #toggle-debug-panel
 - Eventos: change
 - Escribe en: Estilo display de #debug-panel (none o block)
+```
