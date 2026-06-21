@@ -430,16 +430,20 @@
             }
             vDiv.innerHTML = vHtml;
 
-            // MODIFICADO: Mostrar Alias junto al modo interno en el panel Debug
-            const modoAliasDebug = (typeof getModoAlias === 'function') ? getModoAlias(window.currentMode || 'RG') : '';
-            let sHtml = `<div>Modo Activo: <span style="color: #60a5fa;">${window.currentMode || 'RG'}</span> ${modoAliasDebug ? `(${modoAliasDebug})` : ''}</div><hr style="border-color: #334155; margin: 4px 0;">`;
+            // MODIFICADO: Redefinición total de textos para usar getModoAlias
+            const modoActual = window.currentMode || 'RG';
+            const aliasActual = (typeof getModoAlias === 'function') ? getModoAlias(modoActual) : modoActual;
+            
+            let sHtml = `<div>Modo Activo: <span style="color: #60a5fa; font-weight: bold;">${aliasActual}</span></div><hr style="border-color: #334155; margin: 4px 0;">`;
             
             ['RG', 'USOPEN'].forEach(modo => {
+                const aliasModo = (typeof getModoAlias === 'function') ? getModoAlias(modo) : modo;
                 const state = window.optimisticState ? window.optimisticState[modo] : { t: 0, s: [] };
                 const timeSinceSave = Date.now() - state.t;
                 const isZone = timeSinceSave < CONSISTENCY_WINDOW_MS; 
+                const isActiveMode = (modo === modoActual);
                 
-                sHtml += `<div style="margin-bottom: 4px; color: ${modo === window.currentMode ? '#f8fafc' : '#64748b'}">--- ${modo} ---</div>`;
+                sHtml += `<div style="margin-bottom: 4px; color: ${isActiveMode ? '#f8fafc' : '#64748b'}; font-weight: ${isActiveMode ? 'bold' : 'normal'}">--- ${aliasModo} ---</div>`;
                 sHtml += `<div>Hace: <span style="color: ${timeSinceSave < 10000 ? '#4ade80' : '#f87171'}">${Math.round(timeSinceSave/1000)}s</span></div>`;
                 sHtml += `<div style="color: ${isZone ? '#f87171' : '#4ade80'}; font-weight: bold;">Zona Peligro: ${isZone ? '⛔ ACTIVA' : '✅ INACTIVA'}</div>`;
                 sHtml += `<div>Snapshot: <span style="color: #c084fc;">${state.s ? state.s.length : 0} items</span></div>`;
