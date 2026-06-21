@@ -1,7 +1,7 @@
 // ui.js (Web_Editor_Pro)
 // Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.ui = '1.0.14-DECOUPLED-CONFIG'; 
+window.APP_VERSIONS.ui = '1.0.15-ALIAS-SYSTEM'; 
 
 // NUEVO: Referencias globales reestablecidas para compatibilidad con version antigua
 window.APP_VERSIONS.config = window.APP_VERSIONS.config || '1.0.0';
@@ -224,12 +224,9 @@ export const UI = {
         const btn = document.getElementById('btnSyncSheets');
         if (!btn) return;
         
-        const contexto = stateContainer.currentProMode;
-        if (contexto === 'USOPEN') {
-            btn.innerText = "☁️ Sincronizar con Google Sheet USOPEN";
-        } else {
-            btn.innerText = "☁️ Sincronizar con Google Sheet RG";
-        }
+        // MODIFICADO: Uso de getModoAlias para desacoplar el nombre visual
+        const contexto = stateContainer.currentProMode || 'RG';
+        btn.innerText = `☁️ Sincronizar con Google Sheet ${getModoAlias(contexto)}`;
     },
 
     sincronizarConGoogleSheets: async () => {
@@ -239,7 +236,8 @@ export const UI = {
 
         // NUEVO: Usar currentProMode para determinar destino
         const modo = stateContainer.currentProMode;
-        const contextoNombre = modo === 'USOPEN' ? 'USOPEN' : 'RG';
+        // MODIFICADO: Uso de getModoAlias para los logs visuales
+        const contextoNombre = getModoAlias(modo);
         
         UI.log(`[Sincro] Preparando envío a: ${contextoNombre}...`);
 
@@ -460,7 +458,8 @@ export const UI = {
         stateContainer.currentProMode = modoDefinitivo;
         window.currentMode = modoDefinitivo;
         
-        UI.log(`[Import] Archivo local seleccionado. Destino asignado: ${modoDefinitivo}`);
+        // MODIFICADO: Uso de getModoAlias en logs
+        UI.log(`[Import] Archivo local seleccionado. Destino asignado: ${getModoAlias(modoDefinitivo)}`);
         
         UI.importarCSV(file, (headers, data) => {
             stateContainer.headers = headers;
