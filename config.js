@@ -82,8 +82,8 @@ const LOGO_RG = PATH_IMAGENES + 'logo_web01.png';
 const LOGO_USOPEN = PATH_IMAGENES + 'logo_web02.png';
 
 // Códigos QR Roland Garros
-const QR_RG_DEFAULT = PATH_IMAGENES + 'qr-web01-01.png'; // Oficial RG
-const QR_RG_MOD = PATH_IMAGENES + 'qr-web01-02.png';           // Alternativo RG
+const QR_RG_DEFAULT = PATH_IMAGENES + 'qr-web01-02.png'; // Oficial RG
+const QR_RG_MOD = PATH_IMAGENES + 'qr-web01-01.png';           // Alternativo RG
 
 // Códigos QR US Open
 const QR_USOPEN_DEFAULT = PATH_IMAGENES + 'qr-web02-01.png'; // Oficial USOPEN
