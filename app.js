@@ -1,7 +1,7 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '1.0.50-FIX-LAST-SAVE-ATTEMPT'; // MODIFICADO: Incrementado por corrección de sincronía
+window.APP_VERSIONS.app = '1.0.51-ISOLATED-CATEGORY-NAMES'; // MODIFICADO: Incrementado por sistema de nombres aislados
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
@@ -23,6 +23,22 @@ try {
     if (stateUSOPEN) window.optimisticState.USOPEN = stateUSOPEN;
 } catch (e) {
     console.warn("[Editor] Error recuperando estados de sessionStorage:", e);
+}
+
+// NUEVO: Diccionario para sobrescribir nombres de categorías por restaurante (Carta 01 vs Carta 02)
+// Si un ID tiene un override aquí, el Editor usará este texto en lugar del de data.js
+window.CATEGORY_OVERRIDES = {
+    RG: {},
+    USOPEN: {}
+};
+
+// NUEVO: Función helper para obtener el nombre de la categoría respetando el modo activo
+function getCategoryName(catId, defaultName) {
+    const modo = window.currentMode || 'RG';
+    if (window.CATEGORY_OVERRIDES[modo] && window.CATEGORY_OVERRIDES[modo][catId] !== undefined) {
+        return window.CATEGORY_OVERRIDES[modo][catId];
+    }
+    return defaultName;
 }
 
 let datosLocales = [];
@@ -217,7 +233,8 @@ function renderizar() {
         const platos = datosLocales.filter(p => p.id >= cat.id && p.id <= (cat.id + cat.rango));
         if (platos.length === 0) return;
         
-        h += `<div class="categoria-tarjeta"><div class="categoria-titulo">${cat.name}</div>`;
+        // MODIFICADO: Usar helper getCategoryName para soportar nombres independientes por carta
+        h += `<div class="categoria-tarjeta"><div class="categoria-titulo">${getCategoryName(cat.id, cat.name)}</div>`;
         platos.forEach((p) => {
             // CORREGIDO: Revertido a indicador visual de cámara (emoji). 
             // No se deben cargar las imágenes físicas reales en el proyecto del Editor.
@@ -739,13 +756,15 @@ function generarMenuAgrupado() {
     
     let h = "";
     ESTRUCTURA.forEach(cat => {
-        h += `<div style="margin-bottom:10px;"><div style="background:#eee;padding:5px;font-size:0.7rem;font-weight:bold;text-transform:uppercase;">${cat.name}</div>`;
+        // MODIFICADO: Usar helper getCategoryName para soportar nombres independientes por carta
+        h += `<div style="margin-bottom:10px;"><div style="background:#eee;padding:5px;font-size:0.7rem;font-weight:bold;text-transform:uppercase;">${getCategoryName(cat.id, cat.name)}</div>`;
         if (cat.sub) {
             cat.sub.forEach(s => {
-                h += `<button onclick="prepararNuevoPlato(${s.id}, '${s.folder}')" style="width:100%;text-align:left;padding:10px;background:white;border:1px solid #ddd;font-family:'Montserrat';cursor:pointer;">+ ${s.name}</button>`;
+                // MODIFICADO: Usar helper getCategoryName para subcategorías también
+                h += `<button onclick="prepararNuevoPlato(${s.id}, '${s.folder}')" style="width:100%;text-align:left;padding:10px;background:white;border:1px solid #ddd;font-family:'Montserrat';cursor:pointer;">+ ${getCategoryName(s.id, s.name)}</button>`;
             });
         } else {
-            h += `<button onclick="prepararNuevoPlato(${cat.id}, '${cat.folder || ''}')" style="width:100%;text-align:left;padding:10px;background:white;border:1px solid #ddd;font-family:'Montserrat';cursor:pointer;">+ ${cat.name}</button>`;
+            h += `<button onclick="prepararNuevoPlato(${cat.id}, '${cat.folder || ''}')" style="width:100%;text-align:left;padding:10px;background:white;border:1px solid #ddd;font-family:'Montserrat';cursor:pointer;">+ ${getCategoryName(cat.id, cat.name)}</button>`;
         }
         h += `</div>`;
     });
