@@ -1,4 +1,4 @@
-/* Web Editor Pro - Styles CSS - Version 1.2.0 */
+/* Web Editor Pro - Styles CSS - Version 1.2.1 */
 :root { 
     --primario: #e67e22; 
     --fondo: #f4f7f6; 
@@ -529,11 +529,12 @@ input:checked + .slider-switch:before { transform: translateX(18px); }
     width: 100%;
     border-collapse: collapse;
     font-size: 0.85rem;
+    table-layout: fixed; /* MODIFICADO: Forzar respeto estricto de los anchos de cabecera */
 }
 
 .org-table th {
     background: #f8f9fa;
-    padding: 12px;
+    padding: 12px 8px;
     text-align: left;
     font-weight: 700;
     color: var(--texto);
@@ -541,12 +542,16 @@ input:checked + .slider-switch:before { transform: translateX(18px); }
     position: sticky;
     top: 0;
     z-index: 10;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .org-table td {
-    padding: 8px 12px;
+    padding: 8px;
     border-bottom: 1px solid #f1f2f6;
     vertical-align: middle;
+    overflow: hidden;
 }
 
 .org-table tr:hover {
@@ -556,7 +561,7 @@ input:checked + .slider-switch:before { transform: translateX(18px); }
 .org-table input[type="number"],
 .org-table input[type="text"] {
     width: 100%;
-    padding: 6px 8px;
+    padding: 6px;
     border: 1px solid #ccc;
     border-radius: 4px;
     font-family: 'Montserrat', sans-serif;
@@ -610,10 +615,23 @@ input:checked + .slider-switch:before { transform: translateX(18px); }
     border-color: #dc3545;
 }
 
-/* MODIFICADO: Aumentado el max-width para acomodar IDs de 5 dígitos sin recortar */
+/* MODIFICADO: Ajustado el tamaño de los inputs numéricos para caber 6 dígitos exactos */
 .org-table input[type="number"] {
-    max-width: 120px;
+    max-width: 100%; /* El table-layout fixed ya controla el ancho desde el th */
     text-align: center;
+}
+
+/* NUEVO: Contenedor del nombre para evitar que el texto empuje la celda */
+.org-td-name {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 0; /* Truco CSS para forzar a flexbox a respetar el ancho del padre table-layout: fixed */
+}
+
+.org-td-name input {
+    flex: 1;
+    min-width: 0;
 }
 
 .org-table input:focus {
@@ -629,7 +647,7 @@ input:checked + .slider-switch:before { transform: translateX(18px); }
 }
 
 .org-level-1 > td {
-    padding-left: 30px;
+    padding-left: 20px;
     background-color: #ffffff;
 }
 
@@ -814,10 +832,13 @@ input:checked + .slider-switch:before { transform: translateX(18px); }
         margin-bottom: 20px;
     }
 
-    /* NUEVO: Ajuste responsive para la nueva columna en el organizador */
+    /* NUEVO: Ajuste responsive para la tabla del organizador en móviles */
     .org-table th:nth-child(4), 
     .org-table td:nth-child(4) {
-        display: none; /* Oculta la columna Carpeta en móviles para dar espacio a Acciones */
+        display: none; /* Oculta la columna Carpeta en móviles para dar espacio a Acciones y texto */
+    }
+    .org-table th:nth-child(3) {
+        width: 50% !important; /* Expande el nombre al ocultar la carpeta */
     }
 }
 
