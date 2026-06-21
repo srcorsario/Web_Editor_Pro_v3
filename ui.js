@@ -1,7 +1,7 @@
 // ui.js (Web_Editor_Pro)
 // Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.ui = '1.0.18-CENTRALIZED-LOTE-SIZE'; 
+window.APP_VERSIONS.ui = '1.0.19-FIX-LAST-SAVE-ATTEMPT'; // MODIFICADO: Incrementado por corrección de sincronía
 
 // NUEVO: Referencias globales reestablecidas para compatibilidad con version antigua
 window.APP_VERSIONS.config = window.APP_VERSIONS.config || '1.0.0';
@@ -164,7 +164,7 @@ export const UI = {
         
         if (!targetUrl) return UI.log("[Error] No se proporcionó una URL válida.");
         
-        const timeSinceSave = Date.now() - window.lastSaveAttempt;
+        const timeSinceSave = Date.now() - (window.lastSaveAttempt || 0); // DEFENSIVO: fallback a 0
         const isDangerZone = timeSinceSave < DANGER_WINDOW_MS;
 
         UI.log(`[Info] Descargando CSV desde Google Sheets (${targetUrl.substring(0, 40)}...)...`);
@@ -321,6 +321,9 @@ export const UI = {
             if (!urlDestino) {
                 return UI.log(`[Error Crítico] La función getWebAppUrl() de config.js no devolvió una URL para el modo '${modoSincronizacion}'. Sincronización cancelada.`);
             }
+            
+            // NUEVO: Sincronizar lastSaveAttempt para la Zona de Peligro en cargarGoogleSheets
+            window.lastSaveAttempt = Date.now();
             
             UI.log(`[Sincro-Debug] URL de destino: ${urlDestino}`);
             
