@@ -7,7 +7,7 @@
 
     // Registro de versión
     window.APP_VERSIONS = window.APP_VERSIONS || {};
-    window.APP_VERSIONS.organizador = '2.0.0'; // MODIFICADO: Salto mayor por estructura dinámica completa
+    window.APP_VERSIONS.organizador = '2.0.1'; // MODIFICADO: Patch por cálculo de nuevos IDs y anchos de tabla
 
     // Estado interno del módulo
     const estadoOrganizador = {
@@ -111,15 +111,15 @@
             return;
         }
 
-        // NUEVO: Añadida columna de Acciones
+        // MODIFICADO: Ajustes estrictos de anchos de columna (IDs a 6 digitos, Nombre a la mitad, Carpeta al doble)
         let html = `<table class="org-table">
             <thead>
                 <tr>
-                    <th style="width: 100px;">ID Inicio</th>
-                    <th style="width: 100px;">ID Fin (Max)</th>
-                    <th>Nombre Categoría</th>
-                    <th style="width: 120px;">Carpeta</th>
-                    <th style="width: 70px;">Acciones</th>
+                    <th style="width: 90px;">ID Inicio</th>
+                    <th style="width: 90px;">ID Fin</th>
+                    <th style="width: 35%;">Nombre Categoría</th>
+                    <th style="width: 180px;">Carpeta</th>
+                    <th style="width: 80px;">Acciones</th>
                 </tr>
             </thead>
             <tbody>`;
@@ -138,11 +138,10 @@
                     <input type="number" value="${item.max}" 
                            onchange="window._orgUpdateItem(${index}, 'max', this.value)">
                 </td>
-                <td style="display: flex; align-items: center;">
+                <td class="org-td-name">
                     <span style="white-space: pre; user-select: none; color: #95a5a6;">${indent}</span>
                     <input type="text" value="${item.name}" 
-                           onchange="window._orgUpdateItem(${index}, 'name', this.value)"
-                           style="flex: 1;">
+                           onchange="window._orgUpdateItem(${index}, 'name', this.value)">
                 </td>
                 <td>
                     <input type="text" value="${item.folder}" 
@@ -213,37 +212,53 @@
         }
     };
 
-    // NUEVO: Función para añadir una subcategoría debajo de una categoría principal
+    // MODIFICADO: Corregida la lógica para sumar bloques de 100 en lugar de secuencial +1
     window._orgAddSub = function(parentIndex) {
         const data = estadoOrganizador.data[estadoOrganizador.activeTab];
         const parent = data[parentIndex];
         if (!parent || parent.level !== 0) return;
 
-        // Calcular el primer ID disponible dentro del rango del padre
-        let usedIds = new Set();
-        usedIds.add(parent.id);
         let insertIndex = parentIndex + 1;
+        let childIds = [];
         
-        // Avanzar hasta pasar todos los hijos actuales de este padre
+        // Avanzar hasta pasar todos los hijos actuales de este padre y recolectar sus IDs
         while (insertIndex < data.length && data[insertIndex].level === 1) {
-            usedIds.add(data[insertIndex].id);
+            childIds.push(data[insertIndex].id);
             insertIndex++;
         }
         
-        // Encontrar un ID libre secuencialmente
-        let newId = parent.id;
-        while(usedIds.has(newId)) newId++;
+        // Calcular el siguiente bloque de 100 disponible
+        // Si no hay hijos, el primer hijo será el ID del padre + 100 (ej: 1000 -> 1100)
+        // Si hay hijos, se suma 100 al ID del último hijo (ej: 1100 -> 1200)
+        let maxChildId = parent.id;
+        if (childIds.length > 0) {
+            maxChildId = Math.max(...childIds);
+        }
+        
+        let newId = maxChildId + 100;
+        let newMax = newId + 99;
+
+        // Seguridad: Asegurar que no nos pasamos del rango máximo del padre
+        if (newId > parent.max) {
+            alert("No hay espacio suficiente en el rango de esta categoría principal para añadir más subcategorías de 100 en 100.");
+            return;
+        }
+
+        // Ajustar el máximo de la nueva subcategoría si el bloque de 100 excede el límite del padre
+        if (newMax > parent.max) {
+            newMax = parent.max;
+        }
 
         const newSub = {
             id: newId,
             name: "Nueva Subcategoría",
-            max: parent.max, // Hereda el máximo del padre por defecto
+            max: newMax,
             folder: parent.folder,
             level: 1,
             hasChildren: false
         };
         
-        // Insertar en la posición calculada
+        // Insertar en la posición calculada (justo después del último hijo de este padre)
         data.splice(insertIndex, 0, newSub);
         renderOrganizador();
     };
@@ -350,7 +365,7 @@
         }
 
         renderOrganizador();
-        console.log("[Organizador] Módulo v2.0 inicializado correctamente (Estructuras dinámicas habilitadas).");
+        console.log("[Organizador] Módulo v2.0.1 inicializado correctamente (Estructuras dinámicas y bloques de 100 habilitados).");
     }
 
     if (document.readyState === 'loading') {
