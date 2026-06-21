@@ -1,7 +1,7 @@
 // ui.js (Web_Editor_Pro)
 // Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.ui = '1.0.17-CENTRALIZED-IA-URL'; 
+window.APP_VERSIONS.ui = '1.0.18-CENTRALIZED-LOTE-SIZE'; 
 
 // NUEVO: Referencias globales reestablecidas para compatibilidad con version antigua
 window.APP_VERSIONS.config = window.APP_VERSIONS.config || '1.0.0';
@@ -558,7 +558,8 @@ export const UI = {
         const rangoInicio = selectorInicio ? (parseInt(selectorInicio.value) - 2 || 0) : 0;
         const rangoFin = selectorFin ? (parseInt(selectorFin.value) - 1 || activeStateContainer.csvData.length) : activeStateContainer.csvData.length;
 
-        // MODIFICADO: Eliminada la variable local ENDPOINT_GATEWAY. Ahora usa GEMINI_ENDPOINT_URL de config.js
+        // MODIFICADO: Eliminada la variable local ENDPOINT_GATEWAY y TAMANO_LOTE. 
+        // Ahora usa las variables globales GEMINI_ENDPOINT_URL y TRADUCCION_TAMANO_LOTE de config.js
         const columnasIdiomasDestino = activeStateContainer.headers.map((h, i) => (h && h.toUpperCase().startsWith("NOMBRE_") && h.toUpperCase() !== "NOMBRE_ES") ? i : -1).filter(i => i !== -1);
         const indiceCastellanoBase = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === 'NOMBRE_ES');
 
@@ -591,15 +592,14 @@ export const UI = {
         }
 
         UI.log(`[Info] Auditoría completada. Se detectaron ${matrizFilasPendientes.length} filas incompletas. Agrupando en micro-lotes distribuidos...`);
-        const TAMANO_LOTE = 3;
-
-        for (let j = 0; j < matrizFilasPendientes.length; j += TAMANO_LOTE) {
+        
+        for (let j = 0; j < matrizFilasPendientes.length; j += TRADUCCION_TAMANO_LOTE) {
             if (procesoDetenido) break;
             while (procesoPausado) { 
                 await new Promise(resolve => setTimeout(resolve, 500)); 
             }
 
-            const loteActual = matrizFilasPendientes.slice(j, j + TAMANO_LOTE);
+            const loteActual = matrizFilasPendientes.slice(j, j + TRADUCCION_TAMANO_LOTE);
             const estructuraPromptPayload = loteActual.map(p => ({
                 id_fila: p.numeroFilaHumana,
                 texto: p.textoES,
