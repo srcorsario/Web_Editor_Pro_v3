@@ -1,4 +1,4 @@
-/* Web Editor Pro - Styles CSS - Version 1.0.9 */
+/* Web Editor Pro - Styles CSS - Version 1.1.0 */
 :root { 
     --primario: #e67e22; 
     --fondo: #f4f7f6; 
@@ -564,8 +564,9 @@ input:checked + .slider-switch:before { transform: translateX(18px); }
     box-sizing: border-box;
 }
 
+/* MODIFICADO: Aumentado el max-width para acomodar IDs de 5 dígitos sin recortar */
 .org-table input[type="number"] {
-    max-width: 100px;
+    max-width: 120px;
     text-align: center;
 }
 
