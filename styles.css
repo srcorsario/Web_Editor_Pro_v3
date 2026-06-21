@@ -1,4 +1,4 @@
-/* Web Editor Pro - Styles CSS - Version 1.0.8 */
+/* Web Editor Pro - Styles CSS - Version 1.0.9 */
 :root { 
     --primario: #e67e22; 
     --fondo: #f4f7f6; 
@@ -476,6 +476,115 @@ input:checked + .slider-switch:before { transform: translateX(18px); }
 .croqueta-btn.selected.carne { background: #c0392b; color: white; border-color: #c0392b; }
 .croqueta-btn.selected.pescado { background: #2980b9; color: white; border-color: #2980b9; }
 .croqueta-btn.selected.vegetariana { background: #27ae60; color: white; border-color: #27ae60; }
+
+
+/* ======================================================= */
+/* --- NUEVO: ESTILOS PARA EL ORGANIZADOR DE IDS --- */
+/* ======================================================= */
+
+.org-container {
+    background: white;
+    border-radius: 0 0 10px 10px;
+    border: 1px solid #ddd;
+    border-top: none;
+    padding: 20px;
+}
+
+.org-header {
+    margin-bottom: 15px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 15px;
+}
+
+.org-tab-btn {
+    padding: 8px 16px;
+    background: #f1f2f6;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #7f8c8d;
+    transition: all 0.2s;
+}
+
+.org-tab-btn:hover {
+    background: #e2e8f0;
+}
+
+.org-tab-btn.active-org-tab {
+    background: var(--primario);
+    color: white;
+    border-color: var(--primario);
+}
+
+.org-table-wrapper {
+    max-height: 70vh;
+    overflow-y: auto;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+}
+
+.org-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.org-table th {
+    background: #f8f9fa;
+    padding: 12px;
+    text-align: left;
+    font-weight: 700;
+    color: var(--texto);
+    border-bottom: 2px solid #ddd;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.org-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid #f1f2f6;
+    vertical-align: middle;
+}
+
+.org-table tr:hover {
+    background-color: #fdfdfd;
+}
+
+.org-table input[type="number"],
+.org-table input[type="text"] {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.8rem;
+    box-sizing: border-box;
+}
+
+.org-table input[type="number"] {
+    max-width: 100px;
+    text-align: center;
+}
+
+.org-table input:focus {
+    outline: none;
+    border-color: var(--primario);
+    box-shadow: 0 0 0 2px rgba(230, 126, 34, 0.2);
+}
+
+.org-level-0 > td {
+    background-color: #fef9f4;
+    font-weight: 700;
+    color: var(--primario);
+}
+
+.org-level-1 > td {
+    padding-left: 30px;
+    background-color: #ffffff;
+}
 
 
 /* ======================================================= */
