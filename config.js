@@ -1,7 +1,7 @@
 // --- config.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.config = '1.1.1'; // Incrementado por corrección de ruta de alérgenos
+window.APP_VERSIONS.config = '1.2.0'; // Incrementado por inyección de dependencia (Desacoplamiento de window.currentMode)
 
 // =====================================================================
 // CONFIGURACIÓN DE REDES (Google Sheets & Web Apps)
@@ -15,16 +15,18 @@ const WEB_APP_URL_RG = 'https://script.google.com/macros/s/AKfycbxBdhrRWx9GNYU_o
 const CSV_URL_USOPEN = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSOWewZgqWZEFYiIMh8DTUX5tr6EEXBwvUJGr7hrpkCG91UhE5xU8fDJ12qcRVrT69xfZ5NGGGyhNCE/pub?gid=0&single=true&output=csv';
 const WEB_APP_URL_USOPEN = 'https://script.google.com/macros/s/AKfycbzfA3OnavQcmM3IG-7-PeHJw3U44UH5CREnLtwypxDxNQehQ4ZuM6iYqu5lt0VmUnKn/exec';
 
-// Función auxiliar para obtener la URL correcta según el contexto actual
-function getWebAppUrl() {
-    if (window.currentMode === 'USOPEN') {
+// MODIFICADO: Función auxiliar pura. Ya no lee window.currentMode. 
+// Recibe el modo explícitamente para evitar acoplamiento global.
+function getWebAppUrl(modo) {
+    if (modo === 'USOPEN') {
         return WEB_APP_URL_USOPEN;
     }
     return WEB_APP_URL_RG;
 }
 
-function getCsvUrl() {
-    if (window.currentMode === 'USOPEN') {
+// MODIFICADO: Función auxiliar pura. Ya no lee window.currentMode.
+function getCsvUrl(modo) {
+    if (modo === 'USOPEN') {
         return CSV_URL_USOPEN;
     }
     return CSV_URL_RG;
