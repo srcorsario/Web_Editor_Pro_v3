@@ -1,7 +1,7 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '1.1.0-DYNAMIC-STRUCTURE-V2'; // MODIFICADO: Incrementado por soporte de ESTRUCTURA_CUSTOM
+window.APP_VERSIONS.app = '1.2.0-DIRECT-STRUCTURE-ARCH'; // MODIFICADO: Salto por nueva arquitectura directa
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
@@ -25,21 +25,8 @@ try {
     console.warn("[Editor] Error recuperando estados de sessionStorage:", e);
 }
 
-// NUEVO: Diccionario para sobrescribir nombres de categorías por restaurante (Carta 01 vs Carta 02)
-// Si un ID tiene un override aquí, el Editor usará este texto en lugar del de data.js
-window.CATEGORY_OVERRIDES = {
-    RG: {},
-    USOPEN: {}
-};
-
-// NUEVO: Función helper para obtener el nombre de la categoría respetando el modo activo
-function getCategoryName(catId, defaultName) {
-    const modo = window.currentMode || 'RG';
-    if (window.CATEGORY_OVERRIDES[modo] && window.CATEGORY_OVERRIDES[modo][catId] !== undefined) {
-        return window.CATEGORY_OVERRIDES[modo][catId];
-    }
-    return defaultName;
-}
+// NOTA: getCategoryName y CATEGORY_OVERRIDES se mantienen en el archivo por compatibilidad 
+// pero el Editor Principal ya no las necesita pues edita los objetos directamente en estructuras.js
 
 let datosLocales = [];
 let platoEditandoId = null;
@@ -227,19 +214,16 @@ function renderizar() {
     let h = "";
     datosLocales.sort((a, b) => a.id - b.id);
     
-    // NUEVO: Usar estructura custom dinámica si existe para el modo actual, si no, usar la base de data.js
-    const estructuraActual = (window.ESTRUCTURA_CUSTOM && window.ESTRUCTURA_CUSTOM[window.currentMode]) 
-                             ? window.ESTRUCTURA_CUSTOM[window.currentMode] 
-                             : window.ESTRUCTURA;
-
+    // MODIFICADO: Usar función directa del archivo estructuras.js
+    const estructuraActual = getEstructuraActual();
     if (!estructuraActual) return;
 
     estructuraActual.forEach(cat => {
         const platos = datosLocales.filter(p => p.id >= cat.id && p.id <= (cat.id + cat.rango));
         if (platos.length === 0) return;
         
-        // MODIFICADO: Usar helper getCategoryName para soportar nombres independientes por carta
-        h += `<div class="categoria-tarjeta"><div class="categoria-titulo">${getCategoryName(cat.id, cat.name)}</div>`;
+        // MODIFICADO: Usar cat.name directamente (ya es único por carta gracias a estructuras.js)
+        h += `<div class="categoria-tarjeta"><div class="categoria-titulo">${cat.name}</div>`;
         platos.forEach((p) => {
             // CORREGIDO: Revertido a indicador visual de cámara (emoji). 
             // No se deben cargar las imágenes físicas reales en el proyecto del Editor.
@@ -758,24 +742,21 @@ function aplicarCambiosPlato() {
 }
 
 function generarMenuAgrupado() {
-    // NUEVO: Usar estructura custom dinámica si existe para el modo actual, si no, usar la base de data.js
-    const estructuraActual = (window.ESTRUCTURA_CUSTOM && window.ESTRUCTURA_CUSTOM[window.currentMode]) 
-                             ? window.ESTRUCTURA_CUSTOM[window.currentMode] 
-                             : window.ESTRUCTURA;
-
+    // MODIFICADO: Usar función directa del archivo estructuras.js
+    const estructuraActual = getEstructuraActual();
     if (!estructuraActual) return;
     
     let h = "";
     estructuraActual.forEach(cat => {
-        // MODIFICADO: Usar helper getCategoryName para soportar nombres independientes por carta
-        h += `<div style="margin-bottom:10px;"><div style="background:#eee;padding:5px;font-size:0.7rem;font-weight:bold;text-transform:uppercase;">${getCategoryName(cat.id, cat.name)}</div>`;
+        // MODIFICADO: Usar cat.name directamente
+        h += `<div style="margin-bottom:10px;"><div style="background:#eee;padding:5px;font-size:0.7rem;font-weight:bold;text-transform:uppercase;">${cat.name}</div>`;
         if (cat.sub) {
             cat.sub.forEach(s => {
-                // MODIFICADO: Usar helper getCategoryName para subcategorías también
-                h += `<button onclick="prepararNuevoPlato(${s.id}, '${s.folder}')" style="width:100%;text-align:left;padding:10px;background:white;border:1px solid #ddd;font-family:'Montserrat';cursor:pointer;">+ ${getCategoryName(s.id, s.name)}</button>`;
+                // MODIFICADO: Usar s.name directamente
+                h += `<button onclick="prepararNuevoPlato(${s.id}, '${s.folder}')" style="width:100%;text-align:left;padding:10px;background:white;border:1px solid #ddd;font-family:'Montserrat';cursor:pointer;">+ ${s.name}</button>`;
             });
         } else {
-            h += `<button onclick="prepararNuevoPlato(${cat.id}, '${cat.folder || ''}')" style="width:100%;text-align:left;padding:10px;background:white;border:1px solid #ddd;font-family:'Montserrat';cursor:pointer;">+ ${getCategoryName(cat.id, cat.name)}</button>`;
+            h += `<button onclick="prepararNuevoPlato(${cat.id}, '${cat.folder || ''}')" style="width:100%;text-align:left;padding:10px;background:white;border:1px solid #ddd;font-family:'Montserrat';cursor:pointer;">+ ${cat.name}</button>`;
         }
         h += `</div>`;
     });
@@ -784,11 +765,8 @@ function generarMenuAgrupado() {
 }
 
 function prepararNuevoPlato(baseId, folder) {
-    // NUEVO: Usar estructura custom dinámica si existe para el modo actual, si no, usar la base de data.js
-    const estructuraActual = (window.ESTRUCTURA_CUSTOM && window.ESTRUCTURA_CUSTOM[window.currentMode]) 
-                             ? window.ESTRUCTURA_CUSTOM[window.currentMode] 
-                             : window.ESTRUCTURA;
-
+    // MODIFICADO: Usar función directa del archivo estructuras.js
+    const estructuraActual = getEstructuraActual();
     if (!estructuraActual) return;
 
     let maxPermitido = baseId + 99;
