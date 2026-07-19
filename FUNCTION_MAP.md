@@ -1,6 +1,6 @@
 ```markdown
-// [🔒 ARCHIVO REESCRITO COMPLETAMENTE - VERSIÓN ACTUALIZADA v8.0 - ARQUITECTURA DIRECTA POR ARCHIVOS]
-```javascript
+// [🔒 ARCHIVO REESCRITO COMPLETAMENTE - VERSIÓN ACTUALIZADA v9.0 - ARQUITECTURA DIRECTA POR ARCHIVOS]
+
 Regla de Oro: Antes de renombrar, mover o eliminar una función/variable listada aquí, verifica su sección ⚠️ DEPENDENCIAS CRUZADAS para evitar romper otros módulos o los onclick del HTML.
 
 ================================================================================
@@ -20,8 +20,11 @@ window.UI.tempImportFile     File      ui.js                 ui.js (listener arc
 window.lastSaveAttempt       Number    app.js, ui.js         app.js (enviarAlExcel), ui.js (sincronizarConGoogleSheets)             ui.js (cargarGoogleSheets - Zona de Peligro)
 
 // NUEVO: Árboles de Estructura Dinámicos por Carta (Fuentes de verdad del Editor)
-window.ESTRUCTURA_RG         Array     estructuras.js       estructuras.js (init), organizador.js (ediciones)                 app.js (via getEstructuraActual)
-window.ESTRUCTURA_USOPEN     Array     estructuras.js       estructuras.js (init), organizador.js (ediciones)                 app.js (via getEstructuraActual)
+window.ESTRUCTURA_RESTAURANTE001 Array estructuras.js       estructuras.js (init), organizador.js (ediciones)                 app.js (via getEstructuraActual)
+window.ESTRUCTURA_RESTAURANTE002 Array estructuras.js       estructuras.js (init), organizador.js (ediciones)                 app.js (via getEstructuraActual)
+
+// NUEVO: Configuración de disponibilidad de restaurantes
+window.RESTAURANTES_CONFIG   Object    config.js             (Estática)                                                                index.html (Inyección post-config para ocultar tabs)
 
 // --- Funciones inyectadas explícitamente en window ---
 window.cancelarModoOptimista Function app.js                app.js (asignación)                                                     index.html (botón inline onclick)
@@ -36,21 +39,29 @@ window._orgUpdateCat         Function organizador.js       organizador.js (asign
 window._orgUpdateSub         Function organizador.js       organizador.js (asignación)                                            organizador.js (HTML dinámico onchange)
 window._orgAddSub            Function organizador.js       organizador.js (asignación)                                            organizador.js (HTML dinámico onclick)
 window._orgRemoveCat         Function organizador.js       organizador.js (asignación)                                            organizador.js (HTML dinámico onclick)
-window._orgRemoveSub         Function organizador.js       organizador.js (asignación)                                            organizador.js (HTML dinámico onclick)
+window._orgRemoveSub         Function organizador.js       organizador.js (asignación)                                            organizador.js (HTML dinámico onchange)
 
 // --- Variables de Super-Config (Inyectadas por config.js) ---
 CONSISTENCY_WINDOW_MS        Number    config.js             (Estática)                                                                app.js, index.html, sugerencias-print.js
 PATH_IMAGENES                String    config.js             (Estática)                                                                sugerencias-print.js
 PATH_ALERGENOS               String    config.js             (Estática)                                                                sugerencias-print.js
-LOGO_RG                      String    config.js             (Estática)                                                                index.html, sugerencias-print.js
-LOGO_USOPEN                  String    config.js             (Estática)                                                                index.html, sugerencias-print.js
-QR_RG_DEFAULT                String    config.js             (Estática)                                                                sugerencias-print.js
-QR_RG_MOD                    String    config.js             (Estática)                                                                sugerencias-print.js
-QR_USOPEN_DEFAULT            String    config.js             (Estática)                                                                sugerencias-print.js
-QR_USOPEN_MOD                String    config.js             (Estática)                                                                sugerencias-print.js
+LOGO_RESTAURANTE001          String    config.js             (Estática)                                                                index.html, sugerencias-print.js
+LOGO_RESTAURANTE002          String    config.js             (Estática)                                                                index.html, sugerencias-print.js
+QR_RESTAURANTE001_DEFAULT    String    config.js             (Estática)                                                                sugerencias-print.js
+QR_RESTAURANTE001_MOD        String    config.js             (Estática)                                                                sugerencias-print.js
+QR_RESTAURANTE002_DEFAULT    String    config.js             (Estática)                                                                sugerencias-print.js
+QR_RESTAURANTE002_MOD        String    config.js             (Estática)                                                                sugerencias-print.js
+GEMINI_ENDPOINT_URL          String    config.js             (Estática)                                                                app.js, ui.js
+TRADUCCION_TAMANO_LOTE       Number    config.js             (Estática)                                                                ui.js
 
 // Sistema de Alias de Marca (Inyectado por config.js)
 MODOS_ALIAS                  Object    config.js             (Estática - Diccionario)                                               index.html (Pestañas, Botones), app.js (Alertas, Status), ui.js (Logs, Botones), sugerencias-print.js (Impresión), organizador.js (Pestañas internas)
+
+// Funciones de utilidad de config.js
+isRestauranteA               Function  config.js             (Estática)                                                                app.js, index.html
+getModoAlias                 Function  config.js             (Estática)                                                                Varios
+getWebAppUrl                 Function  config.js             (Estática)                                                                app.js, ui.js
+getCsvUrl                    Function  config.js             (Estática)                                                                app.js, index.html
 
 // --- Variables de Utilidades (Inyectadas por utils.js de forma global implícita) ---
 window.desglosarNombre       Function utils.js              (Estática global)                                                        app.js, sugerencias-print.js
@@ -64,126 +75,52 @@ window.extraerJSON           Function utils.js              (Estática global)  
 ================================================================================
 No usa módulos. Se ejecuta en el scope global.
 
-Sistema de Alias de Marca
-- MODOS_ALIAS (Object): Diccionario que mapea Modo Interno ('RG', 'USOPEN') al Nombre Comercial ('Roland Garros', 'US Open').
-  Es usado por: getModoAlias(), index.html (inyección inicial de textos).
+Sistema de Control de Restaurantes
+- RESTAURANTES_CONFIG (Object): Diccionario abstracto que controla la visibilidad.
+  Escritores: (Estática)
+  Lectores: index.html (para ocultar pestañas), isRestauranteA()
 
+- isRestauranteA(modoInterno)
+  Retorna: Boolean
+  Lee: RESTAURANTES_CONFIG, modoInterno
+  Es usado por: app.js (cargar)
+
+Sistema de Alias de Marca
+- MODOS_ALIAS (Object): Mapea 'restaurante001' a 'Roland Garros', etc.
 - getModoAlias(modoInterno)
-  Retorna: String (Nombre visual o modo interno como fallback)
-  Lee: MODOS_ALIAS, modoInterno (Parámetro)
+  Retorna: String
   Es usado por: app.js, ui.js, sugerencias-print.js, index.html, organizador.js
 
 Constantes de Red
-- CSV_URL_RG, CSV_URL_USOPEN, WEB_APP_URL_RG, WEB_APP_URL_USOPEN
-  Es usado por: getWebAppUrl(), getCsvUrl() (ambas internas).
+- CSV_URL_RESTAURANTE001, CSV_URL_RESTAURANTE002, WEB_APP_URL_RESTAURANTE001, WEB_APP_URL_RESTAURANTE002
+  Es usado por: getWebAppUrl(), getCsvUrl()
 
 Funciones de Red
-- getWebAppUrl(modo)
-  Retorna: String (URL del Web App de Google)
-  Lee: modo (Parámetro inyectado por app.js/ui.js), WEB_APP_URL_RG, WEB_APP_URL_USOPEN
-  Es usado por: app.js (vía getWebAppUrlSafe()), ui.js (en sincronizarConGoogleSheets)
-
-- getCsvUrl(modo)
-  Retorna: String (URL del CSV de Google Sheets)
-  Lee: modo (Parámetro inyectado por app.js/ui.js), CSV_URL_RG, CSV_URL_USOPEN
-  Es usado por: app.js (vía getCsvUrlSafe()), index.html (en switchTab)
+- getWebAppUrl(modo), getCsvUrl(modo)
+  Es usado por: app.js (vía Safe wrappers), ui.js, index.html
 
 Configuración de Inteligencia Artificial (Gemini)
-- GEMINI_ENDPOINT_URL (String): URL base del modelo de IA (Gemini 2.5 Flash).
-  Es usado por: app.js (generarTraduccionEN, ejecutarTraduccionAutomatica), ui.js (iniciarTraduccionPorLotes)
-- TRADUCCION_TAMANO_LOTE (Number): Cantidad de filas que se agrupan en cada petición a la IA en el traductor masivo.
-  Es usado por: ui.js (iniciarTraduccionPorLotes)
+- GEMINI_ENDPOINT_URL, TRADUCCION_TAMANO_LOTE
+  Es usado por: app.js, ui.js
 
 Constantes de Assets y Sistema
-- PATH_IMAGENES, PATH_ALERGENOS, LOGO_RG, LOGO_USOPEN, QR_*, CONSISTENCY_WINDOW_MS
-  Es usado por: Varios (ver tabla Estado Global Compartido).
+- PATH_IMAGENES, PATH_ALERGENOS, LOGO_*, QR_*, CONSISTENCY_WINDOW_MS
+  Es usado por: Varios.
 
 
 ================================================================================
-📁 state.js
+📁 estructuras.js
 ================================================================================
 No usa módulos. Se ejecuta en el scope global.
 
-- getKeys()
-  Retorna: Array<String>
-  Lee: localStorage
-  Es usado por: app.js (generarTraduccionEN, ejecutarTraduccionAutomatica), ui.js (iniciarTraduccionPorLotes)
-
-- saveKey(key)
-  Escribe en: localStorage
-  Es usado por: app.js (agregarKey), ui.js (listener de addKeyBtn)
-
-- deleteKey(key)
-  Escribe en: localStorage
-  Es usado por: app.js (eliminarKeySeleccionada), ui.js (listener de btnEliminarKeySeleccionada)
-
-
-================================================================================
-📁 utils.js
-================================================================================
-No usa módulos. Se ejecuta en el scope global. Archivo puramente declarativo de funciones puras (no tocan DOM ni estado).
-
-- desglosarNombre(texto)
-  Retorna: { nombre: String, uvas: String }
-  Es usado por: app.js (varios lugares de renderizado y guardado), sugerencias-print.js (como principal).
-
-- superLimpiar(texto)
-  Retorna: String
-  Es usado por: app.js (cargar, aplicarCambiosPlato).
-
-- formatWineName(texto)
-  Retorna: String
-  Es usado por: app.js (abrirEditor, aplicarCambiosPlato, ejecutarTraduccionAutomatica).
-
-- extraerJSON(texto)
-  Retorna: Object (JSON parseado buscando el primer bloque válido)
-  Es usado por: app.js (generarTraduccionEN, ejecutarTraduccionAutomatica). 
-  NOTA: ui.js no usa esta función, hace un JSON.parse() directo tras limpiar marcadores con regex.
-
-
-================================================================================
-📁 languages.js
-================================================================================
-No usa módulos. Se ejecuta en el scope global. Archivo puramente declarativo.
-⚠️ ADVERTENCIA: ESTRUCTURA, categoriesList y subCatsLang se movieron a data.js. NO buscarlas aquí.
-
-- IDIOMAS_CONFIG (Object): Mapeo ISO -> Nombre visible.
-- IDIOMAS_ORDEN (Array): Orden de procesamiento.
-- IDIOMAS_CSV_INDICES (Object): Mapeo de qué columna del CSV pertenece a qué idioma.
-
-Lectores: app.js (carga, renderizado, traducción), ui.js (carga de columnas, render de radios).
-
-
-================================================================================
-📁 data.js
-================================================================================
-No usa módulos. Se ejecuta en el scope global. Archivo puramente declarativo.
-
-- ESTRUCTURA (Array): Arbol de categorías, subcategorías, IDs y rangos. (ACTÚA COMO FÁBRICA BASE).
-- categoriesList, subCatsLang (Object/Array): Diccionarios de traducción de categorías.
-- ALERGENOS_LISTA (Array): Lista de alérgenos con emojis.
-  Es usado por: app.js (abrirEditor, renderizado de modal).
-- CROQUETAS_CONFIG (Object): Configuración de sabores de croquetas.
-  Es usado por: app.js (abrirEditor, actualizarNombreCroquetas).
-
-Lectores: estructuras.js (copia base inicial), app.js (legacy/fallback), ui.js (carga de columnas, render de radios), organizador.js (restaurar fábrica).
-
-
-================================================================================
-📁 estructuras.js (NUEVO)
-================================================================================
-No usa módulos. Se ejecuta en el scope global. Actúa como puente entre data.js, localStorage y app.js.
-
-- window.ESTRUCTURA_RG (Array): Árbol final para Carta 01. Si existe en localStorage usa ese, si no, clona ESTRUCTURA de data.js.
-- window.ESTRUCTURA_USOPEN (Array): Árbol final para Carta 02. Si existe en localStorage usa ese, si no, clona ESTRUCTURA de data.js.
-  Escritores: estructuras.js (init), organizador.js (al editar y guardar, o al restaurar fábrica).
-  Lectores: app.js (indirectamente a través de getEstructuraActual).
+- window.ESTRUCTURA_RESTAURANTE001 (Array), window.ESTRUCTURA_RESTAURANTE002 (Array)
+  Escritores: estructuras.js (init), organizador.js
+  Lectores: app.js (via getEstructuraActual)
 
 - getEstructuraActual()
-  Retorna: Array (El árbol de la carta activa según window.currentMode)
-  Lee: window.currentMode, window.ESTRUCTURA_RG, window.ESTRUCTURA_USOPEN
-  Es usado por: app.js (renderizar, generarMenuAgrupado, prepararNuevoPlato).
-  ⚠️ AISLAMIENTO CRÍTICO: sugerencias-print.js NO usa esta función. Usa sus propios rangos hardcodeados.
+  Retorna: Array (El árbol de la carta activa)
+  Lee: window.currentMode
+  Es usado por: app.js
 
 
 ================================================================================
@@ -192,323 +129,76 @@ No usa módulos. Se ejecuta en el scope global. Actúa como puente entre data.js
 No usa módulos. Se ejecuta en el scope global. Contiene la lógica principal del Editor.
 
 Variables Locales (Scope de archivo)
-- datosLocales (Array): Reflejo local de window.datosLocales.
-- platoEditandoId (Number), esNuevoPlato (Boolean), datosTempNuevo (Object): Estado del modal editor.
-- opcionesENActuales (Array): Almacena temporalmente las opciones de IA de traducción EN.
-
-Funciones Utilitarias (Compartidas)
-Nota: Estas funciones se consumen desde utils.js de forma global.
-- desglosarNombre(texto), extraerJSON(texto), superLimpiar(texto), formatWineName(texto)
+- datosLocales, platoEditandoId, esNuevoPlato, datosTempNuevo, opcionesENActuales
 
 Funciones de Red y Estado
-
-- getWebAppUrlSafe()
-  Retorna: String
-  Lee: window.currentMode, window.WEB_APP_URL, window.getWebAppUrl (inyectando modo por parámetro)
-  Es usado por: Internamente en app.js (enviarAlExcel, cargar).
-
-- getCsvUrlSafe()
-  Retorna: String
-  Lee: window.currentMode, window.CSV_URL, window.getCsvUrl (inyectando modo por parámetro)
-  Es usado por: Internamente en app.js (cargar).
-
-- cargar(retryCount)
-  Lee: getCsvUrlSafe(), window.optimisticState, window.IDIOMAS_ORDEN, window.IDIOMAS_CSV_INDICES, CONSISTENCY_WINDOW_MS (GLOBAL)
-  Escribe en: window.datosLocales, window.hayCambiosSinGuardar, DOM (#status-carga usando getModoAlias, #editor-dinamico)
-  Es usado por: index.html (switchTab), se auto-invoca al final del archivo.
-
+- getWebAppUrlSafe(), getCsvUrlSafe()
+- cargar(retryCount) [Usa isRestauranteA]
 - enviarAlExcel()
-  Lee: getWebAppUrlSafe(), window.datosLocales, window.currentMode, window.IDIOMAS_ORDEN
-  Escribe en: window.optimisticState, sessionStorage, window.hayCambiosSinGuardar, window.lastSaveAttempt, DOM (#btn-guardar-dinamico), Alert (usando getModoAlias)
-  Es usado por: index.html (botón #btn-guardar-dinamico inline onclick), index.html (switchTab)
-
-- iniciarContadorOptimista(modo)
-  Lee: window.optimisticTimers, window.currentMode, CONSISTENCY_WINDOW_MS (GLOBAL)
-  Escribe en: window.optimisticTimers, sessionStorage, DOM (#optimistic-timer, usando getModoAlias para #timer-mode)
-  Es usado por: app.js (enviarAlExcel)
-
-- cancelarModoOptimista(modo)
-  Escribe en: window.optimisticTimers, window.optimisticState, sessionStorage, DOM (#optimistic-timer)
-  Es usado por: index.html (botón inline onclick en el timer)
+- iniciarContadorOptimista(modo), window.cancelarModoOptimista()
 
 Funciones de Renderizado y UI
-
-- renderizar()
-  Lee: datosLocales, getEstructuraActual() (desde estructuras.js), cat.name directamente
-  Escribe en: DOM (#editor-dinamico)
-
-- generarMenuAgrupado()
-  Lee: datosLocales, getEstructuraActual() (desde estructuras.js), cat.name / sub.name directamente
-  Escribe en: DOM (#lista-agrupada)
-
+- renderizar(), generarMenuAgrupado()
 - moverPlato(id, direccion)
-  Lee: datosLocales
-  Escribe en: datosLocales (IDs), window.hayCambiosSinGuardar
-  Es usado por: HTML generado en renderizar() (botones inline onclick)
-
-- abrirEditor(id, esNuevo)
-  Lee: window.datosLocales, window.IDIOMAS_ORDEN, window.IDIOMAS_CONFIG, ALERGENOS_LISTA (GLOBAL), CROQUETAS_CONFIG (GLOBAL)
-  Escribe en: Variables locales (platoEditandoId, esNuevoPlato), DOM (inputs del modal)
-  Es usado por: app.js (prepararNuevoPlato), index.html (botones dinámicos onclick)
-
-- actualizarNombreCroquetas()
-  Lee: platoEditandoId, CROQUETAS_CONFIG (GLOBAL), DOM (.croqueta-btn.selected)
-  Escribe en: DOM (#edit-es)
-  Es usado por: HTML generado en abrirEditor() (botones de croqueta inline onclick)
-
-- comprobarRequisitosTraduccion()
-  Lee: DOM (#edit-es, #edit-en)
-  Escribe en: DOM (#btn-autotraducir disabled state)
-  Es usado por: app.js (abrirEditor, actualizarNombreCroquetas, confirmarTraduccionEN)
-
-- aplicarCambiosPlato()
-  Lee: DOM (inputs del modal), window.IDIOMAS_ORDEN, platoEditandoId, esNuevoPlato
-  Escribe en: window.datosLocales, window.hayCambiosSinGuardar
-  Es usado por: index.html (botón modal onclick)
-
-- toggleActivo(id, v)
-  Lee: datosLocales
-  Escribe en: datosLocales, window.hayCambiosSinGuardar
-  Es usado por: HTML generado en renderizar() (switch inline onchange)
-
-- abrirSelector() / cerrarModal(id)
-  Escribe en: DOM (#modal-selector u ID proporcionado)
-  Es usado por: index.html (botón flotante onclick, botones de modal)
-
-- prepararNuevoPlato(baseId, folder)
-  Lee: getEstructuraActual() (desde estructuras.js), datosLocales
-  Escribe en: datosTempNuevo
-  Es usado por: HTML generado en generarMenuAgrupado() (botones inline onclick)
+- abrirEditor(id, esNuevo), actualizarNombreCroquetas(), comprobarRequisitosTraduccion()
+- aplicarCambiosPlato(), toggleActivo(id, v)
+- abrirSelector(), cerrarModal(id), prepararNuevoPlato(baseId, folder)
 
 Funciones de Traducción
-
-- generarTraduccionEN()
-  Lee: DOM (#edit-es), getKeys(), GEMINI_ENDPOINT_URL (GLOBAL)
-  Escribe en: DOM (#modal-traduccion-en), opcionesENActuales
-  Es usado por: index.html (botón onclick)
-
-- abrirModalTraduccionEN(), seleccionarOpcionEN(), confirmarTraduccionEN(), cerrarModalTraduccionEN()
-  Gestionan: El flujo interno del modal de selección de traducción EN.
-  Es usado por: index.html (botones onclick del modal)
-
+- generarTraduccionEN(), abrirModalTraduccionEN(), seleccionarOpcionEN(), confirmarTraduccionEN(), cerrarModalTraduccionEN()
 - ejecutarTraduccionAutomatica()
-  Lee: DOM, window.IDIOMAS_ORDEN, getKeys(), GEMINI_ENDPOINT_URL (GLOBAL)
-  Escribe en: DOM (inputs de idiomas restantes)
-  Es usado por: index.html (botón onclick)
 
-Funciones de API Keys (Legacy/Fallback en app.js)
-
-- actualizarListaKeys(), agregarKey(), eliminarKeySeleccionada()
-  Nota: Intentan delegar a UI.actualizarListaKeys(). Si UI no existe aún (por ser módulo), actúan como fallback manipulando el DOM directamente.
+Funciones de API Keys (Fallback)
+- eliminarKeySeleccionada()
 
 
 ================================================================================
 📁 ui.js (Módulo ES)
 ================================================================================
-Usa type="module". Todo está encapsulado, pero se expone globalmente al final via window.UI = UI;.
+Usa type="module". Expone window.UI al final.
 
 Variables Internas
-- currentKeyIndex (Number): Para balanceo de carga en traducción masiva.
-- procesoDetenido, procesoPausado (Boolean): Control de flujo de iniciarTraduccionPorLotes.
-- activeLang (String): Idioma activo en la vista previa de la pestaña Pro.
-- stateContainer (Object): ¡CRÍTICO! NO es window.datosLocales. Es una copia exclusiva para la pestaña "Traductor Pro" con sus propias headers y csvData.
+- currentKeyIndex, procesoDetenido, procesoPausado, activeLang
+- stateContainer (Objeto exclusivo para pestaña Pro: headers, csvData, currentProMode)
 
-- UI.log(mensaje)
-  Escribe en: Consola del navegador, DOM (#status-carga), DOM (#consola)
-  Es usado por: Casi todas las funciones de ui.js.
-
-- UI.setLoadingState(buttonId, isLoading, text)
-  Escribe en: DOM (botón proporcionado)
-  Es usado por: Definida, pero sin uso directo en el flujo actual (reservada/futura).
-
-- UI.actualizarListaKeys(selectorElemento)
-  Lee: getKeys()
-  Escribe en: DOM (#selectKeys o selector proporcionado)
-  Es usado por: ui.js (DOMContentLoaded), app.js (fallback)
-
-- UI.renderRadiosIdiomas()
-  Lee: window.IDIOMAS_CONFIG, activeLang
-  Escribe en: DOM (#radiosIdiomas), activeLang
-  Es usado por: ui.js (DOMContentLoaded)
-
-- UI.renderTable()
-  Lee: stateContainer, activeLang, window.IDIOMAS_CONFIG
-  Escribe en: DOM (#tableHeadRow, #tablaBody)
-  Es usado por: ui.js (Interno tras cargar datos o traducir)
-
-- UI.cargarGoogleSheets(targetUrl, retryCount)
-  Lee: window.Papa, window.lastSaveAttempt (GLOBAL), targetUrl (Parámetro)
-  Escribe en: stateContainer, DOM (#consola)
-  Es usado por: Listeners internos de loadSheetsBtnRG y loadSheetsBtnUSOPEN
-
-- UI.actualizarTextoBotonSync()
-  Lee: stateContainer.currentProMode
-  Escribe en: DOM (#btnSyncSheets usando getModoAlias)
-  Es usado por: ui.js (tras cargar datos o importar)
-
-- UI.sincronizarConGoogleSheets()
-  Lee: stateContainer, stateContainer.currentProMode, window.getWebAppUrl (desde config.js, pasando modo por parámetro)
-  Escribe en: window.lastSaveAttempt (GLOBAL), Red (Fetch POST), DOM (#consola usando getModoAlias)
-  Es usado por: Listener interno de btnSyncSheets
-
-- UI.inicializarAjustesExpertos()
-  Escribe en: Listeners de DOM para loadSheetsBtnRG, loadSheetsBtnUSOPEN, btnIniciar, btnPausa, btnCancelar, saveCsvBtn, btnSyncSheets, archivoLocal.
-  Es usado por: ui.js (DOMContentLoaded)
-
-- UI.confirmarImportacion(mode) / UI.cancelarImportacion()
-  Lee/Escribe: window.UI.tempImportFile, stateContainer, window.currentMode, DOM (#modal-seleccionar-destino, #archivoLocal). Usa getModoAlias en logs.
-  Es usado por: index.html (botones inline onclick en #modal-seleccionar-destino)
-
-- UI.exportarCSV(headers, csvData) / UI.importarCSV(file, callback)
-  Lee/Escribe: window.Papa, Blob API, FileReader API.
-  Es usado por: Listeners internos de saveCsvBtn y flujo de importación.
-
-- UI.iniciarTraduccionPorLotes(stateContainerParam)
-  Lee: getKeys(), stateContainer, DOM (rangos), GEMINI_ENDPOINT_URL (GLOBAL), TRADUCCION_TAMANO_LOTE (GLOBAL)
-  Escribe en: stateContainer.csvData, currentKeyIndex, DOM (#consola, #tablaBody)
-  Es usado por: Listener interno de btnIniciar
+Funciones Principales
+- UI.log(), UI.setLoadingState(), UI.actualizarListaKeys(), UI.renderRadiosIdiomas(), UI.renderTable()
+- UI.cargarGoogleSheets(targetUrl, retryCount), UI.actualizarTextoBotonSync()
+- UI.sincronizarConGoogleSheets() [Usa getWebAppUrl inyectando modo abstracto]
+- UI.inicializarAjustesExpertos() [Vincula listeners, asigna 'restaurante001' o 'restaurante002']
+- UI.confirmarImportacion(mode), UI.cancelarImportacion()
+- UI.exportarCSV(), UI.importarCSV()
+- UI.iniciarTraduccionPorLotes()
 
 
 ================================================================================
 📁 organizador.js (IIFE Unificada)
 ================================================================================
-Módulo aislado para la gestión visual y estructural de Categorías por restaurante.
-Se ejecuta en scope global pero encapsula su estado internamente. Arquitectura Directa v3.0.
-
-- activeTab (Variable Interna)
-  Tipo: String ('RG' o 'USOPEN')
-  Función: Controla qué árbol se está modificando en la tabla.
-
-- getTree() [Interna]
-  Retorna: Array (Referencia directa a window.ESTRUCTURA_RG o window.ESTRUCTURA_USOPEN)
-  Es usado por: Todas las funciones de edición y renderizado.
-
-- saveTree() [Interna]
-  Escribe en: localStorage (ORG_STRUCT_CUSTOM_RG u ORG_STRUCT_CUSTOM_USOPEN)
-  Es usado por: Todas las funciones de edición tras modificar un valor.
-
-- renderOrganizador() [Interna]
-  Lee: getTree(), getModoAlias (GLOBAL)
-  Escribe en: DOM (#org-table-container)
-  Es usado por: inicializarOrganizador(), switchOrgTab(), y tras cualquier edición.
-
-- window._orgUpdateCat(catId, key, value) [Expuesta a window]
-  Escribe en: getTree() (Modifica propiedad en el objeto de nivel 0 directamente), localStorage
-  Es usado por: HTML dinámico (inputs onchange de categorías principales)
-
-- window._orgUpdateSub(catId, subId, key, value) [Expuesta a window]
-  Escribe en: getTree() (Modifica propiedad en el objeto de nivel 1 directamente), localStorage
-  Es usado por: HTML dinámico (inputs onchange de subcategorías)
-
-- window._orgAddSub(catId) [Expuesta a window]
-  Lee: getTree()
-  Escribe en: getTree() (Añade objeto al array `sub`), localStorage, DOM (via renderOrganizador)
-  Es usado por: HTML dinámico (botón "+" onclick)
-
-- window._orgRemoveCat(catId) [Expuesta a window]
-  Lee: getTree()
-  Escribe en: getTree() (Elimina categoría principal y sus sub), localStorage, DOM (via renderOrganizador)
-  Es usado por: HTML dinámico (botón "✕" onclick en nivel 0)
-
-- window._orgRemoveSub(catId, subId) [Expuesta a window]
-  Lee: getTree()
-  Escribe en: getTree() (Elimina subcategoría específica), localStorage, DOM (via renderOrganizador)
-  Es usado por: HTML dinámico (botón "✕" onclick en nivel 1)
-
-- window.restaurarEstructuraBase() [Expuesta a window]
-  Lee: window.ESTRUCTURA (de data.js)
-  Escribe en: localStorage (elimina clave), window.ESTRUCTURA_RG/USOPEN (clona fábrica), DOM (via renderOrganizador)
-  Es usado por: index.html (botón #org-btn-restaurar inline onclick)
-
-- window.aplicarEstructuraOrg() [Expuesta a window]
-  Lee: getModoAlias (GLOBAL)
-  Escribe en: DOM (llamando a renderizar y generarMenuAgrupado de app.js para refrescar la vista)
-  Es usado por: index.html (botón #org-btn-aplicar inline onclick)
-  ⚠️ IMPORTANTE: Ya NO muta estructuras, solo fuerza que el editor principal vuelva a leer el árbol que ya se autoguardó en localStorage.
-
-- switchOrgTab(modo) [Interna]
-  Escribe en: activeTab, DOM (clases activas en botones)
-  Es usado por: Listeners de botones internos del HTML.
+Módulo aislado para gestión estructural.
+- activeTab (String: 'restaurante001' o 'restaurante002')
+- getTree(), saveTree(), renderOrganizador() [Internas]
+- Funciones window._org* expuestas para HTML dinámico.
+- window.restaurarEstructuraBase(), window.aplicarEstructuraOrg() [Expuestas]
 
 
 ================================================================================
 📁 sugerencias-print.js (IIFE Unificada)
 ================================================================================
-IIFE (Invocación Inmediata). Se ejecuta en scope aislado pero inyecta en window. Sustituye a los antiguos archivos separados de RG y USOPEN.
-⚠️ AISLAMIENTO SEGURO: Este archivo NO utiliza getEstructuraActual(), ESTRUCTURA_RG ni ESTRUCTURA_USOPEN. 
-Tiene sus propios rangos hardcodeados (12000-12999) para garantizar que la impresión A4 nunca se rompa por ediciones en el Organizador.
-
-SUGERENCIAS_CONFIG (Variable Interna de Configuración)
-- Tipo: Object
-- Claves obligatorias: 'RG', 'USOPEN' (Ambas en MAYÚSCULAS estrictas).
-- Contiene: versionStr, versionKey, containerId, logoSrc, qrImgId, qrRadioName, qrDefault, qrMod, defaultQrSelection, qrOptions (Array de objetos con value, label, isDefault).
-- MODIFICADO: Ahora los valores de logoSrc, qrDefault y qrMod apuntan a variables globales inyectadas por config.js (LOGO_RG, QR_RG_DEFAULT, etc.) en lugar de strings hardcoded.
-
-- window.renderCarta(modo)
-  Contrato de modo: String. DEBE ser 'RG' o 'USOPEN' (La función aplica .toUpperCase() por seguridad interna, pero el contrato es mayúsculas).
-  Lee: SUGERENCIAS_CONFIG[modo], window.datosLocales, window.optimisticState[modo], window.desglosarNombre (desde utils.js), PATH_ALERGENOS (desde config.js)
-  Escribe en: window.APP_VERSIONS, DOM (contenedor configurado en SUGERENCIAS_CONFIG)
-  Es usado por: index.html (switchTab -> window.renderCarta('RG') o window.renderCarta('USOPEN'))
-
-- procesarYRender(fuente, contenedor, config, modoSeguro) [Interna]
-  Lee: fuente (Array), config, window.desglosarNombre, PATH_ALERGENOS, CONSISTENCY_WINDOW_MS (GLOBAL)
-  Escribe en: Array fuente (por referencia)
-  Es usado por: window.renderCarta (Interna)
-
+IIFE aislado. Inyecta en window.
+- SUGERENCIAS_CONFIG (Object): Claves STRICT 'restaurante001', 'restaurante002'.
+- window.renderCarta(modo) [Espera 'restaurante001' o 'restaurante002']
 - window.imprimirSugerencias(modo)
-  Contrato de modo: String. DEBE ser 'RG' o 'USOPEN'.
-  Lee: SUGERENCIAS_CONFIG[modo], DOM (contenedor configurado), Estilos inyectados (#sugerencias-print-styles), getModoAlias (para título de ventana)
-  Escribe en: Nueva ventana del navegador (Window.open)
-  Es usado por: HTML generado dinámicamente (botón imprimir onclick)
-
 - window.toggleQR(tipo, modo)
-  Contrato de tipo: String. VALORES ESTRICTOS: 'none', 'default', 'mod'.
-  Contrato de modo: String. DEBE ser 'RG' o 'USOPEN' (Obligatoriedad de mayúsculas crítica para resolver SUGERENCIAS_CONFIG).
-  Lee: SUGERENCIAS_CONFIG[modo]
-  Escribe en: DOM (img #img-qr-rg o #img-qr-usopen -> atributo src y style.display)
-  Es usado por: HTML generado dinámicamente (inputs radio inline onchange)
-
-- aplicarParcheOptimista(fuente, modo) [Interna]
-  Lee: window.optimisticState, CONSISTENCY_WINDOW_MS (GLOBAL)
-  Escribe en: Array fuente (por referencia)
-  Es usado por: procesarYRender (Interna)
+- procesarYRender(), aplicarParcheOptimista() [Internas]
 
 
 ================================================================================
 📁 index.html (Scripts Inline)
 ================================================================================
-Contiene la orquestación de pestañas, sistema de arrastre del panel Debug y toggle de visibilidad.
-Los src de las imágenes del header apuntan a la ruta centralizada en config.js (inyectada mediante script instantáneo post-carga de config.js).
-Los textos estáticos de las pestañas se reescriben dinámicamente usando getModoAlias() en el bloque de inyección post-config.
-
+Orquestación de pestañas, inyección dinámica de config.js, debug panel.
 - actualizarTextoBotonGuardar()
-  Lee: window.currentMode, getModoAlias()
-  Escribe en: DOM (#btn-guardar-dinamico)
-  Es usado por: switchTab, inicialización.
-
-- switchTab(tabId, btnElement)
-  Lee: window.hayCambiosSinGuardar, window.cargar, window.renderCarta, window.optimisticTimers, getModoAlias()
-  Escribe en: window.currentMode, DOM (tabs, botones flotantes, #optimistic-timer usando getModoAlias), getModoAlias() para el timer
-  MODIFICADO: Ahora evita lanzar window.cargar() si tabId === 'organizador' para no sobrescribir datos innecesariamente.
-  Es usado por: Botones .tab-btn inline onclick
-
+- switchTab(tabId, btnElement) [Mapea tabs visuales a 'restaurante001'/'restaurante002']
 - updateDebugPanel()
-  Lee: window.APP_VERSIONS, window.optimisticState, window.datosLocales, window.currentMode, CONSISTENCY_WINDOW_MS (GLOBAL), getModoAlias()
-  Escribe en: DOM (#debug-versions, #debug-state mostrando Alias en cabeceras y modo activo sin paréntesis técnicos)
-  Es usado por: setInterval interno (cada 1s)
-
-Listeners de Arrastre (Debug Panel)
-- Objetivo: #debug-panel
-- Eventos: mousedown, mousemove, mouseup
-- Escribe en: Estilos inline de #debug-panel (left, top, cursor)
-
-Listeners de Toggle (Debug Panel)
-- Objetivo: #toggle-debug-panel
-- Eventos: change
-- Escribe en: Estilo display de #debug-panel (none o block)
-
-Bloque de Inyección de Alias (Post-Config)
-- Objetivo: #tab-btn-rg, #tab-btn-sug-rg, #tab-btn-usopen, #tab-btn-sug-usopen, #modal-dest-rg, #modal-dest-usopen, #label-web-rg, #label-web-usopen, #loadSheetsBtnRG, #loadSheetsBtnUSOPEN, #btnSyncSheets
-- Escribe en: innerText de los botones usando getModoAlias()
-- Es usado por: Ejecución inmediata al cargar index.html
+- Listeners Debug y Toggle
+- Bloque de Inyección de Alias y Visibilidad (Post-Config)
 ```
