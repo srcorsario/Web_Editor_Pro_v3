@@ -9,7 +9,7 @@ window.APP_VERSIONS.config = '2.1.0'; // Incrementado por exposición global de 
 // =====================================================================
 const RESTAURANTES_CONFIG = {
     restaurante001: { enabled: true },
-    restaurante002: { enabled: false }
+    restaurante002: { enabled: true }
 };
 
 // NUEVO: Exposición global para que index.html pueda ocultar las pestañas
