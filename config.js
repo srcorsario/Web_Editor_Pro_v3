@@ -5,10 +5,11 @@ window.APP_VERSIONS.config = '2.1.0'; // Incrementado por exposición global de 
 
 // =====================================================================
 // NUEVO: SISTEMA DE ENABLE/DISABLE DE RESTAURANTES (Desacoplamiento Visual)
+// Activo: { enabled: true } - Desactivado: { enabled: false }
 // =====================================================================
 const RESTAURANTES_CONFIG = {
     restaurante001: { enabled: true },
-    restaurante002: { enabled: true }
+    restaurante002: { enabled: false }
 };
 
 // NUEVO: Exposición global para que index.html pueda ocultar las pestañas
