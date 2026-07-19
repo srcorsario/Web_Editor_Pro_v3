@@ -14,12 +14,9 @@
 
     <div class="container">
         <div class="header-admin">
-            <!-- MODIFICADO: Usar un placeholder transparente para evitar parpadeos, el script de abajo lo llenará -->
             <img id="header-logo-rg" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" class="header-logo header-logo-left" alt="Logo RG">
-            
             <div class="header-center-wrapper">
                 <h1>Web Editor Pro <span id="app-version" style="font-size: 0.65rem; color: #95a5a6; font-weight: 400; margin-left: 10px; vertical-align: middle; display: inline-block;"></span></h1>
-                
                 <div style="display: flex; align-items: center; gap: 10px; width: 100%; margin-bottom: 10px;">
                     <div id="status-carga" class="status-ok" style="flex: 1;">⏳ Conectando...</div>
                     <div style="font-size: 0.7rem; display: flex; align-items: center; gap: 4px; white-space: nowrap; background: #f8f9fa; padding: 4px 8px; border-radius: 4px; border: 1px solid #ddd;">
@@ -27,12 +24,10 @@
                         <label for="toggle-debug-panel" style="cursor: pointer; color: #555; font-weight: 600; margin: 0;">DEBUG</label>
                     </div>
                 </div>
-                
                 <div id="optimistic-timer" style="display:none; font-size: 0.7rem; color: #c0392b; font-weight: bold; margin-top: 5px; background: #fce4e4; padding: 4px 8px; border-radius: 4px; align-items: center; gap: 5px;">
                     🔒 Consistencia <span id="timer-mode" style="background:#c0392b; color:white; padding: 1px 4px; border-radius: 3px; font-size: 0.65rem;">RG</span>: <span id="timer-seconds">180</span>s
                     <button onclick="cancelarModoOptimista()" style="margin-left: 10px; background: transparent; border: 1px solid #c0392b; color: #c0392b; padding: 1px 5px; border-radius: 3px; cursor: pointer; font-size: 0.6rem; font-weight: bold;">✕ CANCELAR</button>
                 </div>
-
                 <div class="api-keys-manager">
                     <label class="label-seccion">Gestión de API Keys Gemini</label>
                     <div class="api-keys-inputs">
@@ -47,13 +42,10 @@
                     </div>
                 </div>
             </div>
-
-            <!-- MODIFICADO: Usar un placeholder transparente para evitar parpadeos, el script de abajo lo llenará -->
             <img id="header-logo-usopen" src="data:image/gif;base64,R0lGODlhAQABAAD/ACWAAAAAAQABAAACADs=" class="header-logo header-logo-right" alt="Logo USOPEN">
         </div>
 
         <div class="tabs-container">
-            <!-- MODIFICADO: Añadidos IDs para inyección dinámica de Alias -->
             <button id="tab-btn-rg" class="tab-btn active" onclick="switchTab('editor', this)">1. Editor Carta RG</button>
             <button id="tab-btn-sug-rg" class="tab-btn" onclick="switchTab('sugerencias', this)">2. Sugerencias RG</button>
             <button class="tab-btn" onclick="switchTab('pro', this)" style="margin-left: auto; margin-right: auto;">3. Traductor Pro</button>
@@ -71,21 +63,17 @@
                     <div class="space-y-1.5">
                         <h3 class="text-sm font-semibold uppercase tracking-wider mb-2">1. Orígenes de Datos</h3>
                         <div class="grid grid-cols-1 gap-1 text-sm mb-2">
-                            <!-- NUEVO: Añadido ID para inyección de Alias -->
                             <div class="flex gap-2 items-center"><label id="label-web-rg" class="text-xs whitespace-nowrap font-bold text-slate-400">WEB RG:</label></div>
                             <div class="flex gap-1.5">
-                                <!-- MODIFICADO: Eliminado el value hardcodeado, el script de config lo llenará -->
-                                <input type="text" id="sheetsUrlRG" placeholder="Cargando URL RG desde config.js..." class="flex-1 text-xs py-1 px-2">
+                                <input type="text" id="sheetsUrlRG" placeholder="Cargando URL..." class="flex-1 text-xs py-1 px-2">
                                 <button id="loadSheetsBtnRG" class="btn btn-secondary text-xs py-1 px-2 whitespace-nowrap">Cargar web RG</button>
                             </div>
                         </div>
                         <div class="grid grid-cols-1 gap-1 text-sm mb-2">
-                            <!-- NUEVO: Añadido ID para inyección de Alias -->
                             <div class="flex gap-2 items-center"><label id="label-web-usopen" class="text-xs whitespace-nowrap font-bold text-slate-400">WEB USOPEN:</label></div>
                             <div class="flex gap-1.5">
-                                <!-- MODIFICADO: Eliminado el value hardcodeado, el script de config lo llenará -->
-                                <input type="text" id="sheetsUrlUSOpen" placeholder="Cargando URL USOPEN desde config.js..." class="flex-1 text-xs py-1 px-2">
-                                <button id="loadSheetsBtnUSOpen" class="btn btn-secondary text-xs py-1 px-2 whitespace-nowrap">Cargar web USOpen</button>
+                                <input type="text" id="sheetsUrlUSOpen" placeholder="Cargando URL..." class="flex-1 text-xs py-1 px-2">
+                                <button id="loadSheetsBtnUSOpen" class="btn btn-secondary text-xs py-1 px-2 whitespace-nowrap">Cargar web USOPEN</button>
                             </div>
                         </div>
                         <div class="grid grid-cols-1 gap-1 text-sm">
@@ -124,7 +112,7 @@
                     <table class="w-full">
                         <thead id="tableHeadRow" class="sticky top-0 z-10"></thead>
                         <tbody id="tablaBody" class="text-sm text-selle-300">
-                            <tr><td colspan="4" class="text-center py-8 text-slate-500 italic">Ningún archivo cargado en el sistema. Selecciona un origen arriba.</td></tr>
+                            <tr><td colspan="4" class="text-center py-8 text-slate-500 italic">Ningún archivo cargado en el sistema.</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -155,8 +143,9 @@
                 <h3 style="margin-top:0; margin-bottom: 10px;">¿Destino de la Importación?</h3>
                 <p style="color: #666; margin-bottom: 25px;">Selecciona a qué restaurante deseas subir los datos del archivo seleccionado:</p>
                 <div style="display: flex; gap: 15px; justify-content: center;">
-                    <button class="btn-modal-aceptar" id="modal-dest-rg" onclick="UI.confirmarImportacion('RG')" style="background-color: #e67e22; width: 100%; padding: 15px; font-size: 1.1rem;">RG (Roland Garros)</button>
-                    <button class="btn-modal-aceptar" id="modal-dest-usopen" onclick="UI.confirmarImportacion('USOPEN')" style="background-color: #2ecc71; width: 100%; padding: 15px; font-size: 1.1rem;">US Open</button>
+                    <!-- MODIFICADO: Llamadas abstractas -->
+                    <button class="btn-modal-aceptar" id="modal-dest-rg" onclick="UI.confirmarImportacion('restaurante001')" style="background-color: #e67e22; width: 100%; padding: 15px; font-size: 1.1rem;">RG (Roland Garros)</button>
+                    <button class="btn-modal-aceptar" id="modal-dest-usopen" onclick="UI.confirmarImportacion('restaurante002')" style="background-color: #2ecc71; width: 100%; padding: 15px; font-size: 1.1rem;">US Open</button>
                 </div>
                 <button class="btn-modal-cancelar" onclick="UI.cancelarImportacion()" style="margin-top: 25px;">Cancelar</button>
             </div>
@@ -222,81 +211,72 @@
             </div>
         </div>
 
-        <!-- Carga de Librerías y Scripts -->
         <script src="config.js"></script>
-        <!-- MODIFICADO: Script instantáneo que inyecta las URLs, Logos y ALIAS de config.js en inputs, header, pestañas y panel Pro -->
         <script>
-        if (typeof CSV_URL_RG !== 'undefined') document.getElementById('sheetsUrlRG').value = CSV_URL_RG;
-        if (typeof CSV_URL_USOPEN !== 'undefined') document.getElementById('sheetsUrlUSOpen').value = CSV_URL_USOPEN;
+        // MODIFICADO: Inyección dinámica desde config.js Abstract Keys
+        if (typeof CSV_URL_RESTAURANTE001 !== 'undefined') document.getElementById('sheetsUrlRG').value = CSV_URL_RESTAURANTE001;
+        if (typeof CSV_URL_RESTAURANTE002 !== 'undefined') document.getElementById('sheetsUrlUSOpen').value = CSV_URL_RESTAURANTE002;
         
-        // NUEVO: Inyección de Logos del Header desde config.js
         const logoRGEl = document.getElementById('header-logo-rg');
         const logoUSOPENEl = document.getElementById('header-logo-usopen');
-        if (typeof LOGO_RG !== 'undefined' && logoRGEl) logoRGEl.src = LOGO_RG;
-        if (typeof LOGO_USOPEN !== 'undefined' && logoUSOPENEl) logoUSOPENEl.src = LOGO_USOPEN;
+        if (typeof LOGO_RESTAURANTE001 !== 'undefined' && logoRGEl) logoRGEl.src = LOGO_RESTAURANTE001;
+        if (typeof LOGO_RESTAURANTE002 !== 'undefined' && logoUSOPENEl) logoUSOPENEl.src = LOGO_RESTAURANTE002;
 
-        // NUEVO: Inyección de ALIAS en las pestañas, botones de modales y panel Pro
         if (typeof getModoAlias === 'function') {
             const tabRG = document.getElementById('tab-btn-rg');
-            if (tabRG) tabRG.innerText = `1. Editor Carta ${getModoAlias('RG')}`;
-            
+            if (tabRG) tabRG.innerText = `1. Editor Carta ${getModoAlias('restaurante001')}`;
             const tabSugRG = document.getElementById('tab-btn-sug-rg');
-            if (tabSugRG) tabSugRG.innerText = `2. Sugerencias ${getModoAlias('RG')}`;
-            
+            if (tabSugRG) tabSugRG.innerText = `2. Sugerencias ${getModoAlias('restaurante001')}`;
             const tabUSOPEN = document.getElementById('tab-btn-usopen');
-            if (tabUSOPEN) tabUSOPEN.innerText = `4. Editor Carta ${getModoAlias('USOPEN')}`;
-            
+            if (tabUSOPEN) tabUSOPEN.innerText = `4. Editor Carta ${getModoAlias('restaurante002')}`;
             const tabSugUSOPEN = document.getElementById('tab-btn-sug-usopen');
-            if (tabSugUSOPEN) tabSugUSOPEN.innerText = `5. Sugerencias ${getModoAlias('USOPEN')}`;
+            if (tabSugUSOPEN) tabSugUSOPEN.innerText = `5. Sugerencias ${getModoAlias('restaurante002')}`;
 
-            // NUEVO: Inyección de Alias en los botones del modal de importación
             const modalDestRG = document.getElementById('modal-dest-rg');
-            if (modalDestRG) modalDestRG.innerText = getModoAlias('RG');
-
+            if (modalDestRG) modalDestRG.innerText = getModoAlias('restaurante001');
             const modalDestUSOPEN = document.getElementById('modal-dest-usopen');
-            if (modalDestUSOPEN) modalDestUSOPEN.innerText = getModoAlias('USOPEN');
+            if (modalDestUSOPEN) modalDestUSOPEN.innerText = getModoAlias('restaurante002');
 
-            // NUEVO: Inyección de Alias en la Pestaña Traductor Pro
             const labelWebRG = document.getElementById('label-web-rg');
-            if (labelWebRG) labelWebRG.innerText = `WEB ${getModoAlias('RG')}:`;
-
+            if (labelWebRG) labelWebRG.innerText = `WEB ${getModoAlias('restaurante001')}:`;
             const btnLoadRG = document.getElementById('loadSheetsBtnRG');
-            if (btnLoadRG) btnLoadRG.innerText = `Cargar web ${getModoAlias('RG')}`;
+            if (btnLoadRG) btnLoadRG.innerText = `Cargar web ${getModoAlias('restaurante001')}`;
 
             const labelWebUSOPEN = document.getElementById('label-web-usopen');
-            if (labelWebUSOPEN) labelWebUSOPEN.innerText = `WEB ${getModoAlias('USOPEN')}:`;
-
+            if (labelWebUSOPEN) labelWebUSOPEN.innerText = `WEB ${getModoAlias('restaurante002')}:`;
             const btnLoadUSOPEN = document.getElementById('loadSheetsBtnUSOpen');
-            if (btnLoadUSOPEN) btnLoadUSOPEN.innerText = `Cargar web ${getModoAlias('USOPEN')}`;
+            if (btnLoadUSOPEN) btnLoadUSOPEN.innerText = `Cargar web ${getModoAlias('restaurante002')}`;
 
-            // El botón de sincronizar se actualiza desde ui.js dinámicamente al cambiar modo, 
-            // pero inyectamos un estado inicial coherente usando el modo por defecto (RG).
             const btnSyncSheets = document.getElementById('btnSyncSheets');
-            if (btnSyncSheets) btnSyncSheets.innerText = `☁️ Sincronizar con Google Sheet ${getModoAlias('RG')}`;
+            if (btnSyncSheets) btnSyncSheets.innerText = `☁️ Sincronizar con Google Sheet ${getModoAlias('restaurante001')}`;
+        }
+
+        // NUEVO: Sistema de Enable/Disable de Restaurantes
+        if (typeof RESTAURANTES_CONFIG !== 'undefined') {
+            if (!RESTAURANTES_CONFIG.restaurante001.enabled) {
+                const t1 = document.getElementById('tab-btn-rg'); if(t1) t1.style.display = 'none';
+                const t2 = document.getElementById('tab-btn-sug-rg'); if(t2) t2.style.display = 'none';
+            }
+            if (!RESTAURANTES_CONFIG.restaurante002.enabled) {
+                const t3 = document.getElementById('tab-btn-usopen'); if(t3) t3.style.display = 'none';
+                const t4 = document.getElementById('tab-btn-sug-usopen'); if(t4) t4.style.display = 'none';
+            }
         }
     </script>
     <script src="languages.js"></script>
-    <!-- NUEVO: Datos estáticos pesados del menú y configuraciones de UI -->
     <script src="data.js"></script>
     <script src="state.js"></script>
-    <!-- NUEVO: Utilidades puras de procesamiento de texto (Sin dependencias) -->
     <script src="utils.js"></script>
-    <!-- NUEVO: Estructuras separadas por carta (Carga antes de app.js) -->
     <script src="estructuras.js"></script>
-    <!-- Lógica principal del Editor -->
     <script src="app.js"></script>
-    <!-- Lógica del Traductor Pro (Módulo ES) -->
     <script type="module" src="ui.js"></script>
-    <!-- Impresión Unificada -->
     <script src="sugerencias-print.js"></script>
 
-    <!-- Pantalla Flotante de Carga -->
     <div id="loading-overlay" class="loading-overlay">
         <div class="spinner"></div>
         <div class="loading-text">Cargando datos...</div>
     </div>
 
-    <!-- Panel de Debug Visual Fijo -->
     <div id="debug-panel" style="display: none; position: fixed; bottom: 20px; left: 20px; background: #111827; color: #4ade80; padding: 12px; border-radius: 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11px; z-index: 9998; max-width: 320px; border: 1px solid #334155; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); line-height: 1.4; cursor: grab;">
         <div style="color: #f8fafc; margin-bottom: 8px; font-weight: bold; border-bottom: 1px solid #334155; padding-bottom: 4px;">🐛 DEBUG MODE ACTIVO</div>
         <div id="debug-versions" style="margin-bottom: 8px; color: #94a3b8;"></div>
@@ -305,20 +285,14 @@
     </div>
 
     <script>
-        console.log("%c[Editor] Inicializando configuración de URLs...", "color: blue; font-weight: bold;");
-
         function actualizarTextoBotonGuardar() {
             const btn = document.getElementById('btn-guardar-dinamico');
             if (!btn) return;
-            const modo = window.currentMode || 'RG';
-            // MODIFICADO: Uso de getModoAlias para el texto visual
+            const modo = window.currentMode || 'restaurante001';
             btn.innerText = `GUARDAR CAMBIOS EN WEB ${getModoAlias(modo)}`;
-            console.log(`[Editor] Botón actualizado a contexto: ${modo}`);
         }
 
         async function switchTab(tabId, btnElement) {
-            console.log(`[Editor] Cambiando a pestaña: ${tabId}`);
-            
             const loader = document.getElementById('loading-overlay');
             if (loader) loader.style.display = 'flex';
 
@@ -331,26 +305,16 @@
                         await window.enviarAlExcel();
                         return; 
                     }
-                    console.log("[Editor] Usuario descartó cambios o guardado falló. Procediendo con cambio...");
                 }
 
-                document.querySelectorAll('.tab-content').forEach(el => {
-                    el.classList.remove('active');
-                    el.style.display = 'none';
-                });
+                document.querySelectorAll('.tab-content').forEach(el => { el.classList.remove('active'); el.style.display = 'none'; });
                 document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
                 
                 let targetTabId = tabId;
-                if (tabId === 'editor-usopen') {
-                    targetTabId = 'editor';
-                }
+                if (tabId === 'editor-usopen') targetTabId = 'editor';
                 
                 const targetTab = document.getElementById('tab-' + targetTabId);
-                if (targetTab) {
-                    targetTab.classList.add('active');
-                    targetTab.style.display = 'block';
-                }
-
+                if (targetTab) { targetTab.classList.add('active'); targetTab.style.display = 'block'; }
                 if(btnElement) btnElement.classList.add('active');
 
                 const floatBtn = document.querySelector('.btn-add-float');
@@ -364,17 +328,12 @@
                     if(saveBtn) saveBtn.style.display = 'none';
                 }
 
-                let dataContext = "RG";
-
+                // MODIFICADO: Mapeo estricto a Abstract Keys
                 if (tabId === 'sugerencias-usopen' || tabId === 'editor-usopen') {
-                    window.currentMode = 'USOPEN';
-                    dataContext = "USOPEN";
+                    window.currentMode = 'restaurante002';
                 } else {
-                    window.currentMode = 'RG';
-                    dataContext = "RG";
+                    window.currentMode = 'restaurante001';
                 }
-
-                console.log(`[Editor] Contexto de datos establecido a: ${dataContext} (window.currentMode: ${window.currentMode})`);
 
                 actualizarTextoBotonGuardar();
 
@@ -383,27 +342,21 @@
                     if (window.optimisticTimers && window.optimisticTimers[window.currentMode]) {
                         timerDiv.style.display = 'flex';
                         const timerMode = document.getElementById('timer-mode');
-                        // MODIFICADO: Inyectar alias visual en el timer también
                         if(timerMode && typeof getModoAlias === 'function') timerMode.innerText = getModoAlias(window.currentMode);
                     } else {
                         timerDiv.style.display = 'none';
                     }
                 }
 
-                // MODIFICADO: Lógica de carga directa sin excepciones para pestañas eliminadas
                 if (typeof window.cargar === 'function') {
-                    try {
-                        await window.cargar();
-                    } catch (e) {
-                        console.error("[Editor] Error cargando datos:", e);
-                        alert("Error cargando datos: " + e.message);
-                    }
+                    try { await window.cargar(); } catch (e) { console.error("[Editor] Error cargando datos:", e); }
                 }
 
+                // MODIFICADO: Llamadas abstractas a renderCarta
                 if (tabId === 'sugerencias') {
-                    if (typeof window.renderCarta === 'function') window.renderCarta('RG');
+                    if (typeof window.renderCarta === 'function') window.renderCarta('restaurante001');
                 } else if (tabId === 'sugerencias-usopen') {
-                    if (typeof window.renderCarta === 'function') window.renderCarta('USOPEN');
+                    if (typeof window.renderCarta === 'function') window.renderCarta('restaurante002');
                 }
                 
                 actualizarTextoBotonGuardar();
@@ -412,9 +365,7 @@
             }
         }
 
-        if (!window.currentMode) {
-            window.currentMode = 'RG';
-        }
+        if (!window.currentMode) window.currentMode = 'restaurante001';
         actualizarTextoBotonGuardar();
 
         function updateDebugPanel() {
@@ -430,13 +381,13 @@
             }
             vDiv.innerHTML = vHtml;
 
-            // MODIFICADO: Redefinición total de textos para usar getModoAlias
-            const modoActual = window.currentMode || 'RG';
+            const modoActual = window.currentMode || 'restaurante001';
             const aliasActual = (typeof getModoAlias === 'function') ? getModoAlias(modoActual) : modoActual;
             
             let sHtml = `<div>Modo Activo: <span style="color: #60a5fa; font-weight: bold;">${aliasActual}</span></div><hr style="border-color: #334155; margin: 4px 0;">`;
             
-            ['RG', 'USOPEN'].forEach(modo => {
+            // MODIFICADO: Debug con Abstract Keys
+            ['restaurante001', 'restaurante002'].forEach(modo => {
                 const aliasModo = (typeof getModoAlias === 'function') ? getModoAlias(modo) : modo;
                 const state = window.optimisticState ? window.optimisticState[modo] : { t: 0, s: [] };
                 const timeSinceSave = Date.now() - state.t;
@@ -451,56 +402,24 @@
 
             sHtml += `<hr style="border-color: #334155; margin: 4px 0;">`;
             sHtml += `<div>Mem Local: <span style="color: #38bdf8;">${window.datosLocales ? window.datosLocales.length : 0} items</span></div>`;
-
             sDiv.innerHTML = sHtml;
         }
 
         (function() {
             const panel = document.getElementById('debug-panel');
             if (!panel) return;
-
-            let isDragging = false;
-            let startX = 0, startY = 0;
-            let initialLeft = 0, initialTop = 0;
-
+            let isDragging = false, startX = 0, startY = 0, initialLeft = 0, initialTop = 0;
             panel.addEventListener('mousedown', function(e) {
-                isDragging = true;
-                const rect = panel.getBoundingClientRect();
-                startX = e.clientX;
-                startY = e.clientY;
-                initialLeft = rect.left;
-                initialTop = rect.top;
-                panel.style.left = initialLeft + 'px';
-                panel.style.top = initialTop + 'px';
-                panel.style.bottom = 'auto';
-                panel.style.right = 'auto';
-                panel.style.cursor = 'grabbing';
-                e.preventDefault();
+                isDragging = true; const rect = panel.getBoundingClientRect(); startX = e.clientX; startY = e.clientY; initialLeft = rect.left; initialTop = rect.top; panel.style.left = initialLeft + 'px'; panel.style.top = initialTop + 'px'; panel.style.bottom = 'auto'; panel.style.right = 'auto'; panel.style.cursor = 'grabbing'; e.preventDefault();
             });
-
-            document.addEventListener('mousemove', function(e) {
-                if (!isDragging) return;
-                const dx = e.clientX - startX;
-                const dy = e.clientY - startY;
-                panel.style.left = (initialLeft + dx) + 'px';
-                panel.style.top = (initialTop + dy) + 'px';
-            });
-
-            document.addEventListener('mouseup', function() {
-                if (!isDragging) return;
-                isDragging = false;
-                panel.style.cursor = 'grab';
-            });
+            document.addEventListener('mousemove', function(e) { if (!isDragging) return; panel.style.left = (initialLeft + (e.clientX - startX)) + 'px'; panel.style.top = (initialTop + (e.clientY - startY)) + 'px'; });
+            document.addEventListener('mouseup', function() { if (!isDragging) return; isDragging = false; panel.style.cursor = 'grab'; });
         })();
 
         (function() {
             const checkbox = document.getElementById('toggle-debug-panel');
             const panel = document.getElementById('debug-panel');
-            if (checkbox && panel) {
-                checkbox.addEventListener('change', function() {
-                    panel.style.display = this.checked ? 'block' : 'none';
-                });
-            }
+            if (checkbox && panel) { checkbox.addEventListener('change', function() { panel.style.display = this.checked ? 'block' : 'none'; }); }
         })();
 
         setInterval(updateDebugPanel, 1000);
