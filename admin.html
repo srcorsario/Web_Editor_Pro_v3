@@ -46,16 +46,50 @@
         .radio-state-group { display: flex; gap: 20px; align-items: center; }
         .radio-state-label { color: #cbd5e1; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 0.9rem; font-weight: 500; }
 
-        // NUEVO: Estilos para inputs de assets con botón de preview
-        .asset-input-group { display: flex; gap: 8px; align-items: center; }
-        .asset-input-group .form-input { flex: 1; }
+        /* NUEVO: Estilos para input con botón integrado a la derecha */
+        .asset-input-wrapper { position: relative; width: 100%; }
+        .asset-input-wrapper .form-input { padding-right: 42px; }
         .btn-preview-asset {
-            background: #334155; border: 1px solid #475569; color: #f8fafc; border-radius: 6px;
-            width: 40px; height: 40px; font-size: 1.2rem; cursor: pointer;
-            display: flex; align-items: center; justify-content: center; transition: background 0.2s;
-            flex-shrink: 0; padding: 0;
+            position: absolute; right: 1px; top: 1px; bottom: 1px; width: 40px;
+            background: transparent; border: none; color: #64748b; 
+            cursor: pointer; border-radius: 0 6px 6px 0;
+            display: flex; align-items: center; justify-content: center; 
+            font-size: 1.1rem; transition: color 0.2s, background 0.2s;
         }
-        .btn-preview-asset:hover { background: #475569; border-color: #64748b; }
+        .btn-preview-asset:hover { color: #f8fafc; background: rgba(255,255,255,0.05); }
+
+        /* NUEVO: Estilos para el modal superficial de previsualización */
+        .img-preview-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0, 0, 0, 0.7); z-index: 10000; 
+            display: none; justify-content: center; align-items: center; 
+            backdrop-filter: blur(4px);
+        }
+        .img-preview-box { 
+            background: #1e293b; padding: 12px; border-radius: 12px; 
+            max-width: 320px; max-height: 320px; width: 90%; 
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); 
+            position: relative; border: 1px solid #334155;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .img-preview-box img { 
+            max-width: 100%; max-height: 280px; display: block; 
+            border-radius: 6px; object-fit: contain;
+        }
+        .img-preview-error {
+            color: #f87171; font-size: 0.85rem; text-align: center; 
+            word-break: break-all; padding: 20px; display: none;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        }
+        .img-preview-close { 
+            position: absolute; top: -10px; right: -10px; 
+            background: #ef4444; color: white; border: 2px solid #0f172a;
+            border-radius: 50%; width: 26px; height: 26px; 
+            font-size: 14px; cursor: pointer; 
+            display: flex; align-items: center; justify-content: center; 
+            font-weight: bold; transition: background 0.2s;
+        }
+        .img-preview-close:hover { background: #dc2626; }
     </style>
 </head>
 <body>
@@ -94,26 +128,25 @@
                         </div>
 
                         <div class="section-title" style="margin-top:20px; font-size: 0.85rem;"><span class="section-icon">🖼️</span> Assets</div>
-                        <!-- NUEVO: Asset con preview -->
                         <div class="form-group">
                             <label class="form-label">Logo (Solo nombre)</label>
-                            <div class="asset-input-group">
+                            <div class="asset-input-wrapper">
                                 <input type="text" id="cfg-logo-restaurante001" class="form-input" placeholder="Ej: logo_web01.png">
-                                <button type="button" class="btn-preview-asset" onclick="previewAsset('cfg-logo-restaurante001')" title="Ver imagen">📷</button>
+                                <button type="button" class="btn-preview-asset" onclick="previewAsset('cfg-logo-restaurante001')">📷</button>
                             </div>
                         </div>
                         <div class="form-group">
                             <label class="form-label">QR Default (Solo nombre)</label>
-                            <div class="asset-input-group">
+                            <div class="asset-input-wrapper">
                                 <input type="text" id="cfg-qr-restaurante001-default" class="form-input" placeholder="Ej: qr-web01-02.png">
-                                <button type="button" class="btn-preview-asset" onclick="previewAsset('cfg-qr-restaurante001-default')" title="Ver imagen">📷</button>
+                                <button type="button" class="btn-preview-asset" onclick="previewAsset('cfg-qr-restaurante001-default')">📷</button>
                             </div>
                         </div>
                         <div class="form-group">
                             <label class="form-label">QR Mod (Solo nombre)</label>
-                            <div class="asset-input-group">
+                            <div class="asset-input-wrapper">
                                 <input type="text" id="cfg-qr-restaurante001-mod" class="form-input" placeholder="Ej: qr-web01-01.png">
-                                <button type="button" class="btn-preview-asset" onclick="previewAsset('cfg-qr-restaurante001-mod')" title="Ver imagen">📷</button>
+                                <button type="button" class="btn-preview-asset" onclick="previewAsset('cfg-qr-restaurante001-mod')">📷</button>
                             </div>
                         </div>
                     </div>
@@ -146,26 +179,25 @@
                         </div>
 
                         <div class="section-title" style="margin-top:20px; font-size: 0.85rem;"><span class="section-icon">🖼️</span> Assets</div>
-                        <!-- NUEVO: Asset con preview -->
                         <div class="form-group">
                             <label class="form-label">Logo (Solo nombre)</label>
-                            <div class="asset-input-group">
+                            <div class="asset-input-wrapper">
                                 <input type="text" id="cfg-logo-restaurante002" class="form-input" placeholder="Ej: logo_web02.png">
-                                <button type="button" class="btn-preview-asset" onclick="previewAsset('cfg-logo-restaurante002')" title="Ver imagen">📷</button>
+                                <button type="button" class="btn-preview-asset" onclick="previewAsset('cfg-logo-restaurante002')">📷</button>
                             </div>
                         </div>
                         <div class="form-group">
                             <label class="form-label">QR Default (Solo nombre)</label>
-                            <div class="asset-input-group">
+                            <div class="asset-input-wrapper">
                                 <input type="text" id="cfg-qr-restaurante002-default" class="form-input" placeholder="Ej: qr-web02-01.png">
-                                <button type="button" class="btn-preview-asset" onclick="previewAsset('cfg-qr-restaurante002-default')" title="Ver imagen">📷</button>
+                                <button type="button" class="btn-preview-asset" onclick="previewAsset('cfg-qr-restaurante002-default')">📷</button>
                             </div>
                         </div>
                         <div class="form-group">
                             <label class="form-label">QR Mod (Solo nombre)</label>
-                            <div class="asset-input-group">
+                            <div class="asset-input-wrapper">
                                 <input type="text" id="cfg-qr-restaurante002-mod" class="form-input" placeholder="Ej: qr-web02-02.png">
-                                <button type="button" class="btn-preview-asset" onclick="previewAsset('cfg-qr-restaurante002-mod')" title="Ver imagen">📷</button>
+                                <button type="button" class="btn-preview-asset" onclick="previewAsset('cfg-qr-restaurante002-mod')">📷</button>
                             </div>
                         </div>
                     </div>
@@ -235,6 +267,15 @@
         </div>
     </div>
 
+    <!-- NUEVO: Modal superficial para previsualizar imágenes -->
+    <div id="img-preview-overlay" class="img-preview-overlay" onclick="closePreview()">
+        <div class="img-preview-box" onclick="event.stopPropagation()">
+            <button class="img-preview-close" onclick="closePreview()">✕</button>
+            <img id="img-preview-src" src="" alt="Preview">
+            <div id="img-preview-error" class="img-preview-error"></div>
+        </div>
+    </div>
+
     <!-- Inyección directa de config.js -->
     <script src="config.js"></script>
 
@@ -270,27 +311,48 @@
             return clean;
         }
 
-        // NUEVO: Función para previsualizar la imagen del asset
+        // NUEVO: Función para abrir el modal superficial de preview
         function previewAsset(inputId) {
             const inputEl = document.getElementById(inputId);
             const pathBaseEl = document.getElementById('cfg-path-imagenes');
+            const overlay = document.getElementById('img-preview-overlay');
+            const previewImg = document.getElementById('img-preview-src');
+            const errorTxt = document.getElementById('img-preview-error');
             
-            if (!inputEl || !pathBaseEl) return;
+            if (!inputEl || !pathBaseEl || !overlay || !previewImg) return;
             
             const filename = inputEl.value.trim();
             const basePath = pathBaseEl.value.trim();
             
-            if (!filename) {
-                alert("No hay ningún nombre de archivo asignado en este campo.");
-                return;
-            }
+            if (!filename) return;
             
-            // Construir la ruta real de la imagen
             const fullPath = basePath + filename;
             
-            // Abrir en una nueva pestaña. Si el archivo existe cargará la imagen,
-            // si no, el navegador mostrará un error 404 nativo.
-            window.open(fullPath, '_blank');
+            // Resetear estado visual
+            previewImg.style.display = 'none';
+            if (errorTxt) errorTxt.style.display = 'none';
+            
+            // Control de carga y errores
+            previewImg.onload = function() {
+                previewImg.style.display = 'block';
+                if (errorTxt) errorTxt.style.display = 'none';
+            };
+            previewImg.onerror = function() {
+                previewImg.style.display = 'none';
+                if (errorTxt) {
+                    errorTxt.innerText = "No se encontró la imagen:\n" + fullPath;
+                    errorTxt.style.display = 'block';
+                }
+            };
+            
+            previewImg.src = fullPath;
+            overlay.style.display = 'flex';
+        }
+
+        // NUEVO: Función para cerrar el modal
+        function closePreview() {
+            const overlay = document.getElementById('img-preview-overlay');
+            if (overlay) overlay.style.display = 'none';
         }
 
         function initAdmin() {
@@ -416,10 +478,11 @@
 
             output += `// =====================================================================\n`;
             output += `// CONFIGURACIÓN DE REDES (Google Sheets & Web Apps)\n\n`;
-            output += `// CONFIGURACION ${configSnapshot['MODOS_ALIAS'].restaurante001 || 'RESTAURANTE 001'} (restaurante001)\n`;
+            // MODIFICADO: Eliminados vestigios de nombres reales, usando solo abstract keys
+            output += `// CONFIGURACION restaurante001\n`;
             output += `const CSV_URL_RESTAURANTE001 = '${configSnapshot['CSV_URL_RESTAURANTE001']}';\n`;
             output += `const WEB_APP_URL_RESTAURANTE001 = '${configSnapshot['WEB_APP_URL_RESTAURANTE001']}';\n\n`;
-            output += `// CONFIGURACION ${configSnapshot['MODOS_ALIAS'].restaurante002 || 'RESTAURANTE 002'} (restaurante002)\n`;
+            output += `// CONFIGURACION restaurante002\n`;
             output += `const CSV_URL_RESTAURANTE002 = '${configSnapshot['CSV_URL_RESTAURANTE002']}';\n`;
             output += `const WEB_APP_URL_RESTAURANTE002 = '${configSnapshot['WEB_APP_URL_RESTAURANTE002']}';\n\n`;
             output += `// MODIFICADO: Función auxiliar pura. Recibe el modo explícitamente.\n`;
@@ -454,10 +517,11 @@
             output += `// NOTA: El nombre físico de la variable se mantiene LOGO_RESTAURANTE001 para no tener que renombrar archivos físicos\n`;
             output += `const LOGO_RESTAURANTE001 = PATH_IMAGENES + '${cleanAssetName(configSnapshot['LOGO_RESTAURANTE001'], pathBase)}';\n`;
             output += `const LOGO_RESTAURANTE002 = PATH_IMAGENES + '${cleanAssetName(configSnapshot['LOGO_RESTAURANTE002'], pathBase)}';\n\n`;
-            output += `// Códigos QR ${configSnapshot['MODOS_ALIAS'].restaurante001 || 'RESTAURANTE 001'}\n`;
+            // MODIFICADO: Eliminados vestigios de nombres reales
+            output += `// Códigos QR restaurante001\n`;
             output += `const QR_RESTAURANTE001_DEFAULT = PATH_IMAGENES + '${cleanAssetName(configSnapshot['QR_RESTAURANTE001_DEFAULT'], pathBase)}';\n`;
             output += `const QR_RESTAURANTE001_MOD = PATH_IMAGENES + '${cleanAssetName(configSnapshot['QR_RESTAURANTE001_MOD'], pathBase)}';\n\n`;
-            output += `// Códigos QR ${configSnapshot['MODOS_ALIAS'].restaurante002 || 'RESTAURANTE 002'}\n`;
+            output += `// Códigos QR restaurante002\n`;
             output += `const QR_RESTAURANTE002_DEFAULT = PATH_IMAGENES + '${cleanAssetName(configSnapshot['QR_RESTAURANTE002_DEFAULT'], pathBase)}';\n`;
             output += `const QR_RESTAURANTE002_MOD = PATH_IMAGENES + '${cleanAssetName(configSnapshot['QR_RESTAURANTE002_MOD'], pathBase)}';\n\n`;
 
