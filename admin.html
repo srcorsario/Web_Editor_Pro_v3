@@ -1,4 +1,3 @@
-// [🔒 ARCHIVO REESCRITO COMPLETAMENTE - PANTALLA COMPLETA, RADIO ESTADO Y TEXTOS AJUSTADOS]
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -7,7 +6,6 @@
     <title>Config Manager - Web Editor Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        // MODIFICADO: Padding reducido para aprovechar máximo ancho
         body { background-color: #0f172a; color: #f8fafc; font-family: 'Montserrat', sans-serif; padding: 15px; margin: 0; }
         .admin-card { background-color: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 24px; margin-bottom: 24px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3); }
         .admin-card h2 { font-size: 1.2rem; font-weight: 700; margin: 0 0 20px 0; color: #fbbf24; border-bottom: 2px solid #334155; padding-bottom: 10px; }
@@ -32,17 +30,11 @@
         .section-icon { font-size: 1.2rem; }
         .alert-box { background-color: #1e293b; border: 1px solid #475569; border-left: 4px solid #f59e0b; padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; color: #fde68a; font-size: 0.85rem; }
 
-        /* Grid para dividir verticalmente */
-        .admin-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 24px;
-        }
+        .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
         .admin-col-left { border-right: 1px solid #334155; padding-right: 24px; }
         .admin-col-right { padding-left: 24px; }
         .admin-full { grid-column: 1 / -1; border-top: 1px solid #334155; padding-top: 24px; margin-top: 10px; }
         
-        /* Responsive para móviles */
         @media (max-width: 768px) {
             .admin-grid { grid-template-columns: 1fr; }
             .admin-col-left, .admin-col-right { border: none; padding: 0; }
@@ -51,13 +43,22 @@
 
         .gh-config-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 15px; align-items: end; }
         
-        // NUEVO: Estilo para los radio buttons de estado
         .radio-state-group { display: flex; gap: 20px; align-items: center; }
         .radio-state-label { color: #cbd5e1; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 0.9rem; font-weight: 500; }
+
+        // NUEVO: Estilos para inputs de assets con botón de preview
+        .asset-input-group { display: flex; gap: 8px; align-items: center; }
+        .asset-input-group .form-input { flex: 1; }
+        .btn-preview-asset {
+            background: #334155; border: 1px solid #475569; color: #f8fafc; border-radius: 6px;
+            width: 40px; height: 40px; font-size: 1.2rem; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; transition: background 0.2s;
+            flex-shrink: 0; padding: 0;
+        }
+        .btn-preview-asset:hover { background: #475569; border-color: #64748b; }
     </style>
 </head>
 <body>
-    <!-- MODIFICADO: max-width eliminado para usar pantalla completa -->
     <div style="width: 100%; margin: 0 auto;">
         <div class="admin-card">
             <h2>⚙️ Config Manager</h2>
@@ -65,22 +66,15 @@
             
             <form id="config-form" style="display: none;">
                 <div class="admin-grid">
-                    <!-- ========================================== -->
-                    <!-- COLUMNA IZQUIERDA: RESTAURANTE 001         -->
-                    <!-- ========================================== -->
+                    <!-- COLUMNA IZQUIERDA: RESTAURANTE 001 -->
                     <div class="admin-col-left">
                         <div class="section-title"><span class="section-icon">🏢</span> <span id="title-rg" style="font-size: 0.95rem;">restaurante001</span></div>
                         
                         <div class="form-group">
                             <label class="form-label">Estado</label>
-                            <!-- NUEVO: Radio buttons en lugar de checkbox -->
                             <div class="radio-state-group">
-                                <label class="radio-state-label">
-                                    <input type="radio" name="state-restaurante001" value="true" class="form-checkbox"> Activado
-                                </label>
-                                <label class="radio-state-label">
-                                    <input type="radio" name="state-restaurante001" value="false" class="form-checkbox"> Desactivado
-                                </label>
+                                <label class="radio-state-label"><input type="radio" name="state-restaurante001" value="true" class="form-checkbox"> Activado</label>
+                                <label class="radio-state-label"><input type="radio" name="state-restaurante001" value="false" class="form-checkbox"> Desactivado</label>
                             </div>
                         </div>
 
@@ -100,36 +94,39 @@
                         </div>
 
                         <div class="section-title" style="margin-top:20px; font-size: 0.85rem;"><span class="section-icon">🖼️</span> Assets</div>
+                        <!-- NUEVO: Asset con preview -->
                         <div class="form-group">
                             <label class="form-label">Logo (Solo nombre)</label>
-                            <input type="text" id="cfg-logo-restaurante001" class="form-input" placeholder="Ej: logo_web01.png">
+                            <div class="asset-input-group">
+                                <input type="text" id="cfg-logo-restaurante001" class="form-input" placeholder="Ej: logo_web01.png">
+                                <button type="button" class="btn-preview-asset" onclick="previewAsset('cfg-logo-restaurante001')" title="Ver imagen">📷</button>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label class="form-label">QR Default (Solo nombre)</label>
-                            <input type="text" id="cfg-qr-restaurante001-default" class="form-input" placeholder="Ej: qr-web01-02.png">
+                            <div class="asset-input-group">
+                                <input type="text" id="cfg-qr-restaurante001-default" class="form-input" placeholder="Ej: qr-web01-02.png">
+                                <button type="button" class="btn-preview-asset" onclick="previewAsset('cfg-qr-restaurante001-default')" title="Ver imagen">📷</button>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label class="form-label">QR Mod (Solo nombre)</label>
-                            <input type="text" id="cfg-qr-restaurante001-mod" class="form-input" placeholder="Ej: qr-web01-01.png">
+                            <div class="asset-input-group">
+                                <input type="text" id="cfg-qr-restaurante001-mod" class="form-input" placeholder="Ej: qr-web01-01.png">
+                                <button type="button" class="btn-preview-asset" onclick="previewAsset('cfg-qr-restaurante001-mod')" title="Ver imagen">📷</button>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- ========================================== -->
-                    <!-- COLUMNA DERECHA: RESTAURANTE 002          -->
-                    <!-- ========================================== -->
+                    <!-- COLUMNA DERECHA: RESTAURANTE 002 -->
                     <div class="admin-col-right">
                         <div class="section-title"><span class="section-icon">🏢</span> <span id="title-usopen" style="font-size: 0.95rem;">restaurante002</span></div>
                         
                         <div class="form-group">
                             <label class="form-label">Estado</label>
-                            <!-- NUEVO: Radio buttons en lugar de checkbox -->
                             <div class="radio-state-group">
-                                <label class="radio-state-label">
-                                    <input type="radio" name="state-restaurante002" value="true" class="form-checkbox"> Activado
-                                </label>
-                                <label class="radio-state-label">
-                                    <input type="radio" name="state-restaurante002" value="false" class="form-checkbox"> Desactivado
-                                </label>
+                                <label class="radio-state-label"><input type="radio" name="state-restaurante002" value="true" class="form-checkbox"> Activado</label>
+                                <label class="radio-state-label"><input type="radio" name="state-restaurante002" value="false" class="form-checkbox"> Desactivado</label>
                             </div>
                         </div>
 
@@ -149,23 +146,31 @@
                         </div>
 
                         <div class="section-title" style="margin-top:20px; font-size: 0.85rem;"><span class="section-icon">🖼️</span> Assets</div>
+                        <!-- NUEVO: Asset con preview -->
                         <div class="form-group">
                             <label class="form-label">Logo (Solo nombre)</label>
-                            <input type="text" id="cfg-logo-restaurante002" class="form-input" placeholder="Ej: logo_web02.png">
+                            <div class="asset-input-group">
+                                <input type="text" id="cfg-logo-restaurante002" class="form-input" placeholder="Ej: logo_web02.png">
+                                <button type="button" class="btn-preview-asset" onclick="previewAsset('cfg-logo-restaurante002')" title="Ver imagen">📷</button>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label class="form-label">QR Default (Solo nombre)</label>
-                            <input type="text" id="cfg-qr-restaurante002-default" class="form-input" placeholder="Ej: qr-web02-01.png">
+                            <div class="asset-input-group">
+                                <input type="text" id="cfg-qr-restaurante002-default" class="form-input" placeholder="Ej: qr-web02-01.png">
+                                <button type="button" class="btn-preview-asset" onclick="previewAsset('cfg-qr-restaurante002-default')" title="Ver imagen">📷</button>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label class="form-label">QR Mod (Solo nombre)</label>
-                            <input type="text" id="cfg-qr-restaurante002-mod" class="form-input" placeholder="Ej: qr-web02-02.png">
+                            <div class="asset-input-group">
+                                <input type="text" id="cfg-qr-restaurante002-mod" class="form-input" placeholder="Ej: qr-web02-02.png">
+                                <button type="button" class="btn-preview-asset" onclick="previewAsset('cfg-qr-restaurante002-mod')" title="Ver imagen">📷</button>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- ========================================== -->
-                    <!-- SECCIÓN INFERIOR CENTRADA: GLOBAL         -->
-                    <!-- ========================================== -->
+                    <!-- SECCIÓN INFERIOR CENTRADA: GLOBAL -->
                     <div class="admin-full">
                         <div class="section-title"><span class="section-icon">🖼️</span> Rutas Globales</div>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
@@ -180,7 +185,6 @@
                         </div>
 
                         <div class="section-divider"></div>
-                        <!-- MODIFICADO: Texto actualizado de IA -->
                         <div class="section-title"><span class="section-icon">🧠</span> Inteligencia Artificial para la traducción de platos (Gemini)</div>
                         <div style="display: grid; grid-template-columns: 3fr 1fr; gap: 15px;">
                             <div class="form-group" style="margin-bottom: 0;">
@@ -188,7 +192,6 @@
                                 <textarea id="cfg-gemini-url" class="form-textarea" rows="2"></textarea>
                             </div>
                             <div class="form-group" style="margin-bottom: 0;">
-                                <!-- MODIFICADO: Texto actualizado de Lote -->
                                 <label class="form-label">Lineas de platos simultaneas a traducir</label>
                                 <input type="number" id="cfg-lote-size" class="form-input" min="1" max="100" step="1">
                             </div>
@@ -203,7 +206,6 @@
 
                         <div class="section-divider"></div>
                         
-                        <!-- NUEVO: Sección de Push Directo a GitHub -->
                         <div class="section-title"><span class="section-icon">🐙</span> Guardado Directo en GitHub</div>
                         <div class="alert-box" style="border-left-color: #6e40c9; margin-bottom: 15px;">
                             ⚠️ <strong>Requiere Token:</strong> Para sobreescribir el archivo directamente en tu repositorio de GitHub, necesitas un <strong>Personal Access Token (PAT)</strong> con permisos <code>repo</code>. El token se usa en el navegador y no se guarda en ningún servidor externo.
@@ -237,7 +239,6 @@
     <script src="config.js"></script>
 
     <script>
-        // MODIFICADO: Eliminados los booleanos de estado del mapeo genérico para manejarlos con radios
         const CONFIG_MAP = [
             { id: 'cfg-alias-restaurante001', key: 'MODOS_ALIAS.restaurante001', type: 'string' },
             { id: 'cfg-alias-restaurante002', key: 'MODOS_ALIAS.restaurante002', type: 'string' },
@@ -269,6 +270,29 @@
             return clean;
         }
 
+        // NUEVO: Función para previsualizar la imagen del asset
+        function previewAsset(inputId) {
+            const inputEl = document.getElementById(inputId);
+            const pathBaseEl = document.getElementById('cfg-path-imagenes');
+            
+            if (!inputEl || !pathBaseEl) return;
+            
+            const filename = inputEl.value.trim();
+            const basePath = pathBaseEl.value.trim();
+            
+            if (!filename) {
+                alert("No hay ningún nombre de archivo asignado en este campo.");
+                return;
+            }
+            
+            // Construir la ruta real de la imagen
+            const fullPath = basePath + filename;
+            
+            // Abrir en una nueva pestaña. Si el archivo existe cargará la imagen,
+            // si no, el navegador mostrará un error 404 nativo.
+            window.open(fullPath, '_blank');
+        }
+
         function initAdmin() {
             const statusDiv = document.getElementById('status-admin');
             const form = document.getElementById('config-form');
@@ -281,14 +305,12 @@
             try {
                 if (typeof RESTAURANTES_CONFIG === 'undefined') throw new Error("No se encontró la variable RESTAURANTES_CONFIG. ¿Está roto el archivo config.js?");
                 
-                // 1. Extraer RESTAURANTES_CONFIG
                 const restConfig = {
                     restaurante001: { enabled: RESTAURANTES_CONFIG.restaurante001.enabled },
                     restaurante002: { enabled: RESTAURANTES_CONFIG.restaurante002.enabled }
                 };
                 configSnapshot['RESTAURANTES_CONFIG'] = restConfig;
                 
-                // NUEVO: Inyectar estado en los Radio Buttons
                 const rgRadioOn = document.querySelector('input[name="state-restaurante001"][value="true"]');
                 const rgRadioOff = document.querySelector('input[name="state-restaurante001"][value="false"]');
                 if (rgRadioOn) rgRadioOn.checked = restConfig.restaurante001.enabled;
@@ -321,7 +343,6 @@
 
                 configSnapshot['CONSISTENCY_WINDOW_MS'] = CONSISTENCY_WINDOW_MS;
 
-                // Rellenar resto de campos genéricos
                 CONFIG_MAP.forEach(item => {
                     const el = document.getElementById(item.id);
                     if (el) {
@@ -333,7 +354,6 @@
                     }
                 });
 
-                // NUEVO: Títulos dinámicos con formato exacto solicitado
                 const aliasRG = configSnapshot['MODOS_ALIAS'].restaurante001 || 'Sin Alias';
                 const aliasUS = configSnapshot['MODOS_ALIAS'].restaurante002 || 'Sin Alias';
                 
@@ -352,7 +372,6 @@
         }
 
         function generateConfigCode() {
-            // 1. Leer campos genéricos
             CONFIG_MAP.forEach(item => {
                 const el = document.getElementById(item.id);
                 if (!el) return;
@@ -360,7 +379,6 @@
                 else if (item.type === 'string') configSnapshot[item.key] = el.value;
             });
 
-            // NUEVO: Leer estado de los Radio Buttons
             const rgRadio = document.querySelector('input[name="state-restaurante001"]:checked');
             configSnapshot['RESTAURANTES_CONFIG'].restaurante001.enabled = (rgRadio && rgRadio.value === 'true');
 
@@ -503,7 +521,6 @@
             }
         }
 
-        // NUEVO: Lógica para hacer Push directo a la API de GitHub
         async function handleGithubPush() {
             const statusDiv = document.getElementById('status-admin');
             const repoFullName = document.getElementById('gh-repo').value.trim();
@@ -525,7 +542,6 @@
             };
 
             try {
-                // 1. GET para obtener el SHA actual del archivo (Obligatorio en la API de GitHub para sobreescribir)
                 const getResp = await fetch(`${apiBase}?ref=${branch}`, { headers: headers });
                 if (!getResp.ok) {
                     if (getResp.status === 404) throw new Error("El archivo config.js no existe en la ruta indicada o el repositorio/rama son incorrectos.");
@@ -537,11 +553,9 @@
 
                 if (statusDiv) statusDiv.innerText = "⏳ Generando y subiendo nuevo config.js...";
 
-                // 2. Generar el código y codificar en Base64 seguro (UTF-8)
                 const newCode = generateConfigCode();
                 const contentBase64 = btoa(unescape(encodeURIComponent(newCode)));
 
-                // 3. PUT para actualizar el archivo existente
                 const putResp = await fetch(apiBase, {
                     method: 'PUT',
                     headers: headers,
