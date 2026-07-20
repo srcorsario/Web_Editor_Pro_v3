@@ -1,3 +1,4 @@
+// [🔒 ARCHIVO REESCRITO COMPLETAMENTE - CORRECCIÓN DE LECTURA LOCAL (FILE://)]
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -19,7 +20,6 @@
         .form-textarea:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
         .btn-save { width: 100%; padding: 14px; background-color: #22c55e; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 1rem; cursor: pointer; transition: background-color 0.2s; margin-top: 20px; }
         .btn-save:hover { background-color: #16a34a; }
-        // NUEVO: Botón secundario para copiar
         .btn-copy { width: 100%; padding: 14px; background-color: #3b82f6; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 1rem; cursor: pointer; transition: background-color 0.2s; margin-top: 10px; }
         .btn-copy:hover { background-color: #2563eb; }
         .section-divider { border-top: 1px solid #334155; margin: 30px 0; }
@@ -73,7 +73,6 @@
                 
                 <div class="form-group">
                     <label class="form-label">CSV URL Restaurante 001</label>
-                    <!-- MODIFICADO: Corregida etiqueta a form-textarea -->
                     <textarea id="cfg-csv-restaurante001" class="form-textarea" rows="2"></textarea>
                 </div>
 
@@ -119,7 +118,6 @@
 
                 <div class="form-group">
                     <label class="form-label">Ruta de Alérgenos</label>
-                    <!-- MODIFICADO: Corregida clase a form-input -->
                     <input type="text" id="cfg-path-alergenos" class="form-input" placeholder="Ej: imagenes/alergenos/">
                 </div>
 
@@ -164,14 +162,13 @@
                 </div>
 
                 <button type="button" class="btn-save" onclick="handleSaveAdmin()">💾 Descargar nuevo config.js</button>
-                <!-- NUEVO: Botón para copiar al portapapeles -->
                 <button type="button" class="btn-copy" onclick="handleCopyAdmin()">📋 Copiar código al portapapeles</button>
             </form>
         </div>
     </div>
 
-    <!-- Iframe oculto para cargar config.js de forma segura y extraer sus variables -->
-    <iframe id="config-iframe" src="config.js" style="position: absolute; width: 0; height: 0; border: 0; opacity: 0; pointer-events: none;"></iframe>
+    <!-- MODIFICADO: Inyección directa mediante script en lugar de iframe para soportar file:// -->
+    <script src="config.js"></script>
 
     <script>
         // NUEVO: Mapeo estricto de las variables que queremos extraer y su tipo para regenerar config.js
@@ -209,82 +206,76 @@
             return clean;
         }
 
-        // NUEVO: Extraer variables del iframe de forma segura
+        // MODIFICADO: Extracción directa del scope global en lugar de iframe.contentWindow
         function initAdmin() {
-            const iframe = document.getElementById('config-iframe');
             const statusDiv = document.getElementById('status-admin');
             const form = document.getElementById('config-form');
             
-            if (!iframe || !form) {
-                if (statusDiv) statusDiv.innerText = "❌ Error crítico: No se encontró el contenedor del iframe o el formulario.";
+            if (!form) {
+                if (statusDiv) statusDiv.innerText = "❌ Error crítico: No se encontró el formulario.";
                 return;
             }
 
-            iframe.onload = function() {
-                try {
-                    const w = iframe.contentWindow;
-                    if (!w || !w.RESTAURANTES_CONFIG) throw new Error("No se pudo acceder al contexto de config.js.");
-                    
-                    // 1. Extraer RESTAURANTES_CONFIG
-                    const restConfig = {
-                        restaurante001: { enabled: w.RESTAURANTES_CONFIG.restaurante001.enabled },
-                        restaurante002: { enabled: w.RESTAURANTES_CONFIG.restaurante002.enabled }
-                    };
-                    configSnapshot['RESTAURANTES_CONFIG'] = restConfig;
+            try {
+                // MODIFICADO: Verificar existencia directa en window
+                if (typeof RESTAURANTES_CONFIG === 'undefined') throw new Error("No se encontró la variable RESTAURANTES_CONFIG. ¿Está roto el archivo config.js?");
+                
+                // 1. Extraer RESTAURANTES_CONFIG
+                const restConfig = {
+                    restaurante001: { enabled: RESTAURANTES_CONFIG.restaurante001.enabled },
+                    restaurante002: { enabled: RESTAURANTES_CONFIG.restaurante002.enabled }
+                };
+                configSnapshot['RESTAURANTES_CONFIG'] = restConfig;
 
-                    // 2. Extraer MODOS_ALIAS
-                    const alias = { ...w.MODOS_ALIAS };
-                    configSnapshot['MODOS_ALIAS'] = alias;
+                // 2. Extraer MODOS_ALIAS
+                const alias = { ...MODOS_ALIAS };
+                configSnapshot['MODOS_ALIAS'] = alias;
 
-                    // 3. Extraer URLs
-                    configSnapshot['CSV_URL_RESTAURANTE001'] = w.CSV_URL_RESTAURANTE001;
-                    configSnapshot['CSV_URL_RESTAURANTE002'] = w.CSV_URL_RESTAURANTE002;
-                    configSnapshot['WEB_APP_URL_RESTAURANTE001'] = w.WEB_APP_URL_RESTAURANTE001;
-                    configSnapshot['WEB_APP_URL_RESTAURANTE002'] = w.WEB_APP_URL_RESTAURANTE002;
+                // 3. Extraer URLs
+                configSnapshot['CSV_URL_RESTAURANTE001'] = CSV_URL_RESTAURANTE001;
+                configSnapshot['CSV_URL_RESTAURANTE002'] = CSV_URL_RESTAURANTE002;
+                configSnapshot['WEB_APP_URL_RESTAURANTE001'] = WEB_APP_URL_RESTAURANTE001;
+                configSnapshot['WEB_APP_URL_RESTAURANTE002'] = WEB_APP_URL_RESTAURANTE002;
 
-                    // 4. Extraer IA Config
-                    configSnapshot['GEMINI_ENDPOINT_URL'] = w.GEMINI_ENDPOINT_URL;
-                    configSnapshot['TRADUCCION_TAMANO_LOTE'] = w.TRADUCCION_TAMANO_LOTE;
+                // 4. Extraer IA Config
+                configSnapshot['GEMINI_ENDPOINT_URL'] = GEMINI_ENDPOINT_URL;
+                configSnapshot['TRADUCCION_TAMANO_LOTE'] = TRADUCCION_TAMANO_LOTE;
 
-                    // 5. Extraer Assets
-                    configSnapshot['PATH_IMAGENES'] = w.PATH_IMAGENES;
-                    configSnapshot['PATH_ALERGENOS'] = w.PATH_ALERGENOS;
-                    
-                    // MODIFICADO: Limpiar la ruta base antes de mostrar en el formulario para mayor claridad
-                    configSnapshot['LOGO_RESTAURANTE001'] = cleanAssetName(w.LOGO_RESTAURANTE001, w.PATH_IMAGENES);
-                    configSnapshot['LOGO_RESTAURANTE002'] = cleanAssetName(w.LOGO_RESTAURANTE002, w.PATH_IMAGENES);
-                    configSnapshot['QR_RESTAURANTE001_DEFAULT'] = cleanAssetName(w.QR_RESTAURANTE001_DEFAULT, w.PATH_IMAGENES);
-                    configSnapshot['QR_RESTAURANTE001_MOD'] = cleanAssetName(w.QR_RESTAURANTE001_MOD, w.PATH_IMAGENES);
-                    configSnapshot['QR_RESTAURANTE002_DEFAULT'] = cleanAssetName(w.QR_RESTAURANTE002_DEFAULT, w.PATH_IMAGENES);
-                    // MODIFICADO: Corregido typo crítico 'QR_RESTURANTE' -> 'QR_RESTAURANTE'
-                    configSnapshot['QR_RESTAURANTE002_MOD'] = cleanAssetName(w.QR_RESTAURANTE002_MOD, w.PATH_IMAGENES);
+                // 5. Extraer Assets
+                configSnapshot['PATH_IMAGENES'] = PATH_IMAGENES;
+                configSnapshot['PATH_ALERGENOS'] = PATH_ALERGENOS;
+                
+                // Limpiar la ruta base antes de mostrar en el formulario para mayor claridad
+                configSnapshot['LOGO_RESTAURANTE001'] = cleanAssetName(LOGO_RESTAURANTE001, PATH_IMAGENES);
+                configSnapshot['LOGO_RESTAURANTE002'] = cleanAssetName(LOGO_RESTAURANTE002, PATH_IMAGENES);
+                configSnapshot['QR_RESTAURANTE001_DEFAULT'] = cleanAssetName(QR_RESTAURANTE001_DEFAULT, PATH_IMAGENES);
+                configSnapshot['QR_RESTAURANTE001_MOD'] = cleanAssetName(QR_RESTAURANTE001_MOD, PATH_IMAGENES);
+                configSnapshot['QR_RESTAURANTE002_DEFAULT'] = cleanAssetName(QR_RESTAURANTE002_DEFAULT, PATH_IMAGENES);
+                configSnapshot['QR_RESTAURANTE002_MOD'] = cleanAssetName(QR_RESTAURANTE002_MOD, PATH_IMAGENES);
 
-                    // 6. Extraer Sistema
-                    configSnapshot['CONSISTENCY_WINDOW_MS'] = w.CONSISTENCY_WINDOW_MS;
+                // 6. Extraer Sistema
+                configSnapshot['CONSISTENCY_WINDOW_MS'] = CONSISTENCY_WINDOW_MS;
 
-                    // 7. Llenar formulario
-                    CONFIG_MAP.forEach(item => {
-                        const el = document.getElementById(item.id);
-                        if (el) {
-                            if (item.type === 'boolean') {
-                                el.checked = Boolean(configSnapshot[item.key]);
-                            } else if (item.type === 'number') {
-                                el.value = configSnapshot[item.key];
-                            } else if (item.type === 'string') {
-                                el.value = configSnapshot[item.key] || "";
-                            }
+                // 7. Llenar formulario
+                CONFIG_MAP.forEach(item => {
+                    const el = document.getElementById(item.id);
+                    if (el) {
+                        if (item.type === 'boolean') {
+                            el.checked = Boolean(configSnapshot[item.key]);
+                        } else if (item.type === 'number') {
+                            el.value = configSnapshot[item.key];
+                        } else if (item.type === 'string') {
+                            el.value = configSnapshot[item.key] || "";
                         }
-                    });
+                    }
+                });
 
-                    if (statusDiv) statusDiv.innerText = "✅ Configuración cargada correctamente. Puedes modificar los campos y descargar el archivo.";
-                    if (form) form.style.display = 'block';
-                } catch (err) {
-                    console.error("[Admin] Error cargando config.js:", err);
-                    if (statusDiv) statusDiv.innerText = "❌ Error al leer config.js. Asegúrate que admin.html y config.js están en la misma carpeta y se sirve por HTTP (no file://).";
-                }
-            };
-            
-            iframe.src = 'config.js?t=' + Date.now();
+                if (statusDiv) statusDiv.innerText = "✅ Configuración cargada correctamente. Puedes modificar los campos y descargar el archivo.";
+                if (form) form.style.display = 'block';
+            } catch (err) {
+                console.error("[Admin] Error cargando config.js:", err);
+                if (statusDiv) statusDiv.innerText = "❌ Error al leer config.js: " + err.message;
+            }
         }
 
         // NUEVO: Generar el string de código JavaScript válido
@@ -312,7 +303,6 @@
             output += `window.APP_VERSIONS.config = '3.0.0'; // Incrementado por modificación desde Admin Tool\n\n\n`;
 
             // 3. RESTAURANTES_CONFIG
-            // MODIFICADO: Corregido error de sintaxis fatal ['RESTAURANTES_CONFIG', null, 4]
             output += `// =====================================================================\n`;
             output += `// NUEVO: SISTEMA DE ENABLE/DISABLE DE RESTAURANTES (Desacoplamiento Visual)\n`;
             output += `// Activo: { enabled: true } - Desactivado: { enabled: false }\n`;
@@ -378,7 +368,7 @@
             output += `// Logos Principales (Header del Editor)\n`;
             output += `// NOTA: El nombre físico de la variable se mantiene LOGO_RESTAURANTE001 para no tener que renombrar archivos físicos\n`;
             
-            // MODIFICADO: Concatenación limpia sin depender de un replace frágil
+            // Concatenación limpia sin depender de un replace frágil
             output += `const LOGO_RESTAURANTE001 = PATH_IMAGENES + '${cleanAssetName(configSnapshot['LOGO_RESTAURANTE001'], pathBase)}';\n`;
             output += `const LOGO_RESTAURANTE002 = PATH_IMAGENES + '${cleanAssetName(configSnapshot['LOGO_RESTAURANTE002'], pathBase)}';\n\n`;
             output += `// Códigos QR ${configSnapshot['MODOS_ALIAS'].restaurante001 || 'RESTAURANTE 001'}\n`;
@@ -434,7 +424,7 @@
                     if (statusDiv) statusDiv.innerText = "✅ ¡Código copiado al portapapeles! Pégalo en tu editor dentro de config.js.";
                 }).catch(err => {
                     console.warn("[Admin] Fallo Clipboard API, usando fallback:", err);
-                    // Fallback para navegadores que no soporten Clipboard API
+                    // Fallback para navegadores que no soporten Clipboard API o estén en file://
                     const textarea = document.createElement('textarea');
                     if (textarea) {
                         textarea.value = output;
@@ -446,7 +436,7 @@
                             document.execCommand('copy');
                             if (statusDiv) statusDiv.innerText = "✅ ¡Código copiado al portapapeles (Fallback)!";
                         } catch (e) {
-                            if (statusDiv) statusDiv.innerText = "❌ Tu navegador bloqueó el acceso al portapapeles.";
+                            if (statusDiv) statusDiv.innerText = "❌ Tu navegador bloqueó el acceso al portapapeles. Usa el botón de descarga.";
                         }
                         document.body.removeChild(textarea);
                     }
@@ -457,7 +447,7 @@
             }
         }
 
-        // Iniciar al cargar la página
+        // Iniciar al cargar la página (El script de config.js ya se ejecutó arriba sincrónicamente)
         window.onload = initAdmin;
     </script>
 </body>
