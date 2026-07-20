@@ -1,4 +1,4 @@
-// [🔒 ARCHIVO REESCRITO COMPLETAMENTE - DISEÑO DIVIDIDO Y PUSH DIRECTO A GITHUB]
+// [🔒 ARCHIVO REESCRITO COMPLETAMENTE - PANTALLA COMPLETA, RADIO ESTADO Y TEXTOS AJUSTADOS]
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -7,7 +7,8 @@
     <title>Config Manager - Web Editor Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background-color: #0f172a; color: #f8fafc; font-family: 'Montserrat', sans-serif; padding: 20px; }
+        // MODIFICADO: Padding reducido para aprovechar máximo ancho
+        body { background-color: #0f172a; color: #f8fafc; font-family: 'Montserrat', sans-serif; padding: 15px; margin: 0; }
         .admin-card { background-color: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 24px; margin-bottom: 24px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3); }
         .admin-card h2 { font-size: 1.2rem; font-weight: 700; margin: 0 0 20px 0; color: #fbbf24; border-bottom: 2px solid #334155; padding-bottom: 10px; }
         .form-group { margin-bottom: 16px; }
@@ -31,7 +32,7 @@
         .section-icon { font-size: 1.2rem; }
         .alert-box { background-color: #1e293b; border: 1px solid #475569; border-left: 4px solid #f59e0b; padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; color: #fde68a; font-size: 0.85rem; }
 
-        /* NUEVO: Grid para dividir verticalmente */
+        /* Grid para dividir verticalmente */
         .admin-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -41,7 +42,7 @@
         .admin-col-right { padding-left: 24px; }
         .admin-full { grid-column: 1 / -1; border-top: 1px solid #334155; padding-top: 24px; margin-top: 10px; }
         
-        /* NUEVO: Responsive para móviles */
+        /* Responsive para móviles */
         @media (max-width: 768px) {
             .admin-grid { grid-template-columns: 1fr; }
             .admin-col-left, .admin-col-right { border: none; padding: 0; }
@@ -49,10 +50,15 @@
         }
 
         .gh-config-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 15px; align-items: end; }
+        
+        // NUEVO: Estilo para los radio buttons de estado
+        .radio-state-group { display: flex; gap: 20px; align-items: center; }
+        .radio-state-label { color: #cbd5e1; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 0.9rem; font-weight: 500; }
     </style>
 </head>
 <body>
-    <div style="max-width: 1200px; margin: 0 auto;">
+    <!-- MODIFICADO: max-width eliminado para usar pantalla completa -->
+    <div style="width: 100%; margin: 0 auto;">
         <div class="admin-card">
             <h2>⚙️ Config Manager</h2>
             <div id="status-admin" style="margin-bottom: 20px; text-align: center; font-weight: 600; color: #22c55e;">Cargando configuración actual...</div>
@@ -63,13 +69,18 @@
                     <!-- COLUMNA IZQUIERDA: RESTAURANTE 001         -->
                     <!-- ========================================== -->
                     <div class="admin-col-left">
-                        <div class="section-title"><span class="section-icon">🏢</span> <span id="title-rg">Restaurante 001</span></div>
+                        <div class="section-title"><span class="section-icon">🏢</span> <span id="title-rg" style="font-size: 0.95rem;">restaurante001</span></div>
                         
                         <div class="form-group">
                             <label class="form-label">Estado</label>
-                            <div class="form-checkbox-wrapper">
-                                <input type="checkbox" id="cfg-restaurante001-enabled" class="form-checkbox">
-                                <label for="cfg-restaurante001-enabled" style="color: #cbd5e1; cursor: pointer;">Habilitado</label>
+                            <!-- NUEVO: Radio buttons en lugar de checkbox -->
+                            <div class="radio-state-group">
+                                <label class="radio-state-label">
+                                    <input type="radio" name="state-restaurante001" value="true" class="form-checkbox"> Activado
+                                </label>
+                                <label class="radio-state-label">
+                                    <input type="radio" name="state-restaurante001" value="false" class="form-checkbox"> Desactivado
+                                </label>
                             </div>
                         </div>
 
@@ -107,13 +118,18 @@
                     <!-- COLUMNA DERECHA: RESTAURANTE 002          -->
                     <!-- ========================================== -->
                     <div class="admin-col-right">
-                        <div class="section-title"><span class="section-icon">🏢</span> <span id="title-usopen">Restaurante 002</span></div>
+                        <div class="section-title"><span class="section-icon">🏢</span> <span id="title-usopen" style="font-size: 0.95rem;">restaurante002</span></div>
                         
                         <div class="form-group">
                             <label class="form-label">Estado</label>
-                            <div class="form-checkbox-wrapper">
-                                <input type="checkbox" id="cfg-restaurante002-enabled" class="form-checkbox">
-                                <label for="cfg-restaurante002-enabled" style="color: #cbd5e1; cursor: pointer;">Habilitado</label>
+                            <!-- NUEVO: Radio buttons en lugar de checkbox -->
+                            <div class="radio-state-group">
+                                <label class="radio-state-label">
+                                    <input type="radio" name="state-restaurante002" value="true" class="form-checkbox"> Activado
+                                </label>
+                                <label class="radio-state-label">
+                                    <input type="radio" name="state-restaurante002" value="false" class="form-checkbox"> Desactivado
+                                </label>
                             </div>
                         </div>
 
@@ -164,14 +180,16 @@
                         </div>
 
                         <div class="section-divider"></div>
-                        <div class="section-title"><span class="section-icon">🧠</span> Inteligencia Artificial (Gemini)</div>
+                        <!-- MODIFICADO: Texto actualizado de IA -->
+                        <div class="section-title"><span class="section-icon">🧠</span> Inteligencia Artificial para la traducción de platos (Gemini)</div>
                         <div style="display: grid; grid-template-columns: 3fr 1fr; gap: 15px;">
                             <div class="form-group" style="margin-bottom: 0;">
                                 <label class="form-label">Gemini Endpoint URL</label>
                                 <textarea id="cfg-gemini-url" class="form-textarea" rows="2"></textarea>
                             </div>
                             <div class="form-group" style="margin-bottom: 0;">
-                                <label class="form-label">Tamaño de Lote</label>
+                                <!-- MODIFICADO: Texto actualizado de Lote -->
+                                <label class="form-label">Lineas de platos simultaneas a traducir</label>
                                 <input type="number" id="cfg-lote-size" class="form-input" min="1" max="100" step="1">
                             </div>
                         </div>
@@ -219,10 +237,9 @@
     <script src="config.js"></script>
 
     <script>
+        // MODIFICADO: Eliminados los booleanos de estado del mapeo genérico para manejarlos con radios
         const CONFIG_MAP = [
-            { id: 'cfg-restaurante001-enabled', key: 'RESTAURANTES_CONFIG.restaurante001.enabled', type: 'boolean' },
             { id: 'cfg-alias-restaurante001', key: 'MODOS_ALIAS.restaurante001', type: 'string' },
-            { id: 'cfg-restaurante002-enabled', key: 'RESTAURANTES_CONFIG.restaurante002.enabled', type: 'boolean' },
             { id: 'cfg-alias-restaurante002', key: 'MODOS_ALIAS.restaurante002', type: 'string' },
             { id: 'cfg-csv-restaurante001', key: 'CSV_URL_RESTAURANTE001', type: 'string' },
             { id: 'cfg-webapp-restaurante001', key: 'WEB_APP_URL_RESTAURANTE001', type: 'string' },
@@ -264,11 +281,24 @@
             try {
                 if (typeof RESTAURANTES_CONFIG === 'undefined') throw new Error("No se encontró la variable RESTAURANTES_CONFIG. ¿Está roto el archivo config.js?");
                 
+                // 1. Extraer RESTAURANTES_CONFIG
                 const restConfig = {
                     restaurante001: { enabled: RESTAURANTES_CONFIG.restaurante001.enabled },
                     restaurante002: { enabled: RESTAURANTES_CONFIG.restaurante002.enabled }
                 };
                 configSnapshot['RESTAURANTES_CONFIG'] = restConfig;
+                
+                // NUEVO: Inyectar estado en los Radio Buttons
+                const rgRadioOn = document.querySelector('input[name="state-restaurante001"][value="true"]');
+                const rgRadioOff = document.querySelector('input[name="state-restaurante001"][value="false"]');
+                if (rgRadioOn) rgRadioOn.checked = restConfig.restaurante001.enabled;
+                if (rgRadioOff) rgRadioOff.checked = !restConfig.restaurante001.enabled;
+
+                const usRadioOn = document.querySelector('input[name="state-restaurante002"][value="true"]');
+                const usRadioOff = document.querySelector('input[name="state-restaurante002"][value="false"]');
+                if (usRadioOn) usRadioOn.checked = restConfig.restaurante002.enabled;
+                if (usRadioOff) usRadioOff.checked = !restConfig.restaurante002.enabled;
+
                 configSnapshot['MODOS_ALIAS'] = { ...MODOS_ALIAS };
 
                 configSnapshot['CSV_URL_RESTAURANTE001'] = CSV_URL_RESTAURANTE001;
@@ -291,12 +321,11 @@
 
                 configSnapshot['CONSISTENCY_WINDOW_MS'] = CONSISTENCY_WINDOW_MS;
 
+                // Rellenar resto de campos genéricos
                 CONFIG_MAP.forEach(item => {
                     const el = document.getElementById(item.id);
                     if (el) {
-                        if (item.type === 'boolean') {
-                            el.checked = Boolean(configSnapshot[item.key]);
-                        } else if (item.type === 'number') {
+                        if (item.type === 'number') {
                             el.value = configSnapshot[item.key];
                         } else if (item.type === 'string') {
                             el.value = configSnapshot[item.key] || "";
@@ -304,11 +333,15 @@
                     }
                 });
 
-                // NUEVO: Actualizar títulos dinámicos con los aliases
+                // NUEVO: Títulos dinámicos con formato exacto solicitado
+                const aliasRG = configSnapshot['MODOS_ALIAS'].restaurante001 || 'Sin Alias';
+                const aliasUS = configSnapshot['MODOS_ALIAS'].restaurante002 || 'Sin Alias';
+                
                 const titleRG = document.getElementById('title-rg');
-                if (titleRG) titleRG.innerText = configSnapshot['MODOS_ALIAS'].restaurante001 || 'Restaurante 001';
+                if (titleRG) titleRG.innerText = `restaurante001: "${aliasRG}"`;
+                
                 const titleUS = document.getElementById('title-usopen');
-                if (titleUS) titleUS.innerText = configSnapshot['MODOS_ALIAS'].restaurante002 || 'Restaurante 002';
+                if (titleUS) titleUS.innerText = `restaurante002: "${aliasUS}"`;
 
                 if (statusDiv) statusDiv.innerText = "✅ Configuración cargada. Modifica los campos y elige cómo guardar.";
                 if (form) form.style.display = 'block';
@@ -319,13 +352,20 @@
         }
 
         function generateConfigCode() {
+            // 1. Leer campos genéricos
             CONFIG_MAP.forEach(item => {
                 const el = document.getElementById(item.id);
                 if (!el) return;
-                if (item.type === 'boolean') configSnapshot[item.key] = el.checked;
-                else if (item.type === 'number') configSnapshot[item.key] = parseFloat(el.value) || 0;
+                if (item.type === 'number') configSnapshot[item.key] = parseFloat(el.value) || 0;
                 else if (item.type === 'string') configSnapshot[item.key] = el.value;
             });
+
+            // NUEVO: Leer estado de los Radio Buttons
+            const rgRadio = document.querySelector('input[name="state-restaurante001"]:checked');
+            configSnapshot['RESTAURANTES_CONFIG'].restaurante001.enabled = (rgRadio && rgRadio.value === 'true');
+
+            const usRadio = document.querySelector('input[name="state-restaurante002"]:checked');
+            configSnapshot['RESTAURANTES_CONFIG'].restaurante002.enabled = (usRadio && usRadio.value === 'true');
 
             const pathBase = configSnapshot['PATH_IMAGENES'] || '';
 
