@@ -1,4 +1,4 @@
-// [🔒 ARCHIVO REESCRITO COMPLETAMENTE - CORRECCIÓN DE LECTURA LOCAL (FILE://)]
+// [🔒 ARCHIVO REESCRITO COMPLETAMENTE - DISEÑO DIVIDIDO Y PUSH DIRECTO A GITHUB]
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -18,160 +18,207 @@
         .form-checkbox { width: 20px; height: 20px; accent-color: #22c55e; cursor: pointer; }
         .form-textarea { width: 100%; min-height: 80px; background-color: #0f172a; border: 1px solid #475569; color: #f8fafc; border-radius: 6px; padding: 10px 12px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.85rem; resize: vertical; outline: none; box-sizing: border-box; }
         .form-textarea:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
-        .btn-save { width: 100%; padding: 14px; background-color: #22c55e; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 1rem; cursor: pointer; transition: background-color 0.2s; margin-top: 20px; }
+        
+        .btn-save { padding: 14px; background-color: #22c55e; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 1rem; cursor: pointer; transition: background-color 0.2s; }
         .btn-save:hover { background-color: #16a34a; }
-        .btn-copy { width: 100%; padding: 14px; background-color: #3b82f6; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 1rem; cursor: pointer; transition: background-color 0.2s; margin-top: 10px; }
+        .btn-copy { padding: 14px; background-color: #3b82f6; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 1rem; cursor: pointer; transition: background-color 0.2s; }
         .btn-copy:hover { background-color: #2563eb; }
+        .btn-gh { padding: 14px; background-color: #6e40c9; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 1rem; cursor: pointer; transition: background-color 0.2s; }
+        .btn-gh:hover { background-color: #5b21b6; }
+
         .section-divider { border-top: 1px solid #334155; margin: 30px 0; }
         .section-title { font-size: 1rem; font-weight: 700; color: #60a5fa; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
         .section-icon { font-size: 1.2rem; }
         .alert-box { background-color: #1e293b; border: 1px solid #475569; border-left: 4px solid #f59e0b; padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; color: #fde68a; font-size: 0.85rem; }
+
+        /* NUEVO: Grid para dividir verticalmente */
+        .admin-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+        .admin-col-left { border-right: 1px solid #334155; padding-right: 24px; }
+        .admin-col-right { padding-left: 24px; }
+        .admin-full { grid-column: 1 / -1; border-top: 1px solid #334155; padding-top: 24px; margin-top: 10px; }
+        
+        /* NUEVO: Responsive para móviles */
+        @media (max-width: 768px) {
+            .admin-grid { grid-template-columns: 1fr; }
+            .admin-col-left, .admin-col-right { border: none; padding: 0; }
+            .admin-full { padding-top: 10px; margin-top: 0; border-top: none; }
+        }
+
+        .gh-config-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 15px; align-items: end; }
     </style>
 </head>
 <body>
-    <div style="max-width: 900px; margin: 0 auto;">
+    <div style="max-width: 1200px; margin: 0 auto;">
         <div class="admin-card">
             <h2>⚙️ Config Manager</h2>
-            <div class="alert-box">
-                ⚠️ <strong>Importante:</strong> Este archivo genera una nueva versión del archivo <strong>config.js</strong>. Puedes descargarlo o copiar el código generado y reemplazar el original en la raíz del proyecto.
-            </div>
             <div id="status-admin" style="margin-bottom: 20px; text-align: center; font-weight: 600; color: #22c55e;">Cargando configuración actual...</div>
+            
             <form id="config-form" style="display: none;">
-                <!-- NUEVO: Sección de Restaurantes -->
-                <div class="section-title"><span class="section-icon">🏢</span> Restaurantes (Enable/Disable & Alias)</div>
-                
-                <div class="form-group">
-                    <label class="form-label">Estado Restaurante 001 (restaurante001)</label>
-                    <div class="form-checkbox-wrapper">
-                        <input type="checkbox" id="cfg-restaurante001-enabled" class="form-checkbox">
-                        <label for="cfg-restaurante001-enabled" style="color: #cbd5e1; cursor: pointer;">Habilitado</label>
+                <div class="admin-grid">
+                    <!-- ========================================== -->
+                    <!-- COLUMNA IZQUIERDA: RESTAURANTE 001         -->
+                    <!-- ========================================== -->
+                    <div class="admin-col-left">
+                        <div class="section-title"><span class="section-icon">🏢</span> <span id="title-rg">Restaurante 001</span></div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Estado</label>
+                            <div class="form-checkbox-wrapper">
+                                <input type="checkbox" id="cfg-restaurante001-enabled" class="form-checkbox">
+                                <label for="cfg-restaurante001-enabled" style="color: #cbd5e1; cursor: pointer;">Habilitado</label>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Alias Visual</label>
+                            <input type="text" id="cfg-alias-restaurante001" class="form-input" placeholder="Ej: Roland Garros">
+                        </div>
+
+                        <div class="section-title" style="margin-top:20px; font-size: 0.85rem;"><span class="section-icon">🌐</span> URLs de Red</div>
+                        <div class="form-group">
+                            <label class="form-label">CSV URL</label>
+                            <textarea id="cfg-csv-restaurante001" class="form-textarea" rows="2"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Web App URL</label>
+                            <textarea id="cfg-webapp-restaurante001" class="form-textarea" rows="2"></textarea>
+                        </div>
+
+                        <div class="section-title" style="margin-top:20px; font-size: 0.85rem;"><span class="section-icon">🖼️</span> Assets</div>
+                        <div class="form-group">
+                            <label class="form-label">Logo (Solo nombre)</label>
+                            <input type="text" id="cfg-logo-restaurante001" class="form-input" placeholder="Ej: logo_web01.png">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">QR Default (Solo nombre)</label>
+                            <input type="text" id="cfg-qr-restaurante001-default" class="form-input" placeholder="Ej: qr-web01-02.png">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">QR Mod (Solo nombre)</label>
+                            <input type="text" id="cfg-qr-restaurante001-mod" class="form-input" placeholder="Ej: qr-web01-01.png">
+                        </div>
+                    </div>
+
+                    <!-- ========================================== -->
+                    <!-- COLUMNA DERECHA: RESTAURANTE 002          -->
+                    <!-- ========================================== -->
+                    <div class="admin-col-right">
+                        <div class="section-title"><span class="section-icon">🏢</span> <span id="title-usopen">Restaurante 002</span></div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Estado</label>
+                            <div class="form-checkbox-wrapper">
+                                <input type="checkbox" id="cfg-restaurante002-enabled" class="form-checkbox">
+                                <label for="cfg-restaurante002-enabled" style="color: #cbd5e1; cursor: pointer;">Habilitado</label>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Alias Visual</label>
+                            <input type="text" id="cfg-alias-restaurante002" class="form-input" placeholder="Ej: US Open">
+                        </div>
+
+                        <div class="section-title" style="margin-top:20px; font-size: 0.85rem;"><span class="section-icon">🌐</span> URLs de Red</div>
+                        <div class="form-group">
+                            <label class="form-label">CSV URL</label>
+                            <textarea id="cfg-csv-restaurante002" class="form-textarea" rows="2"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Web App URL</label>
+                            <textarea id="cfg-webapp-restaurante002" class="form-textarea" rows="2"></textarea>
+                        </div>
+
+                        <div class="section-title" style="margin-top:20px; font-size: 0.85rem;"><span class="section-icon">🖼️</span> Assets</div>
+                        <div class="form-group">
+                            <label class="form-label">Logo (Solo nombre)</label>
+                            <input type="text" id="cfg-logo-restaurante002" class="form-input" placeholder="Ej: logo_web02.png">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">QR Default (Solo nombre)</label>
+                            <input type="text" id="cfg-qr-restaurante002-default" class="form-input" placeholder="Ej: qr-web02-01.png">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">QR Mod (Solo nombre)</label>
+                            <input type="text" id="cfg-qr-restaurante002-mod" class="form-input" placeholder="Ej: qr-web02-02.png">
+                        </div>
+                    </div>
+
+                    <!-- ========================================== -->
+                    <!-- SECCIÓN INFERIOR CENTRADA: GLOBAL         -->
+                    <!-- ========================================== -->
+                    <div class="admin-full">
+                        <div class="section-title"><span class="section-icon">🖼️</span> Rutas Globales</div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label class="form-label">Ruta Base de Imágenes</label>
+                                <input type="text" id="cfg-path-imagenes" class="form-input" placeholder="Ej: imagenes/imagenes/">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label class="form-label">Ruta de Alérgenos</label>
+                                <input type="text" id="cfg-path-alergenos" class="form-input" placeholder="Ej: imagenes/alergenos/">
+                            </div>
+                        </div>
+
+                        <div class="section-divider"></div>
+                        <div class="section-title"><span class="section-icon">🧠</span> Inteligencia Artificial (Gemini)</div>
+                        <div style="display: grid; grid-template-columns: 3fr 1fr; gap: 15px;">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label class="form-label">Gemini Endpoint URL</label>
+                                <textarea id="cfg-gemini-url" class="form-textarea" rows="2"></textarea>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label class="form-label">Tamaño de Lote</label>
+                                <input type="number" id="cfg-lote-size" class="form-input" min="1" max="100" step="1">
+                            </div>
+                        </div>
+
+                        <div class="section-divider"></div>
+                        <div class="section-title"><span class="section-icon">⏱️</span> Tiempos del Sistema</div>
+                        <div class="form-group" style="max-width: 300px;">
+                            <label class="form-label">Ventana de Consistencia (ms)</label>
+                            <input type="number" id="cfg-consistency-window" class="form-input" min="10000" max="600000" step="1000" placeholder="Ej: 180000">
+                        </div>
+
+                        <div class="section-divider"></div>
+                        
+                        <!-- NUEVO: Sección de Push Directo a GitHub -->
+                        <div class="section-title"><span class="section-icon">🐙</span> Guardado Directo en GitHub</div>
+                        <div class="alert-box" style="border-left-color: #6e40c9; margin-bottom: 15px;">
+                            ⚠️ <strong>Requiere Token:</strong> Para sobreescribir el archivo directamente en tu repositorio de GitHub, necesitas un <strong>Personal Access Token (PAT)</strong> con permisos <code>repo</code>. El token se usa en el navegador y no se guarda en ningún servidor externo.
+                        </div>
+                        <div class="gh-config-grid">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label class="form-label">Repositorio (usuario/repo) y Rama</label>
+                                <div style="display: flex; gap: 10px;">
+                                    <input type="text" id="gh-repo" class="form-input" placeholder="Ej: usuario/Web_Editor_Pro_v3" style="flex: 2;">
+                                    <input type="text" id="gh-branch" class="form-input" placeholder="Ej: main" value="main" style="flex: 1;">
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label class="form-label">GitHub PAT</label>
+                                <input type="password" id="gh-token" class="form-input" placeholder="ghp_xxxxxxxxxxxx">
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-top: 20px;">
+                            <button type="button" class="btn-gh" onclick="handleGithubPush()">🐙 Guardar en GitHub</button>
+                            <button type="button" class="btn-save" onclick="handleSaveAdmin()">💾 Descargar Local</button>
+                            <button type="button" class="btn-copy" onclick="handleCopyAdmin()">📋 Copiar Código</button>
+                        </div>
                     </div>
                 </div>
-
-                <div class="form-group">
-                    <label class="form-label">Alias Visual para Restaurante 001</label>
-                    <input type="text" id="cfg-alias-restaurante001" class="form-input" placeholder="Ej: Roland Garros">
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Estado Restaurante 002 (restaurante002)</label>
-                    <div class="form-checkbox-wrapper">
-                        <input type="checkbox" id="cfg-restaurante002-enabled" class="form-checkbox">
-                        <label for="cfg-restaurante002-enabled" style="color: #cbd5e1; cursor: pointer;">Habilitado</label>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Alias Visual para Restaurante 002</label>
-                    <input type="text" id="cfg-alias-restaurante002" class="form-input" placeholder="Ej: US Open">
-                </div>
-
-                <div class="section-divider"></div>
-
-                <!-- NUEVO: Sección de Redes -->
-                <div class="section-title"><span class="section-icon">🌐</span> URLs de Red (Google Sheets & Web Apps)</div>
-                
-                <div class="form-group">
-                    <label class="form-label">CSV URL Restaurante 001</label>
-                    <textarea id="cfg-csv-restaurante001" class="form-textarea" rows="2"></textarea>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Web App URL Restaurante 001</label>
-                    <textarea id="cfg-webapp-restaurante001" class="form-textarea" rows="2"></textarea>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">CSV URL Restaurante 002</label>
-                    <textarea id="cfg-csv-restaurante002" class="form-textarea" rows="2"></textarea>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Web App URL Restaurante 002</label>
-                    <textarea id="cfg-webapp-restaurante002" class="form-textarea" rows="2"></textarea>
-                </div>
-
-                <div class="section-divider"></div>
-
-                <!-- NUEVO: Sección de IA -->
-                <div class="section-title"><span class="section-icon">🧠</span> Inteligencia Artificial (Gemini)</div>
-                
-                <div class="form-group">
-                    <label class="form-label">Gemini Endpoint URL</label>
-                    <textarea id="cfg-gemini-url" class="form-textarea" rows="2"></textarea>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Tamaño de Lote en Traductor Pro</label>
-                    <input type="number" id="cfg-lote-size" class="form-input" min="1" max="100" step="1">
-                </div>
-
-                <div class="section-divider"></div>
-
-                <!-- NUEVO: Sección de Assets -->
-                <div class="section-title"><span class="section-icon">🖼️</span> Assets y Rutas</div>
-                
-                <div class="form-group">
-                    <label class="form-label">Ruta Base de Imágenes</label>
-                    <input type="text" id="cfg-path-imagenes" class="form-input" placeholder="Ej: imagenes/imagenes/">
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Ruta de Alérgenos</label>
-                    <input type="text" id="cfg-path-alergenos" class="form-input" placeholder="Ej: imagenes/alergenos/">
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Logo Restaurante 001 (Solo nombre del archivo)</label>
-                    <input type="text" id="cfg-logo-restaurante001" class="form-input" placeholder="Ej: logo_web01.png">
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Logo Restaurante 002 (Solo nombre del archivo)</label>
-                    <input type="text" id="cfg-logo-restaurante002" class="form-input" placeholder="Ej: logo_web02.png">
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">QR Restaurante 001 (Default - Solo nombre)</label>
-                    <input type="text" id="cfg-qr-restaurante001-default" class="form-input" placeholder="Ej: qr-web01-02.png">
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">QR Restaurante 001 (Mod - Solo nombre)</label>
-                    <input type="text" id="cfg-qr-restaurante001-mod" class="form-input" placeholder="Ej: qr-web01-01.png">
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">QR Restaurante 002 (Default - Solo nombre)</label>
-                    <input type="text" id="cfg-qr-restaurante002-default" class="form-input" placeholder="Ej: qr-web02-01.png">
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">QR Restaurante 002 (Mod - Solo nombre)</label>
-                    <input type="text" id="cfg-qr-restaurante002-mod" class="form-input" placeholder="Ej: qr-web02-02.png">
-                </div>
-
-                <div class="section-divider"></div>
-
-                <!-- NUEVO: Sección de Sistema -->
-                <div class="section-title"><span class="section-icon">⏱️</span> Tiempos del Sistema</div>
-                
-                <div class="form-group">
-                    <label class="form-label">Ventana de Consistencia (ms)</label>
-                    <input type="number" id="cfg-consistency-window" class="form-input" min="10000" max="600000" step="1000" placeholder="Ej: 180000">
-                </div>
-
-                <button type="button" class="btn-save" onclick="handleSaveAdmin()">💾 Descargar nuevo config.js</button>
-                <button type="button" class="btn-copy" onclick="handleCopyAdmin()">📋 Copiar código al portapapeles</button>
             </form>
         </div>
     </div>
 
-    <!-- MODIFICADO: Inyección directa mediante script en lugar de iframe para soportar file:// -->
+    <!-- Inyección directa de config.js -->
     <script src="config.js"></script>
 
     <script>
-        // NUEVO: Mapeo estricto de las variables que queremos extraer y su tipo para regenerar config.js
         const CONFIG_MAP = [
             { id: 'cfg-restaurante001-enabled', key: 'RESTAURANTES_CONFIG.restaurante001.enabled', type: 'boolean' },
             { id: 'cfg-alias-restaurante001', key: 'MODOS_ALIAS.restaurante001', type: 'string' },
@@ -196,7 +243,6 @@
 
         let configSnapshot = {};
 
-        // NUEVO: Función para limpiar el nombre del archivo asset (quitar la ruta base si el usuario la pegó entera)
         function cleanAssetName(fullString, basePath) {
             if (!fullString) return "";
             let clean = fullString.trim();
@@ -206,7 +252,6 @@
             return clean;
         }
 
-        // MODIFICADO: Extracción directa del scope global en lugar de iframe.contentWindow
         function initAdmin() {
             const statusDiv = document.getElementById('status-admin');
             const form = document.getElementById('config-form');
@@ -217,35 +262,26 @@
             }
 
             try {
-                // MODIFICADO: Verificar existencia directa en window
                 if (typeof RESTAURANTES_CONFIG === 'undefined') throw new Error("No se encontró la variable RESTAURANTES_CONFIG. ¿Está roto el archivo config.js?");
                 
-                // 1. Extraer RESTAURANTES_CONFIG
                 const restConfig = {
                     restaurante001: { enabled: RESTAURANTES_CONFIG.restaurante001.enabled },
                     restaurante002: { enabled: RESTAURANTES_CONFIG.restaurante002.enabled }
                 };
                 configSnapshot['RESTAURANTES_CONFIG'] = restConfig;
+                configSnapshot['MODOS_ALIAS'] = { ...MODOS_ALIAS };
 
-                // 2. Extraer MODOS_ALIAS
-                const alias = { ...MODOS_ALIAS };
-                configSnapshot['MODOS_ALIAS'] = alias;
-
-                // 3. Extraer URLs
                 configSnapshot['CSV_URL_RESTAURANTE001'] = CSV_URL_RESTAURANTE001;
                 configSnapshot['CSV_URL_RESTAURANTE002'] = CSV_URL_RESTAURANTE002;
                 configSnapshot['WEB_APP_URL_RESTAURANTE001'] = WEB_APP_URL_RESTAURANTE001;
                 configSnapshot['WEB_APP_URL_RESTAURANTE002'] = WEB_APP_URL_RESTAURANTE002;
 
-                // 4. Extraer IA Config
                 configSnapshot['GEMINI_ENDPOINT_URL'] = GEMINI_ENDPOINT_URL;
                 configSnapshot['TRADUCCION_TAMANO_LOTE'] = TRADUCCION_TAMANO_LOTE;
 
-                // 5. Extraer Assets
                 configSnapshot['PATH_IMAGENES'] = PATH_IMAGENES;
                 configSnapshot['PATH_ALERGENOS'] = PATH_ALERGENOS;
                 
-                // Limpiar la ruta base antes de mostrar en el formulario para mayor claridad
                 configSnapshot['LOGO_RESTAURANTE001'] = cleanAssetName(LOGO_RESTAURANTE001, PATH_IMAGENES);
                 configSnapshot['LOGO_RESTAURANTE002'] = cleanAssetName(LOGO_RESTAURANTE002, PATH_IMAGENES);
                 configSnapshot['QR_RESTAURANTE001_DEFAULT'] = cleanAssetName(QR_RESTAURANTE001_DEFAULT, PATH_IMAGENES);
@@ -253,10 +289,8 @@
                 configSnapshot['QR_RESTAURANTE002_DEFAULT'] = cleanAssetName(QR_RESTAURANTE002_DEFAULT, PATH_IMAGENES);
                 configSnapshot['QR_RESTAURANTE002_MOD'] = cleanAssetName(QR_RESTAURANTE002_MOD, PATH_IMAGENES);
 
-                // 6. Extraer Sistema
                 configSnapshot['CONSISTENCY_WINDOW_MS'] = CONSISTENCY_WINDOW_MS;
 
-                // 7. Llenar formulario
                 CONFIG_MAP.forEach(item => {
                     const el = document.getElementById(item.id);
                     if (el) {
@@ -270,7 +304,13 @@
                     }
                 });
 
-                if (statusDiv) statusDiv.innerText = "✅ Configuración cargada correctamente. Puedes modificar los campos y descargar el archivo.";
+                // NUEVO: Actualizar títulos dinámicos con los aliases
+                const titleRG = document.getElementById('title-rg');
+                if (titleRG) titleRG.innerText = configSnapshot['MODOS_ALIAS'].restaurante001 || 'Restaurante 001';
+                const titleUS = document.getElementById('title-usopen');
+                if (titleUS) titleUS.innerText = configSnapshot['MODOS_ALIAS'].restaurante002 || 'Restaurante 002';
+
+                if (statusDiv) statusDiv.innerText = "✅ Configuración cargada. Modifica los campos y elige cómo guardar.";
                 if (form) form.style.display = 'block';
             } catch (err) {
                 console.error("[Admin] Error cargando config.js:", err);
@@ -278,31 +318,22 @@
             }
         }
 
-        // NUEVO: Generar el string de código JavaScript válido
         function generateConfigCode() {
-            // 1. Leer el formulario y actualizar nuestro snapshot
             CONFIG_MAP.forEach(item => {
                 const el = document.getElementById(item.id);
                 if (!el) return;
-                
-                if (item.type === 'boolean') {
-                    configSnapshot[item.key] = el.checked;
-                } else if (item.type === 'number') {
-                    configSnapshot[item.key] = parseFloat(el.value) || 0;
-                } else if (item.type === 'string') {
-                    configSnapshot[item.key] = el.value;
-                }
+                if (item.type === 'boolean') configSnapshot[item.key] = el.checked;
+                else if (item.type === 'number') configSnapshot[item.key] = parseFloat(el.value) || 0;
+                else if (item.type === 'string') configSnapshot[item.key] = el.value;
             });
 
             const pathBase = configSnapshot['PATH_IMAGENES'] || '';
 
-            // 2. Reconstruir el archivo config.js
             let output = `// --- config.js ---\n`;
             output += `// NUEVO: Registro de versión del archivo\n`;
             output += `window.APP_VERSIONS = window.APP_VERSIONS || {};\n`;
             output += `window.APP_VERSIONS.config = '3.0.0'; // Incrementado por modificación desde Admin Tool\n\n\n`;
 
-            // 3. RESTAURANTES_CONFIG
             output += `// =====================================================================\n`;
             output += `// NUEVO: SISTEMA DE ENABLE/DISABLE DE RESTAURANTES (Desacoplamiento Visual)\n`;
             output += `// Activo: { enabled: true } - Desactivado: { enabled: false }\n`;
@@ -316,7 +347,6 @@
             output += `    return config ? config.enabled : false;\n`;
             output += `}\n\n`;
 
-            // 4. MODOS_ALIAS
             output += `// =====================================================================\n`;
             output += `// NUEVO: SISTEMA DE ALIAS DE MARCA (Desacoplamiento Visual)\n`;
             output += `const MODOS_ALIAS = ${JSON.stringify(configSnapshot['MODOS_ALIAS'], null, 4)};\n\n`;
@@ -326,7 +356,6 @@
             output += `    return MODOS_ALIAS[modoInterno] || modoInterno;\n`;
             output += `}\n\n`;
 
-            // 5. REDES
             output += `// =====================================================================\n`;
             output += `// CONFIGURACIÓN DE REDES (Google Sheets & Web Apps)\n\n`;
             output += `// CONFIGURACION ${configSnapshot['MODOS_ALIAS'].restaurante001 || 'RESTAURANTE 001'} (restaurante001)\n`;
@@ -350,7 +379,6 @@
             output += `    return CSV_URL_RESTAURANTE001;\n`;
             output += `}\n\n`;
 
-            // 6. IA
             output += `// =====================================================================\n`;
             output += `// NUEVO: CONFIGURACIÓN DE INTELIGENCIA ARTIFICIAL (Gemini)\n`;
             output += `// NUEVO: Endpoint centralizado del modelo de IA. \n`;
@@ -358,7 +386,6 @@
             output += `// NUEVO: Cantidad de filas que se envían en cada petición a la IA durante la traducción masiva.\n`;
             output += `const TRADUCCION_TAMANO_LOTE = ${configSnapshot['TRADUCCION_TAMANO_LOTE']};\n\n`;
 
-            // 7. ASSETS
             output += `// =====================================================================\n`;
             output += `// NUEVO: CONFIGURACIÓN CENTRALIZADA DE ASSETS (Rutas e Imágenes)\n`;
             output += `// NUEVO: Path base general para imágenes y recursos estáticos\n`;
@@ -367,8 +394,6 @@
             output += `const PATH_ALERGENOS = '${configSnapshot['PATH_ALERGENOS']}';\n\n`;
             output += `// Logos Principales (Header del Editor)\n`;
             output += `// NOTA: El nombre físico de la variable se mantiene LOGO_RESTAURANTE001 para no tener que renombrar archivos físicos\n`;
-            
-            // Concatenación limpia sin depender de un replace frágil
             output += `const LOGO_RESTAURANTE001 = PATH_IMAGENES + '${cleanAssetName(configSnapshot['LOGO_RESTAURANTE001'], pathBase)}';\n`;
             output += `const LOGO_RESTAURANTE002 = PATH_IMAGENES + '${cleanAssetName(configSnapshot['LOGO_RESTAURANTE002'], pathBase)}';\n\n`;
             output += `// Códigos QR ${configSnapshot['MODOS_ALIAS'].restaurante001 || 'RESTAURANTE 001'}\n`;
@@ -378,7 +403,6 @@
             output += `const QR_RESTAURANTE002_DEFAULT = PATH_IMAGENES + '${cleanAssetName(configSnapshot['QR_RESTAURANTE002_DEFAULT'], pathBase)}';\n`;
             output += `const QR_RESTAURANTE002_MOD = PATH_IMAGENES + '${cleanAssetName(configSnapshot['QR_RESTAURANTE002_MOD'], pathBase)}';\n\n`;
 
-            // 8. SISTEMA
             output += `// =====================================================================\n`;
             output += `// NUEVO: CONFIGURACIÓN DE TIEMPOS DEL SISTEMA\n`;
             output += `// Ventana de tiempo en milisegundos donde el sistema asume que Google Sheets \n`;
@@ -388,13 +412,10 @@
             return output;
         }
 
-        // NUEVO: Serializar el formulario a un string de código JavaScript válido y descargarlo
         function handleSaveAdmin() {
             const statusDiv = document.getElementById('status-admin');
             try {
                 const output = generateConfigCode();
-
-                // Crear y descargar archivo
                 const blob = new Blob([output], { type: 'application/javascript' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
@@ -406,25 +427,20 @@
                     document.body.removeChild(a);
                 }
                 URL.revokeObjectURL(url);
-                
-                if (statusDiv) statusDiv.innerText = "✅ ¡Descarga completada! Reemplaza el archivo config.js en tu proyecto y recarga index.html.";
-
+                if (statusDiv) statusDiv.innerText = "✅ ¡Descarga completada! Reemplaza el archivo config.js en tu proyecto.";
             } catch (err) {
                 console.error("[Admin] Error generando archivo:", err);
-                if (statusDiv) statusDiv.innerText = "❌ Error al generar el archivo. Revisa la consola del navegador.";
+                if (statusDiv) statusDiv.innerText = "❌ Error al generar el archivo. Revisa la consola.";
             }
         }
 
-        // NUEVO: Copiar el código directamente al portapapeles
         function handleCopyAdmin() {
             const statusDiv = document.getElementById('status-admin');
             try {
                 const output = generateConfigCode();
                 navigator.clipboard.writeText(output).then(() => {
-                    if (statusDiv) statusDiv.innerText = "✅ ¡Código copiado al portapapeles! Pégalo en tu editor dentro de config.js.";
+                    if (statusDiv) statusDiv.innerText = "✅ ¡Código copiado al portapapeles!";
                 }).catch(err => {
-                    console.warn("[Admin] Fallo Clipboard API, usando fallback:", err);
-                    // Fallback para navegadores que no soporten Clipboard API o estén en file://
                     const textarea = document.createElement('textarea');
                     if (textarea) {
                         textarea.value = output;
@@ -436,7 +452,7 @@
                             document.execCommand('copy');
                             if (statusDiv) statusDiv.innerText = "✅ ¡Código copiado al portapapeles (Fallback)!";
                         } catch (e) {
-                            if (statusDiv) statusDiv.innerText = "❌ Tu navegador bloqueó el acceso al portapapeles. Usa el botón de descarga.";
+                            if (statusDiv) statusDiv.innerText = "❌ Tu navegador bloqueó el acceso al portapapeles.";
                         }
                         document.body.removeChild(textarea);
                     }
@@ -447,7 +463,69 @@
             }
         }
 
-        // Iniciar al cargar la página (El script de config.js ya se ejecutó arriba sincrónicamente)
+        // NUEVO: Lógica para hacer Push directo a la API de GitHub
+        async function handleGithubPush() {
+            const statusDiv = document.getElementById('status-admin');
+            const repoFullName = document.getElementById('gh-repo').value.trim();
+            const branch = document.getElementById('gh-branch').value.trim() || 'main';
+            const token = document.getElementById('gh-token').value.trim();
+
+            if (!repoFullName || !token) {
+                if (statusDiv) statusDiv.innerText = "❌ Debes introducir el Repositorio (usuario/repo) y tu Token de GitHub.";
+                alert("Faltan credenciales de GitHub.");
+                return;
+            }
+
+            if (statusDiv) statusDiv.innerText = "⏳ Obteniendo estado del archivo en GitHub...";
+
+            const apiBase = `https://api.github.com/repos/${repoFullName}/contents/config.js`;
+            const headers = {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/vnd.github.v3+json'
+            };
+
+            try {
+                // 1. GET para obtener el SHA actual del archivo (Obligatorio en la API de GitHub para sobreescribir)
+                const getResp = await fetch(`${apiBase}?ref=${branch}`, { headers: headers });
+                if (!getResp.ok) {
+                    if (getResp.status === 404) throw new Error("El archivo config.js no existe en la ruta indicada o el repositorio/rama son incorrectos.");
+                    if (getResp.status === 401) throw new Error("Token inválido o sin permisos.");
+                    throw new Error(`Error de GitHub al leer: ${getResp.status} ${getResp.statusText}`);
+                }
+                const getData = await getResp.json();
+                const sha = getData.sha;
+
+                if (statusDiv) statusDiv.innerText = "⏳ Generando y subiendo nuevo config.js...";
+
+                // 2. Generar el código y codificar en Base64 seguro (UTF-8)
+                const newCode = generateConfigCode();
+                const contentBase64 = btoa(unescape(encodeURIComponent(newCode)));
+
+                // 3. PUT para actualizar el archivo existente
+                const putResp = await fetch(apiBase, {
+                    method: 'PUT',
+                    headers: headers,
+                    body: JSON.stringify({
+                        message: 'Update config.js via Admin Tool',
+                        content: contentBase64,
+                        sha: sha,
+                        branch: branch
+                    })
+                });
+
+                if (!putResp.ok) {
+                    const errData = await putResp.json();
+                    throw new Error(errData.message || `Error al guardar: ${putResp.status}`);
+                }
+
+                if (statusDiv) statusDiv.innerText = "✅ ¡Éxito! El archivo config.js se ha actualizado directamente en GitHub.";
+
+            } catch (error) {
+                console.error("[GitHub Push Error]", error);
+                if (statusDiv) statusDiv.innerText = `❌ Error en GitHub: ${error.message}`;
+            }
+        }
+
         window.onload = initAdmin;
     </script>
 </body>
