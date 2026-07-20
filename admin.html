@@ -22,13 +22,10 @@
         .btn-save:hover { background-color: #16a34a; }
         .btn-copy { padding: 14px; background-color: #3b82f6; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 1rem; cursor: pointer; transition: background-color 0.2s; }
         .btn-copy:hover { background-color: #2563eb; }
-        .btn-gh { padding: 14px; background-color: #6e40c9; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 1rem; cursor: pointer; transition: background-color 0.2s; }
-        .btn-gh:hover { background-color: #5b21b6; }
 
         .section-divider { border-top: 1px solid #334155; margin: 30px 0; }
         .section-title { font-size: 1rem; font-weight: 700; color: #60a5fa; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
         .section-icon { font-size: 1.2rem; }
-        .alert-box { background-color: #1e293b; border: 1px solid #475569; border-left: 4px solid #f59e0b; padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; color: #fde68a; font-size: 0.85rem; }
 
         .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
         .admin-col-left { border-right: 1px solid #334155; padding-right: 24px; }
@@ -40,13 +37,11 @@
             .admin-col-left, .admin-col-right { border: none; padding: 0; }
             .admin-full { padding-top: 10px; margin-top: 0; border-top: none; }
         }
-
-        .gh-config-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 15px; align-items: end; }
         
         .radio-state-group { display: flex; gap: 20px; align-items: center; }
         .radio-state-label { color: #cbd5e1; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 0.9rem; font-weight: 500; }
 
-        /* NUEVO: Estilos para input con botón integrado a la derecha */
+        /* Estilos para input con botón integrado a la derecha */
         .asset-input-wrapper { position: relative; width: 100%; }
         .asset-input-wrapper .form-input { padding-right: 42px; }
         .btn-preview-asset {
@@ -58,7 +53,7 @@
         }
         .btn-preview-asset:hover { color: #f8fafc; background: rgba(255,255,255,0.05); }
 
-        /* NUEVO: Estilos para el modal superficial de previsualización */
+        /* Estilos para el modal superficial de previsualización */
         .img-preview-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
             background: rgba(0, 0, 0, 0.7); z-index: 10000; 
@@ -238,28 +233,9 @@
 
                         <div class="section-divider"></div>
                         
-                        <div class="section-title"><span class="section-icon">🐙</span> Guardado Directo en GitHub</div>
-                        <div class="alert-box" style="border-left-color: #6e40c9; margin-bottom: 15px;">
-                            ⚠️ <strong>Requiere Token:</strong> Para sobreescribir el archivo directamente en tu repositorio de GitHub, necesitas un <strong>Personal Access Token (PAT)</strong> con permisos <code>repo</code>. El token se usa en el navegador y no se guarda en ningún servidor externo.
-                        </div>
-                        <div class="gh-config-grid">
-                            <div class="form-group" style="margin-bottom: 0;">
-                                <label class="form-label">Repositorio (usuario/repo) y Rama</label>
-                                <div style="display: flex; gap: 10px;">
-                                    <input type="text" id="gh-repo" class="form-input" placeholder="Ej: usuario/Web_Editor_Pro_v3" style="flex: 2;">
-                                    <input type="text" id="gh-branch" class="form-input" placeholder="Ej: main" value="main" style="flex: 1;">
-                                </div>
-                            </div>
-                            <div class="form-group" style="margin-bottom: 0;">
-                                <label class="form-label">GitHub PAT</label>
-                                <input type="password" id="gh-token" class="form-input" placeholder="ghp_xxxxxxxxxxxx">
-                            </div>
-                        </div>
-
-                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-top: 20px;">
-                            <button type="button" class="btn-gh" onclick="handleGithubPush()">🐙 Guardar en GitHub</button>
-                            <button type="button" class="btn-save" onclick="handleSaveAdmin()">💾 Descargar Local</button>
-                            <button type="button" class="btn-copy" onclick="handleCopyAdmin()">📋 Copiar Código</button>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; max-width: 600px; margin-left: auto; margin-right: auto;">
+                            <button type="button" class="btn-copy" onclick="handleCopyAdmin()">📋 Copiar Código al Portapapeles</button>
+                            <button type="button" class="btn-save" onclick="handleSaveAdmin()">💾 Descargar Local (Backup)</button>
                         </div>
                     </div>
                 </div>
@@ -267,7 +243,7 @@
         </div>
     </div>
 
-    <!-- NUEVO: Modal superficial para previsualizar imágenes -->
+    <!-- Modal superficial para previsualizar imágenes -->
     <div id="img-preview-overlay" class="img-preview-overlay" onclick="closePreview()">
         <div class="img-preview-box" onclick="event.stopPropagation()">
             <button class="img-preview-close" onclick="closePreview()">✕</button>
@@ -311,7 +287,7 @@
             return clean;
         }
 
-        // NUEVO: Función para abrir el modal superficial de preview
+        // Función para abrir el modal superficial de preview
         function previewAsset(inputId) {
             const inputEl = document.getElementById(inputId);
             const pathBaseEl = document.getElementById('cfg-path-imagenes');
@@ -349,7 +325,7 @@
             overlay.style.display = 'flex';
         }
 
-        // NUEVO: Función para cerrar el modal
+        // Función para cerrar el modal
         function closePreview() {
             const overlay = document.getElementById('img-preview-overlay');
             if (overlay) overlay.style.display = 'none';
@@ -478,7 +454,6 @@
 
             output += `// =====================================================================\n`;
             output += `// CONFIGURACIÓN DE REDES (Google Sheets & Web Apps)\n\n`;
-            // MODIFICADO: Eliminados vestigios de nombres reales, usando solo abstract keys
             output += `// CONFIGURACION restaurante001\n`;
             output += `const CSV_URL_RESTAURANTE001 = '${configSnapshot['CSV_URL_RESTAURANTE001']}';\n`;
             output += `const WEB_APP_URL_RESTAURANTE001 = '${configSnapshot['WEB_APP_URL_RESTAURANTE001']}';\n\n`;
@@ -517,7 +492,6 @@
             output += `// NOTA: El nombre físico de la variable se mantiene LOGO_RESTAURANTE001 para no tener que renombrar archivos físicos\n`;
             output += `const LOGO_RESTAURANTE001 = PATH_IMAGENES + '${cleanAssetName(configSnapshot['LOGO_RESTAURANTE001'], pathBase)}';\n`;
             output += `const LOGO_RESTAURANTE002 = PATH_IMAGENES + '${cleanAssetName(configSnapshot['LOGO_RESTAURANTE002'], pathBase)}';\n\n`;
-            // MODIFICADO: Eliminados vestigios de nombres reales
             output += `// Códigos QR restaurante001\n`;
             output += `const QR_RESTAURANTE001_DEFAULT = PATH_IMAGENES + '${cleanAssetName(configSnapshot['QR_RESTAURANTE001_DEFAULT'], pathBase)}';\n`;
             output += `const QR_RESTAURANTE001_MOD = PATH_IMAGENES + '${cleanAssetName(configSnapshot['QR_RESTAURANTE001_MOD'], pathBase)}';\n\n`;
@@ -582,65 +556,6 @@
             } catch (err) {
                 console.error("[Admin] Error copiando:", err);
                 if (statusDiv) statusDiv.innerText = "❌ Error al copiar el código.";
-            }
-        }
-
-        async function handleGithubPush() {
-            const statusDiv = document.getElementById('status-admin');
-            const repoFullName = document.getElementById('gh-repo').value.trim();
-            const branch = document.getElementById('gh-branch').value.trim() || 'main';
-            const token = document.getElementById('gh-token').value.trim();
-
-            if (!repoFullName || !token) {
-                if (statusDiv) statusDiv.innerText = "❌ Debes introducir el Repositorio (usuario/repo) y tu Token de GitHub.";
-                alert("Faltan credenciales de GitHub.");
-                return;
-            }
-
-            if (statusDiv) statusDiv.innerText = "⏳ Obteniendo estado del archivo en GitHub...";
-
-            const apiBase = `https://api.github.com/repos/${repoFullName}/contents/config.js`;
-            const headers = {
-                'Authorization': `Bearer ${token}`,
-                'Accept': 'application/vnd.github.v3+json'
-            };
-
-            try {
-                const getResp = await fetch(`${apiBase}?ref=${branch}`, { headers: headers });
-                if (!getResp.ok) {
-                    if (getResp.status === 404) throw new Error("El archivo config.js no existe en la ruta indicada o el repositorio/rama son incorrectos.");
-                    if (getResp.status === 401) throw new Error("Token inválido o sin permisos.");
-                    throw new Error(`Error de GitHub al leer: ${getResp.status} ${getResp.statusText}`);
-                }
-                const getData = await getResp.json();
-                const sha = getData.sha;
-
-                if (statusDiv) statusDiv.innerText = "⏳ Generando y subiendo nuevo config.js...";
-
-                const newCode = generateConfigCode();
-                const contentBase64 = btoa(unescape(encodeURIComponent(newCode)));
-
-                const putResp = await fetch(apiBase, {
-                    method: 'PUT',
-                    headers: headers,
-                    body: JSON.stringify({
-                        message: 'Update config.js via Admin Tool',
-                        content: contentBase64,
-                        sha: sha,
-                        branch: branch
-                    })
-                });
-
-                if (!putResp.ok) {
-                    const errData = await putResp.json();
-                    throw new Error(errData.message || `Error al guardar: ${putResp.status}`);
-                }
-
-                if (statusDiv) statusDiv.innerText = "✅ ¡Éxito! El archivo config.js se ha actualizado directamente en GitHub.";
-
-            } catch (error) {
-                console.error("[GitHub Push Error]", error);
-                if (statusDiv) statusDiv.innerText = `❌ Error en GitHub: ${error.message}`;
             }
         }
 
