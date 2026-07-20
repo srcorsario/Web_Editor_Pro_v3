@@ -1,3 +1,4 @@
+// [🔒 ARCHIVO REESCRITO COMPLETAMENTE - CORRECCIONES CRÍTICAS Y MEJORA DE GUARDADO]
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -11,14 +12,17 @@
         .admin-card h2 { font-size: 1.2rem; font-weight: 700; margin: 0 0 20px 0; color: #fbbf24; border-bottom: 2px solid #334155; padding-bottom: 10px; }
         .form-group { margin-bottom: 16px; }
         .form-label { display: block; font-size: 0.8rem; color: #94a3b8; margin-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-        .form-input { width: 100%; background-color: #0f172a; border: 1px solid #475569; color: #f8fafc; border-radius: 6px; padding: 10px 12px; font-family: 'Montserrat', sans-serif; font-size: 0.9rem; outline: none; transition: border-color 0.2s; box-shadow: none; }
+        .form-input { width: 100%; background-color: #0f172a; border: 1px solid #475569; color: #f8fafc; border-radius: 6px; padding: 10px 12px; font-family: 'Montserrat', sans-serif; font-size: 0.9rem; outline: none; transition: border-color 0.2s; box-shadow: none; box-sizing: border-box; }
         .form-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
         .form-checkbox-wrapper { display: flex; align-items: center; gap: 10px; }
         .form-checkbox { width: 20px; height: 20px; accent-color: #22c55e; cursor: pointer; }
-        .form-textarea { width: 100%; min-height: 80px; background-color: #0f172a; border: 1px solid #475569; color: #f8fafc; border-radius: 6px; padding: 10px 12px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.85rem; resize: vertical; outline: none; }
+        .form-textarea { width: 100%; min-height: 80px; background-color: #0f172a; border: 1px solid #475569; color: #f8fafc; border-radius: 6px; padding: 10px 12px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.85rem; resize: vertical; outline: none; box-sizing: border-box; }
         .form-textarea:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
         .btn-save { width: 100%; padding: 14px; background-color: #22c55e; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 1rem; cursor: pointer; transition: background-color 0.2s; margin-top: 20px; }
         .btn-save:hover { background-color: #16a34a; }
+        // NUEVO: Botón secundario para copiar
+        .btn-copy { width: 100%; padding: 14px; background-color: #3b82f6; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 1rem; cursor: pointer; transition: background-color 0.2s; margin-top: 10px; }
+        .btn-copy:hover { background-color: #2563eb; }
         .section-divider { border-top: 1px solid #334155; margin: 30px 0; }
         .section-title { font-size: 1rem; font-weight: 700; color: #60a5fa; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
         .section-icon { font-size: 1.2rem; }
@@ -30,7 +34,7 @@
         <div class="admin-card">
             <h2>⚙️ Config Manager</h2>
             <div class="alert-box">
-                ⚠️ <strong>Importante:</strong> Este archivo modifica directamente el archivo <strong>config.js</strong>. Asegúrate de descargar el archivo resultante y reemplazar el original en la raíz del proyecto antes de recargar la aplicación principal.
+                ⚠️ <strong>Importante:</strong> Este archivo genera una nueva versión del archivo <strong>config.js</strong>. Puedes descargarlo o copiar el código generado y reemplazar el original en la raíz del proyecto.
             </div>
             <div id="status-admin" style="margin-bottom: 20px; text-align: center; font-weight: 600; color: #22c55e;">Cargando configuración actual...</div>
             <form id="config-form" style="display: none;">
@@ -69,23 +73,24 @@
                 <div class="section-title"><span class="section-icon">🌐</span> URLs de Red (Google Sheets & Web Apps)</div>
                 
                 <div class="form-group">
-                    <label class="label-seccion">CSV URL Restaurante 001</label>
-                    <input type="text" id="cfg-csv-restaurante001" class="form-textarea" rows="2">
+                    <label class="form-label">CSV URL Restaurante 001</label>
+                    <!-- MODIFICADO: Corregida etiqueta a form-textarea -->
+                    <textarea id="cfg-csv-restaurante001" class="form-textarea" rows="2"></textarea>
                 </div>
 
                 <div class="form-group">
-                    <label class="label-seccion">Web App URL Restaurante 001</label>
-                    <input type="text" id="cfg-webapp-restaurante001" class="form-textarea" rows="2">
+                    <label class="form-label">Web App URL Restaurante 001</label>
+                    <textarea id="cfg-webapp-restaurante001" class="form-textarea" rows="2"></textarea>
                 </div>
 
                 <div class="form-group">
-                    <label class="label-seccion">CSV URL Restaurante 002</label>
-                    <input type="text" id="cfg-csv-restaurante002" class="form-textarea" rows="2">
+                    <label class="form-label">CSV URL Restaurante 002</label>
+                    <textarea id="cfg-csv-restaurante002" class="form-textarea" rows="2"></textarea>
                 </div>
 
                 <div class="form-group">
-                    <label class="label-seccion">Web App URL Restaurante 002</label>
-                    <input type="text" id="cfg-webapp-restaurante002" class="form-textarea" rows="2">
+                    <label class="form-label">Web App URL Restaurante 002</label>
+                    <textarea id="cfg-webapp-restaurante002" class="form-textarea" rows="2"></textarea>
                 </div>
 
                 <div class="section-divider"></div>
@@ -95,7 +100,7 @@
                 
                 <div class="form-group">
                     <label class="form-label">Gemini Endpoint URL</label>
-                    <input type="text" id="cfg-gemini-url" class="form-textarea" rows="2">
+                    <textarea id="cfg-gemini-url" class="form-textarea" rows="2"></textarea>
                 </div>
 
                 <div class="form-group">
@@ -115,37 +120,38 @@
 
                 <div class="form-group">
                     <label class="form-label">Ruta de Alérgenos</label>
-                    <input type="text" id="cfg-path-alergenos" class="input-estandar" placeholder="Ej: imagenes/alergenos/">
+                    <!-- MODIFICADO: Corregida clase a form-input -->
+                    <input type="text" id="cfg-path-alergenos" class="form-input" placeholder="Ej: imagenes/alergenos/">
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">Logo Restaurante 001</label>
-                    <input type="text" id="cfg-logo-restaurante001" class="form-input" placeholder="Ej: imagenes/imagenes/logo_web01.png">
+                    <label class="form-label">Logo Restaurante 001 (Solo nombre del archivo)</label>
+                    <input type="text" id="cfg-logo-restaurante001" class="form-input" placeholder="Ej: logo_web01.png">
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">Logo Restaurante 002</label>
-                    <input type="text" id="cfg-logo-restaurante002" class="form-input" placeholder="Ej: imagenes/imagenes/logo_web02.png">
+                    <label class="form-label">Logo Restaurante 002 (Solo nombre del archivo)</label>
+                    <input type="text" id="cfg-logo-restaurante002" class="form-input" placeholder="Ej: logo_web02.png">
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">QR Restaurante 001 (Default)</label>
-                    <input type="text" id="cfg-qr-restaurante001-default" class="form-input" placeholder="Ej: imagenes/imagenes/qr-web01-02.png">
+                    <label class="form-label">QR Restaurante 001 (Default - Solo nombre)</label>
+                    <input type="text" id="cfg-qr-restaurante001-default" class="form-input" placeholder="Ej: qr-web01-02.png">
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">QR Restaurante 001 (Mod)</label>
-                    <input type="text" id="cfg-qr-restaurante001-mod" class="form-input" placeholder="Ej: imagenes/imagenes/qr-web01-01.png">
+                    <label class="form-label">QR Restaurante 001 (Mod - Solo nombre)</label>
+                    <input type="text" id="cfg-qr-restaurante001-mod" class="form-input" placeholder="Ej: qr-web01-01.png">
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">QR Restaurante 002 (Default)</label>
-                    <input type="text" id="cfg-qr-restaurante002-default" class="form-input" placeholder="Ej: imagenes/imagenes/qr-web02-01.png">
+                    <label class="form-label">QR Restaurante 002 (Default - Solo nombre)</label>
+                    <input type="text" id="cfg-qr-restaurante002-default" class="form-input" placeholder="Ej: qr-web02-01.png">
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">QR Restaurante 002 (Mod)</label>
-                    <input type="text" id="cfg-qr-restaurante002-mod" class="form-input" placeholder="Ej: imagenes/imagenes/qr-web02-02.png">
+                    <label class="form-label">QR Restaurante 002 (Mod - Solo nombre)</label>
+                    <input type="text" id="cfg-qr-restaurante002-mod" class="form-input" placeholder="Ej: qr-web02-02.png">
                 </div>
 
                 <div class="section-divider"></div>
@@ -159,6 +165,8 @@
                 </div>
 
                 <button type="button" class="btn-save" onclick="handleSaveAdmin()">💾 Descargar nuevo config.js</button>
+                <!-- NUEVO: Botón para copiar al portapapeles -->
+                <button type="button" class="btn-copy" onclick="handleCopyAdmin()">📋 Copiar código al portapapeles</button>
             </form>
         </div>
     </div>
@@ -191,6 +199,16 @@
         ];
 
         let configSnapshot = {};
+
+        // NUEVO: Función para limpiar el nombre del archivo asset (quitar la ruta base si el usuario la pegó entera)
+        function cleanAssetName(fullString, basePath) {
+            if (!fullString) return "";
+            let clean = fullString.trim();
+            if (basePath && clean.startsWith(basePath)) {
+                clean = clean.substring(basePath.length);
+            }
+            return clean;
+        }
 
         // NUEVO: Extraer variables del iframe de forma segura
         function initAdmin() {
@@ -232,12 +250,15 @@
                     // 5. Extraer Assets
                     configSnapshot['PATH_IMAGENES'] = w.PATH_IMAGENES;
                     configSnapshot['PATH_ALERGENOS'] = w.PATH_ALERGENOS;
-                    configSnapshot['LOGO_RESTAURANTE001'] = w.LOGO_RESTAURANTE001;
-                    configSnapshot['LOGO_RESTAURANTE002'] = w.LOGO_RESTAURANTE002;
-                    configSnapshot['QR_RESTAURANTE001_DEFAULT'] = w.QR_RESTAURANTE001_DEFAULT;
-                    configSnapshot['QR_RESTAURANTE001_MOD'] = w.QR_RESTAURANTE001_MOD;
-                    configSnapshot['QR_RESTAURANTE002_DEFAULT'] = w.QR_RESTAURANTE002_DEFAULT;
-                    configSnapshot['QR_RESTURANTE002_MOD'] = w.QR_RESTAURANTE002_MOD;
+                    
+                    // MODIFICADO: Limpiar la ruta base antes de mostrar en el formulario para mayor claridad
+                    configSnapshot['LOGO_RESTAURANTE001'] = cleanAssetName(w.LOGO_RESTAURANTE001, w.PATH_IMAGENES);
+                    configSnapshot['LOGO_RESTAURANTE002'] = cleanAssetName(w.LOGO_RESTAURANTE002, w.PATH_IMAGENES);
+                    configSnapshot['QR_RESTAURANTE001_DEFAULT'] = cleanAssetName(w.QR_RESTAURANTE001_DEFAULT, w.PATH_IMAGENES);
+                    configSnapshot['QR_RESTAURANTE001_MOD'] = cleanAssetName(w.QR_RESTAURANTE001_MOD, w.PATH_IMAGENES);
+                    configSnapshot['QR_RESTAURANTE002_DEFAULT'] = cleanAssetName(w.QR_RESTAURANTE002_DEFAULT, w.PATH_IMAGENES);
+                    // MODIFICADO: Corregido typo crítico 'QR_RESTURANTE' -> 'QR_RESTAURANTE'
+                    configSnapshot['QR_RESTAURANTE002_MOD'] = cleanAssetName(w.QR_RESTAURANTE002_MOD, w.PATH_IMAGENES);
 
                     // 6. Extraer Sistema
                     configSnapshot['CONSISTENCY_WINDOW_MS'] = w.CONSISTENCY_WINDOW_MS;
@@ -260,133 +281,180 @@
                     if (form) form.style.display = 'block';
                 } catch (err) {
                     console.error("[Admin] Error cargando config.js:", err);
-                    if (statusDiv) statusDiv.innerText = "❌ Error al leer config.js. Asegúrate que admin.html y config.js están en la misma carpeta.";
+                    if (statusDiv) statusDiv.innerText = "❌ Error al leer config.js. Asegúrate que admin.html y config.js están en la misma carpeta y se sirve por HTTP (no file://).";
                 }
             };
             
             iframe.src = 'config.js?t=' + Date.now();
         }
 
+        // NUEVO: Generar el string de código JavaScript válido
+        function generateConfigCode() {
+            // 1. Leer el formulario y actualizar nuestro snapshot
+            CONFIG_MAP.forEach(item => {
+                const el = document.getElementById(item.id);
+                if (!el) return;
+                
+                if (item.type === 'boolean') {
+                    configSnapshot[item.key] = el.checked;
+                } else if (item.type === 'number') {
+                    configSnapshot[item.key] = parseFloat(el.value) || 0;
+                } else if (item.type === 'string') {
+                    configSnapshot[item.key] = el.value;
+                }
+            });
+
+            const pathBase = configSnapshot['PATH_IMAGENES'] || '';
+
+            // 2. Reconstruir el archivo config.js
+            let output = `// --- config.js ---\n`;
+            output += `// NUEVO: Registro de versión del archivo\n`;
+            output += `window.APP_VERSIONS = window.APP_VERSIONS || {};\n`;
+            output += `window.APP_VERSIONS.config = '3.0.0'; // Incrementado por modificación desde Admin Tool\n\n\n`;
+
+            // 3. RESTAURANTES_CONFIG
+            // MODIFICADO: Corregido error de sintaxis fatal ['RESTAURANTES_CONFIG', null, 4]
+            output += `// =====================================================================\n`;
+            output += `// NUEVO: SISTEMA DE ENABLE/DISABLE DE RESTAURANTES (Desacoplamiento Visual)\n`;
+            output += `// Activo: { enabled: true } - Desactivado: { enabled: false }\n`;
+            output += `const RESTAURANTES_CONFIG = ${JSON.stringify(configSnapshot['RESTAURANTES_CONFIG'], null, 4)};\n\n`;
+            output += `// NUEVO: Exposición global para que index.html pueda ocultar las pestañas\n`;
+            output += `window.RESTAURANTES_CONFIG = RESTAURANTES_CONFIG;\n\n`;
+            output += `// NUEVO: Función para comprobar si un restaurante está habilitado en la web antes de cargarlo\n`;
+            output += `function isRestauranteA(modoInterno) {\n`;
+            output += `    if (!modoInterno) return false;\n`;
+            output += `    const config = RESTAURANTES_CONFIG[modoInterno];\n`;
+            output += `    return config ? config.enabled : false;\n`;
+            output += `}\n\n`;
+
+            // 4. MODOS_ALIAS
+            output += `// =====================================================================\n`;
+            output += `// NUEVO: SISTEMA DE ALIAS DE MARCA (Desacoplamiento Visual)\n`;
+            output += `const MODOS_ALIAS = ${JSON.stringify(configSnapshot['MODOS_ALIAS'], null, 4)};\n\n`;
+            output += `// NUEVO: Función helper para obtener el nombre visual seguro\n`;
+            output += `function getModoAlias(modoInterno) {\n`;
+            output += `    if (typeof modoInterno === 'undefined' || modoInterno === null) return '';\n`;
+            output += `    return MODOS_ALIAS[modoInterno] || modoInterno;\n`;
+            output += `}\n\n`;
+
+            // 5. REDES
+            output += `// =====================================================================\n`;
+            output += `// CONFIGURACIÓN DE REDES (Google Sheets & Web Apps)\n\n`;
+            output += `// CONFIGURACION ${configSnapshot['MODOS_ALIAS'].restaurante001 || 'RESTAURANTE 001'} (restaurante001)\n`;
+            output += `const CSV_URL_RESTAURANTE001 = '${configSnapshot['CSV_URL_RESTAURANTE001']}';\n`;
+            output += `const WEB_APP_URL_RESTAURANTE001 = '${configSnapshot['WEB_APP_URL_RESTAURANTE001']}';\n\n`;
+            output += `// CONFIGURACION ${configSnapshot['MODOS_ALIAS'].restaurante002 || 'RESTAURANTE 002'} (restaurante002)\n`;
+            output += `const CSV_URL_RESTAURANTE002 = '${configSnapshot['CSV_URL_RESTAURANTE002']}';\n`;
+            output += `const WEB_APP_URL_RESTAURANTE002 = '${configSnapshot['WEB_APP_URL_RESTAURANTE002']}';\n\n`;
+            output += `// MODIFICADO: Función auxiliar pura. Recibe el modo explícitamente.\n`;
+            output += `function getWebAppUrl(modo) {\n`;
+            output += `    if (modo === 'restaurante002') {\n`;
+            output += `        return WEB_APP_URL_RESTAURANTE002;\n`;
+            output += `    }\n`;
+            output += `    return WEB_APP_URL_RESTAURANTE001;\n`;
+            output += `}\n\n`;
+            output += `// MODIFICADO: Función auxiliar pura. Recibe el modo explícitamente.\n`;
+            output += `function getCsvUrl(modo) {\n`;
+            output += `    if (modo === 'restaurante002') {\n`;
+            output += `        return CSV_URL_RESTAURANTE002;\n`;
+            output += `    }\n`;
+            output += `    return CSV_URL_RESTAURANTE001;\n`;
+            output += `}\n\n`;
+
+            // 6. IA
+            output += `// =====================================================================\n`;
+            output += `// NUEVO: CONFIGURACIÓN DE INTELIGENCIA ARTIFICIAL (Gemini)\n`;
+            output += `// NUEVO: Endpoint centralizado del modelo de IA. \n`;
+            output += `const GEMINI_ENDPOINT_URL = "${configSnapshot['GEMINI_ENDPOINT_URL']}";\n\n`;
+            output += `// NUEVO: Cantidad de filas que se envían en cada petición a la IA durante la traducción masiva.\n`;
+            output += `const TRADUCCION_TAMANO_LOTE = ${configSnapshot['TRADUCCION_TAMANO_LOTE']};\n\n`;
+
+            // 7. ASSETS
+            output += `// =====================================================================\n`;
+            output += `// NUEVO: CONFIGURACIÓN CENTRALIZADA DE ASSETS (Rutas e Imágenes)\n`;
+            output += `// NUEVO: Path base general para imágenes y recursos estáticos\n`;
+            output += `const PATH_IMAGENES = '${configSnapshot['PATH_IMAGENES']}';\n`;
+            output += `// MODIFICADO: Path específico para los iconos de alérgenos\n`;
+            output += `const PATH_ALERGENOS = '${configSnapshot['PATH_ALERGENOS']}';\n\n`;
+            output += `// Logos Principales (Header del Editor)\n`;
+            output += `// NOTA: El nombre físico de la variable se mantiene LOGO_RESTAURANTE001 para no tener que renombrar archivos físicos\n`;
+            
+            // MODIFICADO: Concatenación limpia sin depender de un replace frágil
+            output += `const LOGO_RESTAURANTE001 = PATH_IMAGENES + '${cleanAssetName(configSnapshot['LOGO_RESTAURANTE001'], pathBase)}';\n`;
+            output += `const LOGO_RESTAURANTE002 = PATH_IMAGENES + '${cleanAssetName(configSnapshot['LOGO_RESTAURANTE002'], pathBase)}';\n\n`;
+            output += `// Códigos QR ${configSnapshot['MODOS_ALIAS'].restaurante001 || 'RESTAURANTE 001'}\n`;
+            output += `const QR_RESTAURANTE001_DEFAULT = PATH_IMAGENES + '${cleanAssetName(configSnapshot['QR_RESTAURANTE001_DEFAULT'], pathBase)}';\n`;
+            output += `const QR_RESTAURANTE001_MOD = PATH_IMAGENES + '${cleanAssetName(configSnapshot['QR_RESTAURANTE001_MOD'], pathBase)}';\n\n`;
+            output += `// Códigos QR ${configSnapshot['MODOS_ALIAS'].restaurante002 || 'RESTAURANTE 002'}\n`;
+            output += `const QR_RESTAURANTE002_DEFAULT = PATH_IMAGENES + '${cleanAssetName(configSnapshot['QR_RESTAURANTE002_DEFAULT'], pathBase)}';\n`;
+            output += `const QR_RESTAURANTE002_MOD = PATH_IMAGENES + '${cleanAssetName(configSnapshot['QR_RESTAURANTE002_MOD'], pathBase)}';\n\n`;
+
+            // 8. SISTEMA
+            output += `// =====================================================================\n`;
+            output += `// NUEVO: CONFIGURACIÓN DE TIEMPOS DEL SISTEMA\n`;
+            output += `// Ventana de tiempo en milisegundos donde el sistema asume que Google Sheets \n`;
+            output += `// podría estar desactualizado tras un guardado (Client-Side Optimistic Lock)\n`;
+            output += `const CONSISTENCY_WINDOW_MS = ${configSnapshot['CONSISTENCY_WINDOW_MS']};\n`;
+
+            return output;
+        }
+
         // NUEVO: Serializar el formulario a un string de código JavaScript válido y descargarlo
         function handleSaveAdmin() {
             const statusDiv = document.getElementById('status-admin');
             try {
-                // 1. Leer el formulario y actualizar nuestro snapshot
-                CONFIG_MAP.forEach(item => {
-                    const el = document.getElementById(item.id);
-                    if (!el) return;
-                    
-                    if (item.type === 'boolean') {
-                        configSnapshot[item.key] = el.checked;
-                    } else if (item.type === 'number') {
-                        configSnapshot[item.key] = parseFloat(el.value) || 0;
-                    } else if (item.type === 'string') {
-                        configSnapshot[item.key] = el.value;
-                    }
-                });
-
-                // 2. Reconstruir el archivo config.js
-                let output = `// --- config.js ---\n`;
-                output += `// NUEVO: Registro de versión del archivo\n`;
-                output += `window.APP_VERSIONS = window.APP_VERSIONS || {};\n`;
-                output += `window.APP_VERSIONS.config = '3.0.0'; // Incrementado por modificación desde Admin Tool\n\n\n`;
-
-                // 3. RESTAURANTES_CONFIG
-                output += `// =====================================================================\n`;
-                output += `// NUEVO: SISTEMA DE ENABLE/DISABLE DE RESTAURANTES (Desacoplamiento Visual)\n`;
-                output += `// Activo: { enabled: true } - Desactivado: { enabled: false }\n`;
-                output += `const RESTAURANTES_CONFIG = ${JSON.stringify(configSnapshot['RESTAURANTES_CONFIG', null, 4)};\n\n`;
-                output += `// NUEVO: Exposición global para que index.html pueda ocultar las pestañas\n`;
-                output += `window.RESTAURANTES_CONFIG = RESTAURANTES_CONFIG;\n\n`;
-                output += `// NUEVO: Función para comprobar si un restaurante está habilitado en la web antes de cargarlo\n`;
-                output += `function isRestauranteA(modoInterno) {\n`;
-                output += `    if (!modoInterno) return false;\n`;
-                output += `    const config = RESTAURANTES_CONFIG[modoInterno];\n`;
-                output += `    return config ? config.enabled : false;\n`;
-                output += `}\n\n`;
-
-                // 4. MODOS_ALIAS
-                output += `// =====================================================================\n`;
-                output += `// NUEVO: SISTEMA DE ALIAS DE MARCA (Desacoplamiento Visual)\n`;
-                output += `const MODOS_ALIAS = ${JSON.stringify(configSnapshot['MODOS_ALIAS'], null, 4)};\n\n`;
-                output += `// NUEVO: Función helper para obtener el nombre visual seguro\n`;
-                output += `function getModoAlias(modoInterno) {\n`;
-                output += `    if (typeof modoInterno === 'undefined' || modoInterno === null) return '';\n`;
-                output += `    return MODOS_ALIAS[modoInterno] || modoInterno;\n`;
-                output += `}\n\n`;
-
-                // 5. REDES
-                output += `// =====================================================================\n`;
-                output += `// CONFIGURACIÓN DE REDES (Google Sheets & Web Apps)\n\n`;
-                output += `// CONFIGURACION ROLAND GARROS (restaurante001)\n`;
-                output += `const CSV_URL_RESTAURANTE001 = '${configSnapshot['CSV_URL_RESTAURANTE001']}';\n`;
-                output += `const WEB_APP_URL_RESTAURANTE001 = '${configSnapshot['WEB_APP_URL_RESTAURANTE001']}';\n\n`;
-                output += `// CONFIGURACION US OPEN (restaurante002)\n`;
-                output += `const CSV_URL_RESTAURANTE002 = '${configSnapshot['CSV_URL_RESTAURANTE002']}';\n`;
-                output += `const WEB_APP_URL_RESTAURANTE002 = '${configSnapshot['WEB_APP_URL_RESTAURANTE002']}';\n\n`;
-                output += `// MODIFICADO: Función auxiliar pura. Recibe el modo explícitamente.\n`;
-                output += `function getWebAppUrl(modo) {\n`;
-                output += `    if (modo === 'restaurante002') {\n`;
-                output += `        return WEB_APP_URL_RESTAURANTE002;\n`;
-                output += `    }\n`;
-                output += `    return WEB_APP_URL_RESTAURANTE001;\n`;
-                output += `}\n\n`;
-                output += `// MODIFICADO: Función auxiliar pura. Recibe el modo explícitamente.\n`;
-                output += `function getCsvUrl(modo) {\n`;
-                output += `    if (modo === 'restaurante002') {\n`;
-                output += `        return CSV_URL_RESTAURANTE002;\n`;
-                output += `    }\n`;
-                output += `    return CSV_URL_RESTAURANTE001;\n`;
-                output += `}\n\n`;
-
-                // 6. IA
-                output += `// =====================================================================\n`;
-                output += `// NUEVO: CONFIGURACIÓN DE INTELIGENCIA ARTIFICIAL (Gemini)\n`;
-                output += `// NUEVO: Endpoint centralizado del modelo de IA. \n`;
-                output += `const GEMINI_ENDPOINT_URL = "${configSnapshot['GEMINI_ENDPOINT_URL']}";\n\n`;
-                output += `// NUEVO: Cantidad de filas que se envían en cada petición a la IA durante la traducción masiva.\n`;
-                output += `const TRADUCCION_TAMANO_LOTE = ${configSnapshot['TRADUCCION_TAMANO_LOTE']};\n\n`;
-
-                // 7. ASSETS
-                output += `// =====================================================================\n`;
-                output += `// NUEVO: CONFIGURACIÓN CENTRALIZADA DE ASSETS (Rutas e Imágenes)\n`;
-                output += `// NUEVO: Path base general para imágenes y recursos estáticos\n`;
-                output += `const PATH_IMAGENES = '${configSnapshot['PATH_IMAGENES']}';\n`;
-                output += `// MODIFICADO: Path específico para los iconos de alérgenos\n`;
-                output += `const PATH_ALERGENOS = '${configSnapshot['PATH_ALERGENOS']}';\n\n`;
-                output += `// Logos Principales (Header del Editor)\n`;
-                output += `// NOTA: El nombre físico de la variable se mantiene LOGO_RESTAURANTE001 para no tener que renombrar archivos físicos\n`;
-                output += `const LOGO_RESTAURANTE001 = PATH_IMAGENES + '${configSnapshot['LOGO_RESTAURANTE001'].replace(PATH_IMAGENES, '')}';\n`;
-                output += `const LOGO_RESTAURANTE002 = PATH_IMAGENES + '${configSnapshot['LOGO_RESTAURANTE002'].replace(PATH_IMAGENES, '')}';\n\n`;
-                output += `// Códigos QR Roland Garros\n`;
-                output += `const QR_RESTAURANTE001_DEFAULT = PATH_IMAGENES + '${configSnapshot['QR_RESTAURANTE001_DEFAULT'].replace(PATH_IMAGENES, '')}';\n`;
-                output += `const QR_RESTAURANTE001_MOD = PATH_IMAGENES + '${configSnapshot['QR_RESTAURANTE001_MOD'].replace(PATH_IMAGENES, '')}';\n\n`;
-                output += `// Códigos QR US Open\n`;
-                output += `const QR_RESTAURANTE002_DEFAULT = PATH_IMAGENES + '${configSnapshot['QR_RESTAURANTE002_DEFAULT'].replace(PATH_IMAGENES, '')}';\n`;
-                output += `const QR_RESTAURANTE002_MOD = PATH_IMAGENES + '${configSnapshot['QR_RESTAURANTE002_MOD'].replace(PATH_IMAGENES, '')}';\n\n`;
-
-                // 8. SISTEMA
-                output += `// =====================================================================\n`;
-                output += `// NUEVO: CONFIGURACIÓN DE TIEMPOS DEL SISTEMA\n`;
-                output += `// Ventana de tiempo en milisegundos donde el sistema asume que Google Sheets \n`;
-                output += `// podría estar desactualizado tras un guardado (Client-Side Optimistic Lock)\n`;
-                output += `const CONSISTENCY_WINDOW_MS = ${configSnapshot['CONSISTENCY_WINDOW_MS']};\n`;
+                const output = generateConfigCode();
 
                 // Crear y descargar archivo
                 const blob = new Blob([output], { type: 'application/javascript' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
-                a.href = url;
-                a.download = 'config.js';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
+                if (a) {
+                    a.href = url;
+                    a.download = 'config.js';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                }
+                URL.revokeObjectURL(url);
                 
                 if (statusDiv) statusDiv.innerText = "✅ ¡Descarga completada! Reemplaza el archivo config.js en tu proyecto y recarga index.html.";
 
             } catch (err) {
                 console.error("[Admin] Error generando archivo:", err);
                 if (statusDiv) statusDiv.innerText = "❌ Error al generar el archivo. Revisa la consola del navegador.";
+            }
+        }
+
+        // NUEVO: Copiar el código directamente al portapapeles
+        function handleCopyAdmin() {
+            const statusDiv = document.getElementById('status-admin');
+            try {
+                const output = generateConfigCode();
+                navigator.clipboard.writeText(output).then(() => {
+                    if (statusDiv) statusDiv.innerText = "✅ ¡Código copiado al portapapeles! Pégalo en tu editor dentro de config.js.";
+                }).catch(err => {
+                    console.warn("[Admin] Fallo Clipboard API, usando fallback:", err);
+                    // Fallback para navegadores que no soporten Clipboard API
+                    const textarea = document.createElement('textarea');
+                    if (textarea) {
+                        textarea.value = output;
+                        textarea.style.position = "fixed";
+                        textarea.style.left = "-999999px";
+                        document.body.appendChild(textarea);
+                        textarea.select();
+                        try {
+                            document.execCommand('copy');
+                            if (statusDiv) statusDiv.innerText = "✅ ¡Código copiado al portapapeles (Fallback)!";
+                        } catch (e) {
+                            if (statusDiv) statusDiv.innerText = "❌ Tu navegador bloqueó el acceso al portapapeles.";
+                        }
+                        document.body.removeChild(textarea);
+                    }
+                });
+            } catch (err) {
+                console.error("[Admin] Error copiando:", err);
+                if (statusDiv) statusDiv.innerText = "❌ Error al copiar el código.";
             }
         }
 
