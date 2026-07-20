@@ -1,1 +1,397 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Config Manager - Web Editor Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: 'Montserrat', sans-serif; padding: 20px; }
+        .admin-card { background-color: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 24px; margin-bottom: 24px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3); }
+        .admin-card h2 { font-size: 1.2rem; font-weight: 700; margin: 0 0 20px 0; color: #fbbf24; border-bottom: 2px solid #334155; padding-bottom: 10px; }
+        .form-group { margin-bottom: 16px; }
+        .form-label { display: block; font-size: 0.8rem; color: #94a3b8; margin-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .form-input { width: 100%; background-color: #0f172a; border: 1px solid #475569; color: #f8fafc; border-radius: 6px; padding: 10px 12px; font-family: 'Montserrat', sans-serif; font-size: 0.9rem; outline: none; transition: border-color 0.2s; box-shadow: none; }
+        .form-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
+        .form-checkbox-wrapper { display: flex; align-items: center; gap: 10px; }
+        .form-checkbox { width: 20px; height: 20px; accent-color: #22c55e; cursor: pointer; }
+        .form-textarea { width: 100%; min-height: 80px; background-color: #0f172a; border: 1px solid #475569; color: #f8fafc; border-radius: 6px; padding: 10px 12px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.85rem; resize: vertical; outline: none; }
+        .form-textarea:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
+        .btn-save { width: 100%; padding: 14px; background-color: #22c55e; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 1rem; cursor: pointer; transition: background-color 0.2s; margin-top: 20px; }
+        .btn-save:hover { background-color: #16a34a; }
+        .section-divider { border-top: 1px solid #334155; margin: 30px 0; }
+        .section-title { font-size: 1rem; font-weight: 700; color: #60a5fa; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+        .section-icon { font-size: 1.2rem; }
+        .alert-box { background-color: #1e293b; border: 1px solid #475569; border-left: 4px solid #f59e0b; padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; color: #fde68a; font-size: 0.85rem; }
+    </style>
+</head>
+<body>
+    <div style="max-width: 900px; margin: 0 auto;">
+        <div class="admin-card">
+            <h2>⚙️ Config Manager</h2>
+            <div class="alert-box">
+                ⚠️ <strong>Importante:</strong> Este archivo modifica directamente el archivo <strong>config.js</strong>. Asegúrate de descargar el archivo resultante y reemplazar el original en la raíz del proyecto antes de recargar la aplicación principal.
+            </div>
+            <div id="status-admin" style="margin-bottom: 20px; text-align: center; font-weight: 600; color: #22c55e;">Cargando configuración actual...</div>
+            <form id="config-form" style="display: none;">
+                <!-- NUEVO: Sección de Restaurantes -->
+                <div class="section-title"><span class="section-icon">🏢</span> Restaurantes (Enable/Disable & Alias)</div>
+                
+                <div class="form-group">
+                    <label class="form-label">Estado Restaurante 001 (restaurante001)</label>
+                    <div class="form-checkbox-wrapper">
+                        <input type="checkbox" id="cfg-restaurante001-enabled" class="form-checkbox">
+                        <label for="cfg-restaurante001-enabled" style="color: #cbd5e1; cursor: pointer;">Habilitado</label>
+                    </div>
+                </div>
 
+                <div class="form-group">
+                    <label class="form-label">Alias Visual para Restaurante 001</label>
+                    <input type="text" id="cfg-alias-restaurante001" class="form-input" placeholder="Ej: Roland Garros">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Estado Restaurante 002 (restaurante002)</label>
+                    <div class="form-checkbox-wrapper">
+                        <input type="checkbox" id="cfg-restaurante002-enabled" class="form-checkbox">
+                        <label for="cfg-restaurante002-enabled" style="color: #cbd5e1; cursor: pointer;">Habilitado</label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Alias Visual para Restaurante 002</label>
+                    <input type="text" id="cfg-alias-restaurante002" class="form-input" placeholder="Ej: US Open">
+                </div>
+
+                <div class="section-divider"></div>
+
+                <!-- NUEVO: Sección de Redes -->
+                <div class="section-title"><span class="section-icon">🌐</span> URLs de Red (Google Sheets & Web Apps)</div>
+                
+                <div class="form-group">
+                    <label class="label-seccion">CSV URL Restaurante 001</label>
+                    <input type="text" id="cfg-csv-restaurante001" class="form-textarea" rows="2">
+                </div>
+
+                <div class="form-group">
+                    <label class="label-seccion">Web App URL Restaurante 001</label>
+                    <input type="text" id="cfg-webapp-restaurante001" class="form-textarea" rows="2">
+                </div>
+
+                <div class="form-group">
+                    <label class="label-seccion">CSV URL Restaurante 002</label>
+                    <input type="text" id="cfg-csv-restaurante002" class="form-textarea" rows="2">
+                </div>
+
+                <div class="form-group">
+                    <label class="label-seccion">Web App URL Restaurante 002</label>
+                    <input type="text" id="cfg-webapp-restaurante002" class="form-textarea" rows="2">
+                </div>
+
+                <div class="section-divider"></div>
+
+                <!-- NUEVO: Sección de IA -->
+                <div class="section-title"><span class="section-icon">🧠</span> Inteligencia Artificial (Gemini)</div>
+                
+                <div class="form-group">
+                    <label class="form-label">Gemini Endpoint URL</label>
+                    <input type="text" id="cfg-gemini-url" class="form-textarea" rows="2">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Tamaño de Lote en Traductor Pro</label>
+                    <input type="number" id="cfg-lote-size" class="form-input" min="1" max="100" step="1">
+                </div>
+
+                <div class="section-divider"></div>
+
+                <!-- NUEVO: Sección de Assets -->
+                <div class="section-title"><span class="section-icon">🖼️</span> Assets y Rutas</div>
+                
+                <div class="form-group">
+                    <label class="form-label">Ruta Base de Imágenes</label>
+                    <input type="text" id="cfg-path-imagenes" class="form-input" placeholder="Ej: imagenes/imagenes/">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Ruta de Alérgenos</label>
+                    <input type="text" id="cfg-path-alergenos" class="input-estandar" placeholder="Ej: imagenes/alergenos/">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Logo Restaurante 001</label>
+                    <input type="text" id="cfg-logo-restaurante001" class="form-input" placeholder="Ej: imagenes/imagenes/logo_web01.png">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Logo Restaurante 002</label>
+                    <input type="text" id="cfg-logo-restaurante002" class="form-input" placeholder="Ej: imagenes/imagenes/logo_web02.png">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">QR Restaurante 001 (Default)</label>
+                    <input type="text" id="cfg-qr-restaurante001-default" class="form-input" placeholder="Ej: imagenes/imagenes/qr-web01-02.png">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">QR Restaurante 001 (Mod)</label>
+                    <input type="text" id="cfg-qr-restaurante001-mod" class="form-input" placeholder="Ej: imagenes/imagenes/qr-web01-01.png">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">QR Restaurante 002 (Default)</label>
+                    <input type="text" id="cfg-qr-restaurante002-default" class="form-input" placeholder="Ej: imagenes/imagenes/qr-web02-01.png">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">QR Restaurante 002 (Mod)</label>
+                    <input type="text" id="cfg-qr-restaurante002-mod" class="form-input" placeholder="Ej: imagenes/imagenes/qr-web02-02.png">
+                </div>
+
+                <div class="section-divider"></div>
+
+                <!-- NUEVO: Sección de Sistema -->
+                <div class="section-title"><span class="section-icon">⏱️</span> Tiempos del Sistema</div>
+                
+                <div class="form-group">
+                    <label class="form-label">Ventana de Consistencia (ms)</label>
+                    <input type="number" id="cfg-consistency-window" class="form-input" min="10000" max="600000" step="1000" placeholder="Ej: 180000">
+                </div>
+
+                <button type="button" class="btn-save" onclick="handleSaveAdmin()">💾 Descargar nuevo config.js</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Iframe oculto para cargar config.js de forma segura y extraer sus variables -->
+    <iframe id="config-iframe" src="config.js" style="position: absolute; width: 0; height: 0; border: 0; opacity: 0; pointer-events: none;"></iframe>
+
+    <script>
+        // NUEVO: Mapeo estricto de las variables que queremos extraer y su tipo para regenerar config.js
+        const CONFIG_MAP = [
+            { id: 'cfg-restaurante001-enabled', key: 'RESTAURANTES_CONFIG.restaurante001.enabled', type: 'boolean' },
+            { id: 'cfg-alias-restaurante001', key: 'MODOS_ALIAS.restaurante001', type: 'string' },
+            { id: 'cfg-restaurante002-enabled', key: 'RESTAURANTES_CONFIG.restaurante002.enabled', type: 'boolean' },
+            { id: 'cfg-alias-restaurante002', key: 'MODOS_ALIAS.restaurante002', type: 'string' },
+            { id: 'cfg-csv-restaurante001', key: 'CSV_URL_RESTAURANTE001', type: 'string' },
+            { id: 'cfg-webapp-restaurante001', key: 'WEB_APP_URL_RESTAURANTE001', type: 'string' },
+            { id: 'cfg-csv-restaurante002', key: 'CSV_URL_RESTAURANTE002', type: 'string' },
+            { id: 'cfg-webapp-restaurante002', key: 'WEB_APP_URL_RESTAURANTE002', type: 'string' },
+            { id: 'cfg-gemini-url', key: 'GEMINI_ENDPOINT_URL', type: 'string' },
+            { id: 'cfg-lote-size', key: 'TRADUCCION_TAMANO_LOTE', type: 'number' },
+            { id: 'cfg-path-imagenes', key: 'PATH_IMAGENES', type: 'string' },
+            { id: 'cfg-path-alergenos', key: 'PATH_ALERGENOS', type: 'string' },
+            { id: 'cfg-logo-restaurante001', key: 'LOGO_RESTAURANTE001', type: 'string' },
+            { id: 'cfg-logo-restaurante002', key: 'LOGO_RESTAURANTE002', type: 'string' },
+            { id: 'cfg-qr-restaurante001-default', key: 'QR_RESTAURANTE001_DEFAULT', type: 'string' },
+            { id: 'cfg-qr-restaurante001-mod', key: 'QR_RESTAURANTE001_MOD', type: 'string' },
+            { id: 'cfg-qr-restaurante002-default', key: 'QR_RESTAURANTE002_DEFAULT', type: 'string' },
+            { id: 'cfg-qr-restaurante002-mod', key: 'QR_RESTAURANTE002_MOD', type: 'string' },
+            { id: 'cfg-consistency-window', key: 'CONSISTENCY_WINDOW_MS', type: 'number' }
+        ];
+
+        let configSnapshot = {};
+
+        // NUEVO: Extraer variables del iframe de forma segura
+        function initAdmin() {
+            const iframe = document.getElementById('config-iframe');
+            const statusDiv = document.getElementById('status-admin');
+            const form = document.getElementById('config-form');
+            
+            if (!iframe || !form) {
+                if (statusDiv) statusDiv.innerText = "❌ Error crítico: No se encontró el contenedor del iframe o el formulario.";
+                return;
+            }
+
+            iframe.onload = function() {
+                try {
+                    const w = iframe.contentWindow;
+                    if (!w || !w.RESTAURANTES_CONFIG) throw new Error("No se pudo acceder al contexto de config.js.");
+                    
+                    // 1. Extraer RESTAURANTES_CONFIG
+                    const restConfig = {
+                        restaurante001: { enabled: w.RESTAURANTES_CONFIG.restaurante001.enabled },
+                        restaurante002: { enabled: w.RESTAURANTES_CONFIG.restaurante002.enabled }
+                    };
+                    configSnapshot['RESTAURANTES_CONFIG'] = restConfig;
+
+                    // 2. Extraer MODOS_ALIAS
+                    const alias = { ...w.MODOS_ALIAS };
+                    configSnapshot['MODOS_ALIAS'] = alias;
+
+                    // 3. Extraer URLs
+                    configSnapshot['CSV_URL_RESTAURANTE001'] = w.CSV_URL_RESTAURANTE001;
+                    configSnapshot['CSV_URL_RESTAURANTE002'] = w.CSV_URL_RESTAURANTE002;
+                    configSnapshot['WEB_APP_URL_RESTAURANTE001'] = w.WEB_APP_URL_RESTAURANTE001;
+                    configSnapshot['WEB_APP_URL_RESTAURANTE002'] = w.WEB_APP_URL_RESTAURANTE002;
+
+                    // 4. Extraer IA Config
+                    configSnapshot['GEMINI_ENDPOINT_URL'] = w.GEMINI_ENDPOINT_URL;
+                    configSnapshot['TRADUCCION_TAMANO_LOTE'] = w.TRADUCCION_TAMANO_LOTE;
+
+                    // 5. Extraer Assets
+                    configSnapshot['PATH_IMAGENES'] = w.PATH_IMAGENES;
+                    configSnapshot['PATH_ALERGENOS'] = w.PATH_ALERGENOS;
+                    configSnapshot['LOGO_RESTAURANTE001'] = w.LOGO_RESTAURANTE001;
+                    configSnapshot['LOGO_RESTAURANTE002'] = w.LOGO_RESTAURANTE002;
+                    configSnapshot['QR_RESTAURANTE001_DEFAULT'] = w.QR_RESTAURANTE001_DEFAULT;
+                    configSnapshot['QR_RESTAURANTE001_MOD'] = w.QR_RESTAURANTE001_MOD;
+                    configSnapshot['QR_RESTAURANTE002_DEFAULT'] = w.QR_RESTAURANTE002_DEFAULT;
+                    configSnapshot['QR_RESTURANTE002_MOD'] = w.QR_RESTAURANTE002_MOD;
+
+                    // 6. Extraer Sistema
+                    configSnapshot['CONSISTENCY_WINDOW_MS'] = w.CONSISTENCY_WINDOW_MS;
+
+                    // 7. Llenar formulario
+                    CONFIG_MAP.forEach(item => {
+                        const el = document.getElementById(item.id);
+                        if (el) {
+                            if (item.type === 'boolean') {
+                                el.checked = Boolean(configSnapshot[item.key]);
+                            } else if (item.type === 'number') {
+                                el.value = configSnapshot[item.key];
+                            } else if (item.type === 'string') {
+                                el.value = configSnapshot[item.key] || "";
+                            }
+                        }
+                    });
+
+                    if (statusDiv) statusDiv.innerText = "✅ Configuración cargada correctamente. Puedes modificar los campos y descargar el archivo.";
+                    if (form) form.style.display = 'block';
+                } catch (err) {
+                    console.error("[Admin] Error cargando config.js:", err);
+                    if (statusDiv) statusDiv.innerText = "❌ Error al leer config.js. Asegúrate que admin.html y config.js están en la misma carpeta.";
+                }
+            };
+            
+            iframe.src = 'config.js?t=' + Date.now();
+        }
+
+        // NUEVO: Serializar el formulario a un string de código JavaScript válido y descargarlo
+        function handleSaveAdmin() {
+            const statusDiv = document.getElementById('status-admin');
+            try {
+                // 1. Leer el formulario y actualizar nuestro snapshot
+                CONFIG_MAP.forEach(item => {
+                    const el = document.getElementById(item.id);
+                    if (!el) return;
+                    
+                    if (item.type === 'boolean') {
+                        configSnapshot[item.key] = el.checked;
+                    } else if (item.type === 'number') {
+                        configSnapshot[item.key] = parseFloat(el.value) || 0;
+                    } else if (item.type === 'string') {
+                        configSnapshot[item.key] = el.value;
+                    }
+                });
+
+                // 2. Reconstruir el archivo config.js
+                let output = `// --- config.js ---\n`;
+                output += `// NUEVO: Registro de versión del archivo\n`;
+                output += `window.APP_VERSIONS = window.APP_VERSIONS || {};\n`;
+                output += `window.APP_VERSIONS.config = '3.0.0'; // Incrementado por modificación desde Admin Tool\n\n\n`;
+
+                // 3. RESTAURANTES_CONFIG
+                output += `// =====================================================================\n`;
+                output += `// NUEVO: SISTEMA DE ENABLE/DISABLE DE RESTAURANTES (Desacoplamiento Visual)\n`;
+                output += `// Activo: { enabled: true } - Desactivado: { enabled: false }\n`;
+                output += `const RESTAURANTES_CONFIG = ${JSON.stringify(configSnapshot['RESTAURANTES_CONFIG', null, 4)};\n\n`;
+                output += `// NUEVO: Exposición global para que index.html pueda ocultar las pestañas\n`;
+                output += `window.RESTAURANTES_CONFIG = RESTAURANTES_CONFIG;\n\n`;
+                output += `// NUEVO: Función para comprobar si un restaurante está habilitado en la web antes de cargarlo\n`;
+                output += `function isRestauranteA(modoInterno) {\n`;
+                output += `    if (!modoInterno) return false;\n`;
+                output += `    const config = RESTAURANTES_CONFIG[modoInterno];\n`;
+                output += `    return config ? config.enabled : false;\n`;
+                output += `}\n\n`;
+
+                // 4. MODOS_ALIAS
+                output += `// =====================================================================\n`;
+                output += `// NUEVO: SISTEMA DE ALIAS DE MARCA (Desacoplamiento Visual)\n`;
+                output += `const MODOS_ALIAS = ${JSON.stringify(configSnapshot['MODOS_ALIAS'], null, 4)};\n\n`;
+                output += `// NUEVO: Función helper para obtener el nombre visual seguro\n`;
+                output += `function getModoAlias(modoInterno) {\n`;
+                output += `    if (typeof modoInterno === 'undefined' || modoInterno === null) return '';\n`;
+                output += `    return MODOS_ALIAS[modoInterno] || modoInterno;\n`;
+                output += `}\n\n`;
+
+                // 5. REDES
+                output += `// =====================================================================\n`;
+                output += `// CONFIGURACIÓN DE REDES (Google Sheets & Web Apps)\n\n`;
+                output += `// CONFIGURACION ROLAND GARROS (restaurante001)\n`;
+                output += `const CSV_URL_RESTAURANTE001 = '${configSnapshot['CSV_URL_RESTAURANTE001']}';\n`;
+                output += `const WEB_APP_URL_RESTAURANTE001 = '${configSnapshot['WEB_APP_URL_RESTAURANTE001']}';\n\n`;
+                output += `// CONFIGURACION US OPEN (restaurante002)\n`;
+                output += `const CSV_URL_RESTAURANTE002 = '${configSnapshot['CSV_URL_RESTAURANTE002']}';\n`;
+                output += `const WEB_APP_URL_RESTAURANTE002 = '${configSnapshot['WEB_APP_URL_RESTAURANTE002']}';\n\n`;
+                output += `// MODIFICADO: Función auxiliar pura. Recibe el modo explícitamente.\n`;
+                output += `function getWebAppUrl(modo) {\n`;
+                output += `    if (modo === 'restaurante002') {\n`;
+                output += `        return WEB_APP_URL_RESTAURANTE002;\n`;
+                output += `    }\n`;
+                output += `    return WEB_APP_URL_RESTAURANTE001;\n`;
+                output += `}\n\n`;
+                output += `// MODIFICADO: Función auxiliar pura. Recibe el modo explícitamente.\n`;
+                output += `function getCsvUrl(modo) {\n`;
+                output += `    if (modo === 'restaurante002') {\n`;
+                output += `        return CSV_URL_RESTAURANTE002;\n`;
+                output += `    }\n`;
+                output += `    return CSV_URL_RESTAURANTE001;\n`;
+                output += `}\n\n`;
+
+                // 6. IA
+                output += `// =====================================================================\n`;
+                output += `// NUEVO: CONFIGURACIÓN DE INTELIGENCIA ARTIFICIAL (Gemini)\n`;
+                output += `// NUEVO: Endpoint centralizado del modelo de IA. \n`;
+                output += `const GEMINI_ENDPOINT_URL = "${configSnapshot['GEMINI_ENDPOINT_URL']}";\n\n`;
+                output += `// NUEVO: Cantidad de filas que se envían en cada petición a la IA durante la traducción masiva.\n`;
+                output += `const TRADUCCION_TAMANO_LOTE = ${configSnapshot['TRADUCCION_TAMANO_LOTE']};\n\n`;
+
+                // 7. ASSETS
+                output += `// =====================================================================\n`;
+                output += `// NUEVO: CONFIGURACIÓN CENTRALIZADA DE ASSETS (Rutas e Imágenes)\n`;
+                output += `// NUEVO: Path base general para imágenes y recursos estáticos\n`;
+                output += `const PATH_IMAGENES = '${configSnapshot['PATH_IMAGENES']}';\n`;
+                output += `// MODIFICADO: Path específico para los iconos de alérgenos\n`;
+                output += `const PATH_ALERGENOS = '${configSnapshot['PATH_ALERGENOS']}';\n\n`;
+                output += `// Logos Principales (Header del Editor)\n`;
+                output += `// NOTA: El nombre físico de la variable se mantiene LOGO_RESTAURANTE001 para no tener que renombrar archivos físicos\n`;
+                output += `const LOGO_RESTAURANTE001 = PATH_IMAGENES + '${configSnapshot['LOGO_RESTAURANTE001'].replace(PATH_IMAGENES, '')}';\n`;
+                output += `const LOGO_RESTAURANTE002 = PATH_IMAGENES + '${configSnapshot['LOGO_RESTAURANTE002'].replace(PATH_IMAGENES, '')}';\n\n`;
+                output += `// Códigos QR Roland Garros\n`;
+                output += `const QR_RESTAURANTE001_DEFAULT = PATH_IMAGENES + '${configSnapshot['QR_RESTAURANTE001_DEFAULT'].replace(PATH_IMAGENES, '')}';\n`;
+                output += `const QR_RESTAURANTE001_MOD = PATH_IMAGENES + '${configSnapshot['QR_RESTAURANTE001_MOD'].replace(PATH_IMAGENES, '')}';\n\n`;
+                output += `// Códigos QR US Open\n`;
+                output += `const QR_RESTAURANTE002_DEFAULT = PATH_IMAGENES + '${configSnapshot['QR_RESTAURANTE002_DEFAULT'].replace(PATH_IMAGENES, '')}';\n`;
+                output += `const QR_RESTAURANTE002_MOD = PATH_IMAGENES + '${configSnapshot['QR_RESTAURANTE002_MOD'].replace(PATH_IMAGENES, '')}';\n\n`;
+
+                // 8. SISTEMA
+                output += `// =====================================================================\n`;
+                output += `// NUEVO: CONFIGURACIÓN DE TIEMPOS DEL SISTEMA\n`;
+                output += `// Ventana de tiempo en milisegundos donde el sistema asume que Google Sheets \n`;
+                output += `// podría estar desactualizado tras un guardado (Client-Side Optimistic Lock)\n`;
+                output += `const CONSISTENCY_WINDOW_MS = ${configSnapshot['CONSISTENCY_WINDOW_MS']};\n`;
+
+                // Crear y descargar archivo
+                const blob = new Blob([output], { type: 'application/javascript' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'config.js';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                
+                if (statusDiv) statusDiv.innerText = "✅ ¡Descarga completada! Reemplaza el archivo config.js en tu proyecto y recarga index.html.";
+
+            } catch (err) {
+                console.error("[Admin] Error generando archivo:", err);
+                if (statusDiv) statusDiv.innerText = "❌ Error al generar el archivo. Revisa la consola del navegador.";
+            }
+        }
+
+        // Iniciar al cargar la página
+        window.onload = initAdmin;
+    </script>
+</body>
+</html>
