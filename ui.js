@@ -1,6 +1,8 @@
 // ui.js (Web_Editor_Pro)
+// [ARCHIVO COMPLETO UNIFICADO]
+
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.ui = '1.1.0-ABSTRACT-KEYS'; // MODIFICADO: Salto versión por limpieza de modos
+window.APP_VERSIONS.ui = '1.2.0-INFO-EXTENDIDA'; // MODIFICADO: Salto de versión por IA enriquecida
 
 window.APP_VERSIONS.config = window.APP_VERSIONS.config || '1.0.0';
 window.APP_VERSIONS.app = window.APP_VERSIONS.app || '1.0.33';
@@ -13,7 +15,6 @@ let activeLang = 'EN';
 const stateContainer = {
     headers: [],
     csvData: [],
-    // MODIFICADO: Estado local mapeado a Abstract Keys
     currentProMode: 'restaurante001' 
 };
 
@@ -142,7 +143,19 @@ export const UI = {
         const payload = stateContainer.csvData.map(row => {
             while (row.length < totalColumnasEsperadas) row.push("");
             let obj = { id: parseInt(row[idxId]), precio: idxPrecio !== -1 ? (row[idxPrecio] || "0.00") : "0.00", estado: idxEstado !== -1 ? (row[idxEstado] || "no") : "no", carpeta: idxCarpeta !== -1 ? (row[idxCarpeta] || "") : "", imagen: idxImagen !== -1 ? (row[idxImagen] || "") : "", alergenos: idxAlergenos !== -1 ? (row[idxAlergenos] || "") : "" };
-            stateContainer.headers.forEach((h, i) => { if (h && h.trim().toUpperCase().startsWith("NOMBRE_")) { let langKey = h.trim().toUpperCase().replace("NOMBRE_", "").toLowerCase(); obj[`nombre_${langKey}`] = row[i] || ""; } });
+            
+            // MODIFICADO: Procesar y empacar tanto las columnas NOMBRE_ como las nuevas columnas INFO_
+            stateContainer.headers.forEach((h, i) => { 
+                if (!h) return;
+                const hUpper = h.trim().toUpperCase();
+                if (hUpper.startsWith("NOMBRE_")) { 
+                    let langKey = hUpper.replace("NOMBRE_", "").toLowerCase(); 
+                    obj[`nombre_${langKey}`] = row[i] || ""; 
+                } else if (hUpper.startsWith("INFO_")) {
+                    let langKey = hUpper.replace("INFO_", "").toLowerCase(); 
+                    obj[`info_${langKey}`] = row[i] || ""; 
+                }
+            });
             return obj;
         }).filter(x => !isNaN(x.id) && x.id > 0);
 
@@ -205,7 +218,6 @@ export const UI = {
     confirmarImportacion: (mode) => {
         const file = window.UI.tempImportFile;
         if (!file) return UI.log("[Error] No se encontró el archivo temporal.");
-        // MODIFICADO: Asegurar modo abstracto
         const modoDefinitivo = (mode === 'RG') ? 'restaurante001' : (mode === 'USOPEN') ? 'restaurante002' : mode;
         stateContainer.currentProMode = modoDefinitivo;
         window.currentMode = modoDefinitivo;
@@ -261,6 +273,21 @@ export const UI = {
         const selectorFin = document.getElementById('rangoFin');
         const rangoInicio = selectorInicio ? (parseInt(selectorInicio.value) - 2 || 0) : 0;
         const rangoFin = selectorFin ? (parseInt(selectorFin.value) - 1 || activeStateContainer.csvData.length) : activeStateContainer.csvData.length;
+        
+        // NUEVO: Extraer idiomas detectados y generar columnas INFO_[LANG] si no existen
+        const idiomasDetectados = activeStateContainer.headers
+            .filter(h => h && h.toUpperCase().startsWith("NOMBRE_"))
+            .map(h => h.toUpperCase().replace("NOMBRE_", ""));
+
+        idiomasDetectados.forEach(lang => {
+            const infoHeader = `INFO_${lang}`;
+            if (!activeStateContainer.headers.some(h => h && h.toUpperCase() === infoHeader)) {
+                activeStateContainer.headers.push(infoHeader);
+                activeStateContainer.csvData.forEach(row => row.push(""));
+                UI.log(`[Info] Columna ${infoHeader} creada dinámicamente.`);
+            }
+        });
+
         const columnasIdiomasDestino = activeStateContainer.headers.map((h, i) => (h && h.toUpperCase().startsWith("NOMBRE_") && h.toUpperCase() !== "NOMBRE_ES") ? i : -1).filter(i => i !== -1);
         const indiceCastellanoBase = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === 'NOMBRE_ES');
         if (indiceCastellanoBase === -1) return UI.log("[Error] Falta la columna 'Nombre_ES'.");
@@ -271,41 +298,98 @@ export const UI = {
 
         for (let i = Math.max(0, rangoInicio); i < techoLimiteEvaluacion; i++) {
             const cadenaCastellano = activeStateContainer.csvData[i][indiceCastellanoBase] || "Sin nombre";
+            
+            // Detección de traducciones faltantes
             const indicesColumnasVacias = columnasIdiomasDestino.filter(idx => !activeStateContainer.csvData[i][idx] || activeStateContainer.csvData[i][idx].trim() === "");
-            if (indicesColumnasVacias.length > 0) { matrizFilasPendientes.push({ indiceMatriz: i, numeroFilaHumana: i + 2, textoES: cadenaCastellano, indicesColumnasFaltantes: indicesColumnasVacias, codigosIdiomas: indicesColumnasVacias.map(idx => activeStateContainer.headers[idx].replace("Nombre_", "").replace("nombre_", "")) }); }
+            
+            // NUEVO: Detección de descripciones JSON faltantes para los idiomas detectados
+            const infoFaltantes = [];
+            idiomasDetectados.forEach(lang => {
+                const idxInfo = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === `INFO_${lang}`);
+                if (idxInfo !== -1 && (!activeStateContainer.csvData[i][idxInfo] || activeStateContainer.csvData[i][idxInfo].trim() === "")) {
+                    infoFaltantes.push(lang);
+                }
+            });
+
+            // MODIFICADO: Agrega a la matriz si faltan nombres O falta la info extendida
+            if (indicesColumnasVacias.length > 0 || infoFaltantes.length > 0) { 
+                matrizFilasPendientes.push({ 
+                    indiceMatriz: i, 
+                    numeroFilaHumana: i + 2, 
+                    textoES: cadenaCastellano, 
+                    indicesColumnasFaltantes: indicesColumnasVacias, 
+                    codigosIdiomas: indicesColumnasVacias.map(idx => activeStateContainer.headers[idx].toUpperCase().replace("NOMBRE_", "")),
+                    infoFaltantes: infoFaltantes // NUEVO array
+                }); 
+            }
         }
-        if (matrizFilasPendientes.length === 0) return UI.log("[FIN] No quedan celdas vacías por traducir.");
+        
+        if (matrizFilasPendientes.length === 0) return UI.log("[FIN] Todos los datos (Nombres e Info) están completos.");
         UI.log(`[Info] Detectadas ${matrizFilasPendientes.length} filas incompletas. Agrupando...`);
         
-        for (let j = 0; j < matrizFilasPendientes.length; j += TRADUCCION_TAMANO_LOTE) {
+        for (let j = 0; j < matrizFilasPendientes.length; j += (window.TRADUCCION_TAMANO_LOTE || 5)) {
             if (procesoDetenido) break;
             while (procesoPausado) await new Promise(resolve => setTimeout(resolve, 500));
-            const loteActual = matrizFilasPendientes.slice(j, j + TRADUCCION_TAMANO_LOTE);
-            const estructuraPromptPayload = loteActual.map(p => ({ id_fila: p.numeroFilaHumana, texto: p.textoES, idiomas_requeridos: p.codigosIdiomas }));
+            
+            const loteActual = matrizFilasPendientes.slice(j, j + (window.TRADUCCION_TAMANO_LOTE || 5));
+            
+            // MODIFICADO: Payload enriquecido indicando qué idiomas necesitan info extendida
+            const estructuraPromptPayload = loteActual.map(p => ({ 
+                id_fila: p.numeroFilaHumana, 
+                texto: p.textoES, 
+                idiomas_nombre_requeridos: p.codigosIdiomas,
+                idiomas_info_requeridos: p.infoFaltantes
+            }));
+            
             const secuenciaImpresionFilas = loteActual.map(p => p.numeroFilaHumana).join(', ');
             UI.log(`[Procesando Lote] [${secuenciaImpresionFilas}]...`);
             let peticionSatisfecha = false;
+            
             while (!peticionSatisfecha && !procesoDetenido) {
                 try {
-                    const instruccionesEstructuralesIA = `Actúa como un traductor experto de menús. Datos: ${JSON.stringify(estructuraPromptPayload)}. Responde SOLO con JSON: {"lote": [{"id_fila": 8, "traducciones": {"EN": "Name"}}]}`;
-                    const callResponse = await fetch(`${GEMINI_ENDPOINT_URL}?key=${listaClavesAPI[currentKeyIndex]}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: instruccionesEstructuralesIA }] }] }) });
+                    // MODIFICADO: Prompt extendido pidiendo el bloque JSON anidado
+                    const instruccionesEstructuralesIA = `Actúa como traductor y creador de contenido gastronómico. Datos: ${JSON.stringify(estructuraPromptPayload)}. Para 'idiomas_nombre_requeridos' traduce el nombre del plato. Para 'idiomas_info_requeridos' inventa una descripción apetitosa, y 3 preguntas con sus 3 respuestas cortas de interés (alérgenos, origen, ingredientes especiales). Responde SOLO con un JSON estricto con esta estructura exacta (no añadas markdown): {"lote": [{"id_fila": 8, "traducciones": {"EN": "Name EN"}, "info": {"ES": {"desc": "...", "q1": "...", "r1": "...", "q2": "...", "r2": "...", "q3": "...", "r3": "..."}, "EN": {"desc": "...", "q1": "...", "r1": "...", "q2": "...", "r2": "...", "q3": "...", "r3": "..."}}}]}`;
+
+                    const callResponse = await fetch(`${window.GEMINI_ENDPOINT_URL || ''}?key=${listaClavesAPI[currentKeyIndex]}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: instruccionesEstructuralesIA }] }] }) });
                     const respuestaJsonData = await callResponse.json();
+                    
                     if (respuestaJsonData.error?.code === 429) { currentKeyIndex = (currentKeyIndex + 1) % listaClavesAPI.length; UI.log(`[Aviso] Límite superado. Rotando Key...`); await new Promise(resolve => setTimeout(resolve, 3000)); continue; }
+                    
                     const textoLimpioIA = respuestaJsonData.candidates?.[0]?.content?.parts?.[0]?.text;
                     if (textoLimpioIA) {
                         const jsonSanitizado = textoLimpioIA.replace(/```json/g, '').replace(/```/g, '').trim();
                         const objetoParseadoFinal = JSON.parse(jsonSanitizado);
+                        
                         if (objetoParseadoFinal && objetoParseadoFinal.lote) {
                             objetoParseadoFinal.lote.forEach(filaLote => {
                                 const objetivoFilaMemoria = loteActual.find(p => p.numeroFilaHumana === parseInt(filaLote.id_fila));
-                                if (objetivoFilaMemoria && filaLote.traducciones) {
-                                    objetivoFilaMemoria.indicesColumnasFaltantes.forEach(idxCol => {
-                                        const codigoIdiomaISO = activeStateContainer.headers[idxCol].replace("Nombre_", "").replace("nombre_", "");
-                                        if (filaLote.traducciones[codigoIdiomaISO]) activeStateContainer.csvData[objetivoFilaMemoria.indiceMatriz][idxCol] = filaLote.traducciones[codigoIdiomaISO].replace(/[\(\)""'']/g, '');
-                                    });
+                                if (objetivoFilaMemoria) {
+                                    
+                                    // 1. Inyectar nombres de los platos
+                                    if (filaLote.traducciones) {
+                                        objetivoFilaMemoria.indicesColumnasFaltantes.forEach(idxCol => {
+                                            const codigoIdiomaISO = activeStateContainer.headers[idxCol].toUpperCase().replace("NOMBRE_", "");
+                                            if (filaLote.traducciones[codigoIdiomaISO]) {
+                                                activeStateContainer.csvData[objetivoFilaMemoria.indiceMatriz][idxCol] = filaLote.traducciones[codigoIdiomaISO].replace(/[\(\)""'']/g, '');
+                                            }
+                                        });
+                                    }
+
+                                    // 2. NUEVO: Inyectar JSON plano (desc, q1, r1...) en las columnas INFO_ correspondientes
+                                    if (filaLote.info) {
+                                        objetivoFilaMemoria.infoFaltantes.forEach(lang => {
+                                            if (filaLote.info[lang]) {
+                                                const idxInfoCol = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === `INFO_${lang}`);
+                                                if (idxInfoCol !== -1) {
+                                                    // Guardamos el objeto entero como un JSON string en la celda
+                                                    activeStateContainer.csvData[objetivoFilaMemoria.indiceMatriz][idxInfoCol] = JSON.stringify(filaLote.info[lang]);
+                                                }
+                                            }
+                                        });
+                                    }
                                 }
                             });
-                            UI.log(`[OK Lote] [${secuenciaImpresionFilas}] inyectado.`);
+                            UI.log(`[OK Lote] [${secuenciaImpresionFilas}] inyectado (Nombres + Info).`);
                             totalPeticionesExitosas++; peticionSatisfecha = true;
                         } else throw new Error("JSON no contiene nodo 'lote'.");
                     }
