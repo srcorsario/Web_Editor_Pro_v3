@@ -410,7 +410,7 @@ export const UI = {
                     try {
                         const promptNombres = `Actúa como traductor gastronómico profesional. Traduce los siguientes nombres de platos al castellano según se indica: ${JSON.stringify(payloadNombres)}. Responde EXCLUSIVAMENTE con un JSON válido, sin markdown: {"lote": [{"id_fila": 8, "traducciones": {"EN": "Name EN", "KO": "Name KO"}}]}`;
 
-                        const callResponse = await fetch(`${window.GEMINI_ENDPOINT_URL || ''}?key=${listaClavesAPI[currentKeyIndex]}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: promptNombres }] }] }) });
+                        const callResponse = await fetch(`${window.GEMINI_ENDPOINT_URL || 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent'}?key=${listaClavesAPI[currentKeyIndex]}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: promptNombres }] }] }) });
                         
                         const textResponse = await callResponse.text();
                         let respuestaJsonData;
@@ -503,7 +503,7 @@ export const UI = {
                     try {
                         const promptInfo = `Actúa como chef experto. Para el plato: ${JSON.stringify(payloadInfo)}, genera una descripción apetitosa y 3 preguntas con respuestas cortas de interés. Tradúcelo a los idiomas solicitados. Responde EXCLUSIVAMENTE con un JSON válido, sin markdown: {"lote": [{"id_fila": 8, "info": {"EN": {"desc": "...", "q1": "...", "r1": "...", "q2": "...", "r2": "...", "q3": "...", "r3": "..."}, "ES": {"desc": "...", "q1": "...", "r1": "...", "q2": "...", "r2": "...", "q3": "...", "r3": "..."}}}]}`;
 
-                        const callResponse = await fetch(`${window.GEMINI_ENDPOINT_URL || ''}?key=${listaClavesAPI[currentKeyIndex]}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: promptInfo }] }] }) });
+                        const callResponse = await fetch(`${window.GEMINI_ENDPOINT_URL || 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent'}?key=${listaClavesAPI[currentKeyIndex]}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: promptInfo }] }] }) });
                         
                         const textResponse = await callResponse.text();
                         let respuestaJsonData;
@@ -537,29 +537,20 @@ export const UI = {
                             });
                             UI.log(`[OK Fase 2] [${secuenciaInfo}] inyectada con éxito.`);
                             satisfechoInfo = true;
-                        } else throw new Error("Estructura JSON inválida en info extendida.");
+                        } else throw new Error("Estructura JSON inválida en info.");
                     } catch (err) {
                         UI.log(`[Error Fase 2] [${secuenciaInfo}]: ${err.message}`);
                         await new Promise(r => setTimeout(r, 3000));
                         currentKeyIndex = (currentKeyIndex + 1) % listaClavesAPI.length;
                     }
                 }
-                await new Promise(r => setTimeout(r, 2000));
+                await new Promise(r => setTimeout(r, 1500));
+                if (typeof UI.renderTable === 'function') UI.renderTable();
             }
         } else {
             UI.log(`[Fase 2] Información extendida ya completa.`);
         }
 
-        UI.log(`[FIN] ¡Flujo de dos fases completado con éxito!`);
+        UI.log("[FIN] ¡Flujo masivo completado! Base de datos de traducciones al día.");
     }
 };
-
-document.addEventListener('DOMContentLoaded', () => {
-    UI.actualizarListaKeys(); UI.renderRadiosIdiomas(); UI.inicializarAjustesExpertos();
-    const addKeyBtn = document.getElementById('addKeyBtn');
-    if (addKeyBtn) addKeyBtn.onclick = () => { const input = document.getElementById('nuevaKey'); if (input && input.value.trim()) { saveKey(input.value.trim()); input.value = ""; UI.actualizarListaKeys(); UI.log("[OK] Key agregada."); } };
-    const btnEliminarKeySeleccionada = document.getElementById('btnEliminarKeySeleccionada');
-    if (btnEliminarKeySeleccionada) btnEliminarKeySeleccionada.onclick = () => { const selectEl = document.getElementById('selectKeys'); if (selectEl && selectEl.value) { deleteKey(selectEl.value); UI.actualizarListaKeys(); UI.log("[OK] Key eliminada."); } else UI.log("[Aviso] No hay Key seleccionada."); };
-});
-
-window.UI = UI;
