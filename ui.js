@@ -1,8 +1,8 @@
 // ui.js (Web_Editor_Pro)
-// Versión con Depuración de Columnas y Listado Completo en Consola
+// Versión completa con Depuración de Columnas y Soporte Dinámico Total
 
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.ui = '1.3.8-DEBUG-COLS';
+window.APP_VERSIONS.ui = '1.3.9-DINAMICO-COMPLETO';
 
 window.APP_VERSIONS.config = window.APP_VERSIONS.config || '2.2.0';
 window.APP_VERSIONS.app = window.APP_VERSIONS.app || '1.0.33';
@@ -205,8 +205,16 @@ export const UI = {
         const totalColumnasEsperadas = stateContainer.headers.length;
         const payload = stateContainer.csvData.map(row => {
             while (row.length < totalColumnasEsperadas) row.push("");
-            let obj = { id: parseInt(row[idxId]), precio: idxPrecio !== -1 ? (row[idxPrecio] || "0.00") : "0.00", estado: idxEstado !== -1 ? (row[idxEstado] || "no") : "no", carpeta: idxCarpeta !== -1 ? (row[idxCarpeta] || "") : "", imagen: idxImagen !== -1 ? (row[idxImagen] || "") : "", alergenos: idxAlergenos !== -1 ? (row[idxAlergenos] || "") : "" };
+            let obj = { 
+                id: parseInt(row[idxId]), 
+                precio: idxPrecio !== -1 ? (row[idxPrecio] || "0.00") : "0.00", 
+                estado: idxEstado !== -1 ? (row[idxEstado] || "no") : "no", 
+                carpeta: idxCarpeta !== -1 ? (row[idxCarpeta] || "") : "", 
+                imagen: idxImagen !== -1 ? (row[idxImagen] || "") : "", 
+                alergenos: idxAlergenos !== -1 ? (row[idxAlergenos] || "") : "" 
+            };
             
+            // Mapeo totalmente dinámico de columnas NOMBRE_ y INFO_ para que el Apps Script las reciba y cree
             stateContainer.headers.forEach((h, i) => { 
                 if (!h) return;
                 const hUpper = h.trim().toUpperCase();
@@ -326,7 +334,7 @@ export const UI = {
     },
 
     // -------------------------------------------------------------
-    // FASES DE TRADUCCIÓN
+    // ARQUITECTURA DE DOS FASES
     // -------------------------------------------------------------
     iniciarTraduccionPorLotes: async (stateContainerParam) => {
         procesoDetenido = false; procesoPausado = false;
@@ -546,7 +554,7 @@ export const UI = {
 document.addEventListener('DOMContentLoaded', () => {
     UI.actualizarListaKeys(); UI.renderRadiosIdiomas(); UI.inicializarAjustesExpertos();
     const addKeyBtn = document.getElementById('addKeyBtn');
-    if (addKeyBtn) addKeyBtn.onclick = () => { const input = document.getElementById('nuevaKey'); if (input && input.value.trail()) { saveKey(input.value.trim()); input.value = ""; UI.actualizarListaKeys(); UI.log("[OK] Key agregada."); } };
+    if (addKeyBtn) addKeyBtn.onclick = () => { const input = document.getElementById('nuevaKey'); if (input && input.value.trim()) { saveKey(input.value.trim()); input.value = ""; UI.actualizarListaKeys(); UI.log("[OK] Key agregada."); } };
     const btnEliminarKeySeleccionada = document.getElementById('btnEliminarKeySeleccionada');
     if (btnEliminarKeySeleccionada) btnEliminarKeySeleccionada.onclick = () => { const selectEl = document.getElementById('selectKeys'); if (selectEl && selectEl.value) { deleteKey(selectEl.value); UI.actualizarListaKeys(); UI.log("[OK] Key eliminada."); } else UI.log("[Aviso] No hay Key seleccionada."); };
 });
