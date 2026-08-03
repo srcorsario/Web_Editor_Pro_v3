@@ -1,8 +1,8 @@
 // ui.js (Web_Editor_Pro)
-// Versión completa con Depuración de Columnas y Soporte Dinámico Total
+// Versión completa con Diagnóstico Detallado de Columnas y Soporte Dinámico Total
 
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.ui = '1.3.9-DINAMICO-COMPLETO';
+window.APP_VERSIONS.ui = '1.4.0-DIAGNOSTICO-AVANZADO';
 
 window.APP_VERSIONS.config = window.APP_VERSIONS.config || '2.2.0';
 window.APP_VERSIONS.app = window.APP_VERSIONS.app || '1.0.33';
@@ -18,13 +18,18 @@ const stateContainer = {
     currentProMode: 'restaurante001' 
 };
 
-// Función de diagnóstico estricto: Crea las columnas y LISTA en consola el mapa exacto
+// Función de diagnóstico estricto: Lista lo que trae y lo que genera
 function asegurarColumnasEstructura(container) {
     if (!container || !container.headers || !container.csvData) {
         console.error("[CRÍTICO] Contenedor de datos inválido en asegurarColumnasEstructura");
         return;
     }
     
+    console.log("-----------------------------------------");
+    console.log("[DIAGNÓSTICO] 1. Columnas originales leídas del CSV:");
+    console.log(JSON.stringify(container.headers));
+    console.log("-----------------------------------------");
+
     const idiomasConfigurados = Object.keys(window.IDIOMAS_CONFIG || {
         "ES": 1, "EN": 1, "DE": 1, "FR": 1, "IT": 1, "RU": 1, "NL": 1, "PL": 1, 
         "SV": 1, "NO": 1, "DA": 1, "FI": 1, "PT": 1, "RO": 1, "HU": 1, "CS": 1, 
@@ -35,18 +40,26 @@ function asegurarColumnasEstructura(container) {
     // 1. Limpiar y normalizar cabeceras actuales
     container.headers = container.headers.map(h => h ? String(h).trim() : "");
 
+    let columnasCreadasNuevas = [];
+
     // 2. Comprobar y crear cada NOMBRE_ y INFO_ si no están en el array de headers
     idiomasConfigurados.forEach(lang => {
         const nombreHeader = `NOMBRE_${lang}`;
         if (!container.headers.some(h => h.toUpperCase() === nombreHeader.toUpperCase())) {
             container.headers.push(nombreHeader);
+            columnasCreadasNuevas.push(nombreHeader);
         }
 
         const infoHeader = `INFO_${lang}`;
         if (!container.headers.some(h => h.toUpperCase() === infoHeader.toUpperCase())) {
             container.headers.push(infoHeader);
+            columnasCreadasNuevas.push(infoHeader);
         }
     });
+
+    console.log("[DIAGNÓSTICO] 2. Columnas nuevas creadas/añadidas en memoria:");
+    console.log(columnasCreadasNuevas.length > 0 ? JSON.stringify(columnasCreadasNuevas) : "Ninguna (todas ya existían)");
+    console.log("-----------------------------------------");
 
     // 3. Sincronizar TODAS las filas (csvData) para que tengan exactamente el mismo largo que headers
     const totalColumnas = container.headers.length;
@@ -56,14 +69,12 @@ function asegurarColumnasEstructura(container) {
         }
     });
 
-    // --- DIAGNOSTICO VISUAL EN CONSOLA (LISTADO DE COLUMNAS) ---
-    console.log(`=========================================`);
-    console.log(`[DIAGNÓSTICO] Listado total de columnas en memoria (${totalColumnas} columnas):`);
-    console.log(`=========================================`);
+    // --- DIAGNOSTICO VISUAL EN CONSOLA (MAPA NUMÉRICO COMPLETO) ---
+    console.log(`[DIAGNÓSTICO] 3. Listado total definitivo de columnas en memoria (${totalColumnas} columnas):`);
     container.headers.forEach((h, index) => {
-        console.log(`[Columna index ${index}] -> ${h}`);
+        console.log(`  [Columna índice ${index}] -> ${h}`);
     });
-    console.log(`=========================================`);
+    console.log("=========================================");
 }
 
 export const UI = {
@@ -214,7 +225,6 @@ export const UI = {
                 alergenos: idxAlergenos !== -1 ? (row[idxAlergenos] || "") : "" 
             };
             
-            // Mapeo totalmente dinámico de columnas NOMBRE_ y INFO_ para que el Apps Script las reciba y cree
             stateContainer.headers.forEach((h, i) => { 
                 if (!h) return;
                 const hUpper = h.trim().toUpperCase();
@@ -333,9 +343,6 @@ export const UI = {
         lector.readAsText(file);
     },
 
-    // -------------------------------------------------------------
-    // ARQUITECTURA DE DOS FASES
-    // -------------------------------------------------------------
     iniciarTraduccionPorLotes: async (stateContainerParam) => {
         procesoDetenido = false; procesoPausado = false;
         const listaClavesAPI = getKeys();
@@ -365,9 +372,7 @@ export const UI = {
 
         const techoLimiteEvaluacion = Math.min(rangoFin, activeStateContainer.csvData.length);
 
-        // =========================================================
-        // FASE 1: TRADUCCIÓN MASIVA DE NOMBRES
-        // =========================================================
+        // FASE 1: NOMBRES
         const filasPendientesNombres = [];
         for (let i = Math.max(0, rangoInicio); i < techoLimiteEvaluacion; i++) {
             const row = activeStateContainer.csvData[i];
@@ -453,9 +458,7 @@ export const UI = {
 
         if (procesoDetenido) return UI.log(`[FIN] Proceso detenido por el usuario.`);
 
-        // =========================================================
-        // FASE 2: INFORMACIÓN EXTENDIDA Y Q&A EN JSON
-        // =========================================================
+        // FASE 2: INFO EXTENDIDA
         const filasPendientesInfo = [];
         for (let i = Math.max(0, rangoInicio); i < techoLimiteEvaluacion; i++) {
             const row = activeStateContainer.csvData[i];
