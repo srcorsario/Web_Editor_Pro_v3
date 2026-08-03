@@ -1,8 +1,8 @@
 // ui.js (Web_Editor_Pro)
-// Versión con inyección estricta y forzosa de cabeceras y columnas en matriz
+// Versión con Depuración de Columnas y Listado Completo en Consola
 
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.ui = '1.3.7-FORZAR-COLS';
+window.APP_VERSIONS.ui = '1.3.8-DEBUG-COLS';
 
 window.APP_VERSIONS.config = window.APP_VERSIONS.config || '2.2.0';
 window.APP_VERSIONS.app = window.APP_VERSIONS.app || '1.0.33';
@@ -18,7 +18,7 @@ const stateContainer = {
     currentProMode: 'restaurante001' 
 };
 
-// Función puramente funcional y directa para asegurar que las columnas existan sí o sí
+// Función de diagnóstico estricto: Crea las columnas y LISTA en consola el mapa exacto
 function asegurarColumnasEstructura(container) {
     if (!container || !container.headers || !container.csvData) {
         console.error("[CRÍTICO] Contenedor de datos inválido en asegurarColumnasEstructura");
@@ -38,29 +38,32 @@ function asegurarColumnasEstructura(container) {
     // 2. Comprobar y crear cada NOMBRE_ y INFO_ si no están en el array de headers
     idiomasConfigurados.forEach(lang => {
         const nombreHeader = `NOMBRE_${lang}`;
-        const existeNombre = container.headers.some(h => h.toUpperCase() === nombreHeader.toUpperCase());
-        if (!existeNombre) {
+        if (!container.headers.some(h => h.toUpperCase() === nombreHeader.toUpperCase())) {
             container.headers.push(nombreHeader);
-            console.log(`[Columna Creada] Añadida cabecera: ${nombreHeader}`);
         }
 
         const infoHeader = `INFO_${lang}`;
-        const existeInfo = container.headers.some(h => h.toUpperCase() === infoHeader.toUpperCase());
-        if (!existeInfo) {
+        if (!container.headers.some(h => h.toUpperCase() === infoHeader.toUpperCase())) {
             container.headers.push(infoHeader);
-            console.log(`[Columna Creada] Añadida cabecera: ${infoHeader}`);
         }
     });
 
     // 3. Sincronizar TODAS las filas (csvData) para que tengan exactamente el mismo largo que headers
     const totalColumnas = container.headers.length;
-    container.csvData.forEach((row, index) => {
+    container.csvData.forEach((row) => {
         while (row.length < totalColumnas) {
             row.push("");
         }
     });
 
-    console.log(`[OK] Estructura asegurada. Total cabeceras: ${totalColumnas}. Total filas sincronizadas: ${container.csvData.length}`);
+    // --- DIAGNOSTICO VISUAL EN CONSOLA (LISTADO DE COLUMNAS) ---
+    console.log(`=========================================`);
+    console.log(`[DIAGNÓSTICO] Listado total de columnas en memoria (${totalColumnas} columnas):`);
+    console.log(`=========================================`);
+    container.headers.forEach((h, index) => {
+        console.log(`[Columna index ${index}] -> ${h}`);
+    });
+    console.log(`=========================================`);
 }
 
 export const UI = {
@@ -323,7 +326,7 @@ export const UI = {
     },
 
     // -------------------------------------------------------------
-    // ARQUITECTURA DE DOS FASES
+    // FASES DE TRADUCCIÓN
     // -------------------------------------------------------------
     iniciarTraduccionPorLotes: async (stateContainerParam) => {
         procesoDetenido = false; procesoPausado = false;
@@ -332,7 +335,6 @@ export const UI = {
         const activeStateContainer = stateContainerParam || stateContainer;
         if (!activeStateContainer || !activeStateContainer.headers || !activeStateContainer.csvData) return UI.log("[Error] Estructura de datos vacía.");
         
-        // ASEGURAMIENTO OBLIGATORIO INICIAL
         UI.log("[Info] Forzando y asegurando estructura de columnas en memoria...");
         asegurarColumnasEstructura(activeStateContainer);
 
@@ -544,7 +546,7 @@ export const UI = {
 document.addEventListener('DOMContentLoaded', () => {
     UI.actualizarListaKeys(); UI.renderRadiosIdiomas(); UI.inicializarAjustesExpertos();
     const addKeyBtn = document.getElementById('addKeyBtn');
-    if (addKeyBtn) addKeyBtn.onclick = () => { const input = document.getElementById('nuevaKey'); if (input && input.value.trim()) { saveKey(input.value.trim()); input.value = ""; UI.actualizarListaKeys(); UI.log("[OK] Key agregada."); } };
+    if (addKeyBtn) addKeyBtn.onclick = () => { const input = document.getElementById('nuevaKey'); if (input && input.value.trail()) { saveKey(input.value.trim()); input.value = ""; UI.actualizarListaKeys(); UI.log("[OK] Key agregada."); } };
     const btnEliminarKeySeleccionada = document.getElementById('btnEliminarKeySeleccionada');
     if (btnEliminarKeySeleccionada) btnEliminarKeySeleccionada.onclick = () => { const selectEl = document.getElementById('selectKeys'); if (selectEl && selectEl.value) { deleteKey(selectEl.value); UI.actualizarListaKeys(); UI.log("[OK] Key eliminada."); } else UI.log("[Aviso] No hay Key seleccionada."); };
 });
