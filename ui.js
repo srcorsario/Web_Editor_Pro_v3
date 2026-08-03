@@ -1,8 +1,8 @@
 // ui.js (Web_Editor_Pro)
-// Versión con trazabilidad detallada paso a paso para la creación de columnas
+// Versión con inyección estricta y forzosa de cabeceras y columnas en matriz
 
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.ui = '1.3.5-TRACE-COLS';
+window.APP_VERSIONS.ui = '1.3.7-FORZAR-COLS';
 
 window.APP_VERSIONS.config = window.APP_VERSIONS.config || '2.2.0';
 window.APP_VERSIONS.app = window.APP_VERSIONS.app || '1.0.33';
@@ -18,15 +18,12 @@ const stateContainer = {
     currentProMode: 'restaurante001' 
 };
 
-// Función con logs detallados paso a paso para auditar la creación de columnas
+// Función puramente funcional y directa para asegurar que las columnas existan sí o sí
 function asegurarColumnasEstructura(container) {
     if (!container || !container.headers || !container.csvData) {
-        console.warn("[Trace Cols] ❌ Contenedor de datos inválido o vacío.");
+        console.error("[CRÍTICO] Contenedor de datos inválido en asegurarColumnasEstructura");
         return;
     }
-    
-    console.log("[Trace Cols] 🔍 INICIO: Analizando cabeceras actuales...");
-    console.log("[Trace Cols] Cabeceras recibidas en memoria:", JSON.stringify(container.headers));
     
     const idiomasConfigurados = Object.keys(window.IDIOMAS_CONFIG || {
         "ES": 1, "EN": 1, "DE": 1, "FR": 1, "IT": 1, "RU": 1, "NL": 1, "PL": 1, 
@@ -35,41 +32,35 @@ function asegurarColumnasEstructura(container) {
         "VA": 1, "KO": 1
     });
 
-    let columnasCreadasCount = 0;
-    
-    // Normalizar cabeceras actuales para eliminar espacios o caracteres extraños
-    container.headers = container.headers.map(h => h ? h.trim() : "");
+    // 1. Limpiar y normalizar cabeceras actuales
+    container.headers = container.headers.map(h => h ? String(h).trim() : "");
 
+    // 2. Comprobar y crear cada NOMBRE_ y INFO_ si no están en el array de headers
     idiomasConfigurados.forEach(lang => {
-        // 1. Comprobar NOMBRE_
         const nombreHeader = `NOMBRE_${lang}`;
         const existeNombre = container.headers.some(h => h.toUpperCase() === nombreHeader.toUpperCase());
-        
         if (!existeNombre) {
-            console.log(`[Trace Cols] ➕ No existe '${nombreHeader}'. Añadiendo columna y rellenando filas con ""...`);
             container.headers.push(nombreHeader);
-            container.csvData.forEach(row => row.push(""));
-            columnasCreadasCount++;
-        } else {
-            console.log(`[Trace Cols] ✔️ Ya existe '${nombreHeader}'. Omitiendo creación.`);
+            console.log(`[Columna Creada] Añadida cabecera: ${nombreHeader}`);
         }
 
-        // 2. Comprobar INFO_
         const infoHeader = `INFO_${lang}`;
         const existeInfo = container.headers.some(h => h.toUpperCase() === infoHeader.toUpperCase());
-        
         if (!existeInfo) {
-            console.log(`[Trace Cols] ➕ No existe '${infoHeader}'. Añadiendo columna y rellenando filas con ""...`);
             container.headers.push(infoHeader);
-            container.csvData.forEach(row => row.push(""));
-            columnasCreadasCount++;
-        } else {
-            console.log(`[Trace Cols] ✔️ Ya existe '${infoHeader}'. Omitiendo creación.`);
+            console.log(`[Columna Creada] Añadida cabecera: ${infoHeader}`);
         }
     });
 
-    console.log(`[Trace Cols] 🏁 FIN: Verificación de estructura finalizada. Total columnas nuevas añadidas: ${columnasCreadasCount}`);
-    console.log("[Trace Cols] Cabeceras finales resultantes:", JSON.stringify(container.headers));
+    // 3. Sincronizar TODAS las filas (csvData) para que tengan exactamente el mismo largo que headers
+    const totalColumnas = container.headers.length;
+    container.csvData.forEach((row, index) => {
+        while (row.length < totalColumnas) {
+            row.push("");
+        }
+    });
+
+    console.log(`[OK] Estructura asegurada. Total cabeceras: ${totalColumnas}. Total filas sincronizadas: ${container.csvData.length}`);
 }
 
 export const UI = {
@@ -157,8 +148,6 @@ export const UI = {
         if (!targetUrl) return UI.log("[Error] No se proporcionó una URL válida.");
         const timeSinceSave = Date.now() - (window.lastSaveAttempt || 0); 
         if (timeSinceSave < DANGER_WINDOW_MS && retryCount < MAX_RETRIES) {
-            console.warn(`[UI] ⚠️ Zona de Peligro. Reintento automático #${retryCount + 1}...`);
-            UI.log(`[Info] Verificando datos post-guardado (Intento ${retryCount + 1}/${MAX_RETRIES})...`);
             await new Promise(r => setTimeout(r, 300));
             return UI.cargarGoogleSheets(targetUrl, retryCount + 1);
         }
@@ -236,7 +225,7 @@ export const UI = {
             if (!urlDestino) return UI.log(`[Error Crítico] getWebAppUrl() no devolvió URL para '${modo}'.`);
             window.lastSaveAttempt = Date.now();
             const response = await fetch(urlDestino, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-            if (response.type === 'opaque') UI.log(`⚠️ [Sincro] Modo 'no-cors'. No se puede leer la respuesta. Petición enviada a ${contextoNombre}.`);
+            if (response.type === 'opaque') UI.log(`⚠️ [Sincro] Modo 'no-cors'. Petición enviada a ${contextoNombre}.`);
             else UI.log(`✅ [Sincro] ¡Éxito hacia ${contextoNombre}!`);
         } catch (e) { UI.log(`❌ [Sincro] Error de red en ${contextoNombre}: ` + e.message); }
     },
@@ -343,7 +332,8 @@ export const UI = {
         const activeStateContainer = stateContainerParam || stateContainer;
         if (!activeStateContainer || !activeStateContainer.headers || !activeStateContainer.csvData) return UI.log("[Error] Estructura de datos vacía.");
         
-        UI.log("[Info] Verificando estructura de columnas antes de procesar...");
+        // ASEGURAMIENTO OBLIGATORIO INICIAL
+        UI.log("[Info] Forzando y asegurando estructura de columnas en memoria...");
         asegurarColumnasEstructura(activeStateContainer);
 
         const selectorInicio = document.getElementById('rangoInicio');
@@ -388,7 +378,7 @@ export const UI = {
 
         if (filasPendientesNombres.length > 0) {
             UI.log(`[Fase 1] Detectadas ${filasPendientesNombres.length} filas sin nombres traducidos. Procesando...`);
-            const tamanoLoteNombres = window.TRADUCCION_TAMANO_LOTE || 3;
+            const tamanoLoteNombres = window.TRADUCCION_TAMANO_LOTE || 2;
 
             for (let j = 0; j < filasPendientesNombres.length; j += tamanoLoteNombres) {
                 if (procesoDetenido) break;
@@ -403,18 +393,22 @@ export const UI = {
 
                 while (!satisfecho && !procesoDetenido) {
                     try {
-                        const promptNombres = `Actúa como traductor gastronómico profesional. Traduce los siguientes nombres de platos al castellano según se indica: ${JSON.stringify(payloadNombres)}. Responde SOLO con un JSON estricto sin markdown: {"lote": [{"id_fila": 8, "traducciones": {"EN": "Name EN", "KO": "Name KO"}}]}`;
+                        const promptNombres = `Actúa como traductor gastronómico profesional. Traduce los siguientes nombres de platos al castellano según se indica: ${JSON.stringify(payloadNombres)}. Responde EXCLUSIVAMENTE con un JSON válido, sin markdown: {"lote": [{"id_fila": 8, "traducciones": {"EN": "Name EN", "KO": "Name KO"}}]}`;
 
                         const callResponse = await fetch(`${window.GEMINI_ENDPOINT_URL || ''}?key=${listaClavesAPI[currentKeyIndex]}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: promptNombres }] }] }) });
-                        const respuestaJsonData = await callResponse.json();
+                        
+                        const textResponse = await callResponse.text();
+                        let respuestaJsonData;
+                        try {
+                            respuestaJsonData = JSON.parse(textResponse);
+                        } catch (e) {
+                            throw new Error("La API devolvió HTML o texto plano (Posible 403 o error de cuota).");
+                        }
 
-                        if (respuestaJsonData.error?.code === 429) { currentKeyIndex = (currentKeyIndex + 1) % listaClavesAPI.length; UI.log(`[Aviso] Límite superado. Rotando Key...`); await new Promise(r => setTimeout(r, 3000)); continue; }
+                        if (respuestaJsonData.error?.code === 429) { currentKeyIndex = (currentKeyIndex + 1) % listaClavesAPI.length; UI.log(`[Aviso] Límite superado. Rotando Key...`); await new Promise(r => setTimeout(r, 4000)); continue; }
 
                         const textoLimpioIA = respuestaJsonData.candidates?.[0]?.content?.parts?.[0]?.text;
-                        if (!textoLimpioIA) {
-                            console.error("Respuesta cruda de la API:", respuestaJsonData);
-                            throw new Error("La API no devolvió contenido válido (posible bloqueo HTML).");
-                        }
+                        if (!textoLimpioIA) throw new Error("La API no devolvió contenido.");
 
                         const jsonSanitizado = textoLimpioIA.replace(/```json/g, '').replace(/```/g, '').trim();
                         const objetoParseado = JSON.parse(jsonSanitizado);
@@ -433,14 +427,14 @@ export const UI = {
                             });
                             UI.log(`[OK Fase 1] [${secuenciaImpresion}] traducido con éxito.`);
                             satisfecho = true;
-                        } else throw new Error("JSON inválido en nombres.");
+                        } else throw new Error("Estructura JSON inválida en nombres.");
                     } catch (err) {
                         UI.log(`[Error Fase 1] [${secuenciaImpresion}]: ${err.message}`);
                         await new Promise(r => setTimeout(r, 3000));
-                        if (err.message.includes("Unexpected token") || err.message.includes("API key")) break;
+                        currentKeyIndex = (currentKeyIndex + 1) % listaClavesAPI.length;
                     }
                 }
-                await new Promise(r => setTimeout(r, 2000));
+                await new Promise(r => setTimeout(r, 1500));
                 if (typeof UI.renderTable === 'function') UI.renderTable();
             }
         } else {
@@ -478,8 +472,8 @@ export const UI = {
         }
 
         if (filasPendientesInfo.length > 0) {
-            UI.log(`[Fase 2] Detectadas ${filasPendientesInfo.length} filas sin información extendida. Procesando en lotes reducidos...`);
-            const tamanoLoteInfo = window.INFO_EXTENDIDA_TAMANO_LOTE || 2;
+            UI.log(`[Fase 2] Detectadas ${filasPendientesInfo.length} filas sin información extendida. Procesando...`);
+            const tamanoLoteInfo = window.INFO_EXTENDIDA_TAMANO_LOTE || 1;
 
             for (let k = 0; k < filasPendientesInfo.length; k += tamanoLoteInfo) {
                 if (procesoDetenido) break;
@@ -494,18 +488,22 @@ export const UI = {
 
                 while (!satisfechoInfo && !procesoDetenido) {
                     try {
-                        const promptInfo = `Actúa como chef experto. Para los platos indicados: ${JSON.stringify(payloadInfo)}, genera una descripción apetitosa y 3 preguntas con sus 3 respuestas cortas de interés (alérgenos, origen, ingredientes). Tradúcelo a los idiomas solicitados para cada plato. Responde SOLO con un JSON estricto sin markdown: {"lote": [{"id_fila": 8, "info": {"EN": {"desc": "...", "q1": "...", "r1": "...", "q2": "...", "r2": "...", "q3": "...", "r3": "..."}, "ES": {"desc": "...", "q1": "...", "r1": "...", "q2": "...", "r2": "...", "q3": "...", "r3": "..."}}}]}`;
+                        const promptInfo = `Actúa como chef experto. Para el plato: ${JSON.stringify(payloadInfo)}, genera una descripción apetitosa y 3 preguntas con respuestas cortas de interés. Tradúcelo a los idiomas solicitados. Responde EXCLUSIVAMENTE con un JSON válido, sin markdown: {"lote": [{"id_fila": 8, "info": {"EN": {"desc": "...", "q1": "...", "r1": "...", "q2": "...", "r2": "...", "q3": "...", "r3": "..."}, "ES": {"desc": "...", "q1": "...", "r1": "...", "q2": "...", "r2": "...", "q3": "...", "r3": "..."}}}]}`;
 
                         const callResponse = await fetch(`${window.GEMINI_ENDPOINT_URL || ''}?key=${listaClavesAPI[currentKeyIndex]}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: promptInfo }] }] }) });
-                        const respuestaJsonData = await callResponse.json();
+                        
+                        const textResponse = await callResponse.text();
+                        let respuestaJsonData;
+                        try {
+                            respuestaJsonData = JSON.parse(textResponse);
+                        } catch (e) {
+                            throw new Error("La API devolvió HTML o texto plano (Posible 403 o error de cuota).");
+                        }
 
-                        if (respuestaJsonData.error?.code === 429) { currentKeyIndex = (currentKeyIndex + 1) % listaClavesAPI.length; UI.log(`[Aviso] Límite superado. Rotando Key...`); await new Promise(r => setTimeout(r, 3000)); continue; }
+                        if (respuestaJsonData.error?.code === 429) { currentKeyIndex = (currentKeyIndex + 1) % listaClavesAPI.length; UI.log(`[Aviso] Límite superado. Rotando Key...`); await new Promise(r => setTimeout(r, 4000)); continue; }
 
                         const textoLimpioIA = respuestaJsonData.candidates?.[0]?.content?.parts?.[0]?.text;
-                        if (!textoLimpioIA) {
-                            console.error("Respuesta cruda de la API (Fase 2):", respuestaJsonData);
-                            throw new Error("La API no devolvió contenido válido (posible bloqueo HTML).");
-                        }
+                        if (!textoLimpioIA) throw new Error("La API no devolvió contenido.");
 
                         const jsonSanitizado = textoLimpioIA.replace(/```json/g, '').replace(/```/g, '').trim();
                         const objetoParseado = JSON.parse(jsonSanitizado);
@@ -526,14 +524,14 @@ export const UI = {
                             });
                             UI.log(`[OK Fase 2] [${secuenciaInfo}] inyectada con éxito.`);
                             satisfechoInfo = true;
-                        } else throw new Error("JSON inválido en info extendida.");
+                        } else throw new Error("Estructura JSON inválida en info extendida.");
                     } catch (err) {
                         UI.log(`[Error Fase 2] [${secuenciaInfo}]: ${err.message}`);
                         await new Promise(r => setTimeout(r, 3000));
-                        if (err.message.includes("Unexpected token") || err.message.includes("API key")) break;
+                        currentKeyIndex = (currentKeyIndex + 1) % listaClavesAPI.length;
                     }
                 }
-                await new Promise(r => setTimeout(r, 2500));
+                await new Promise(r => setTimeout(r, 2000));
             }
         } else {
             UI.log(`[Fase 2] Información extendida ya completa.`);
