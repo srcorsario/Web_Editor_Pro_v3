@@ -1,8 +1,8 @@
 // ui.js (Web_Editor_Pro)
-// Versión con inicialización inmediata de columnas y arquitectura de Dos Fases
+// Versión con verificación y creación estricta de columnas previa
 
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.ui = '1.3.2-DOS-FASES-INMEDIATA';
+window.APP_VERSIONS.ui = '1.3.3-ESTRICTA-COLUMNAS';
 
 window.APP_VERSIONS.config = window.APP_VERSIONS.config || '2.2.0';
 window.APP_VERSIONS.app = window.APP_VERSIONS.app || '1.0.33';
@@ -18,10 +18,11 @@ const stateContainer = {
     currentProMode: 'restaurante001' 
 };
 
-// Función auxiliar global para asegurar e inicializar las columnas de idiomas e info inmediatamente
+// Función estricta para garantizar la existencia de columnas de idiomas e info
 function asegurarColumnasEstructura(container) {
     if (!container || !container.headers || !container.csvData) return;
     
+    console.log("[Info] Chequeando y creando columnas faltantes...");
     const idiomasConfigurados = Object.keys(window.IDIOMAS_CONFIG || {
         "ES": 1, "EN": 1, "DE": 1, "FR": 1, "IT": 1, "RU": 1, "NL": 1, "PL": 1, 
         "SV": 1, "NO": 1, "DA": 1, "FI": 1, "PT": 1, "RO": 1, "HU": 1, "CS": 1, 
@@ -29,12 +30,15 @@ function asegurarColumnasEstructura(container) {
         "VA": 1, "KO": 1
     });
 
+    let columnasCreadasCount = 0;
+
     idiomasConfigurados.forEach(lang => {
         const nombreHeader = `NOMBRE_${lang}`;
         if (!container.headers.some(h => h && h.toUpperCase() === nombreHeader)) {
             container.headers.push(nombreHeader);
             container.csvData.forEach(row => row.push(""));
             console.log(`[Info] Columna ${nombreHeader} creada dinámicamente.`);
+            columnasCreadasCount++;
         }
 
         const infoHeader = `INFO_${lang}`;
@@ -42,8 +46,13 @@ function asegurarColumnasEstructura(container) {
             container.headers.push(infoHeader);
             container.csvData.forEach(row => row.push(""));
             console.log(`[Info] Columna ${infoHeader} creada dinámicamente.`);
+            columnasCreadasCount++;
         }
     });
+
+    if (columnasCreadasCount === 0) {
+        console.log("[Info] Todas las columnas de idiomas e info ya existían.");
+    }
 }
 
 export const UI = {
@@ -141,11 +150,30 @@ export const UI = {
             const resp = await fetch(targetUrl + '&zx=' + Date.now(), { cache: "no-store", headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' } });
             if (!resp.ok) throw new Error("Error HTTP " + resp.status);
             const text = await resp.text();
+            
             if (window.Papa) {
-                window.Papa.parse(text, { skipEmptyLines: true, complete: (resultado) => { if (resultado.data && resultado.data.length > 0) { stateContainer.headers = resultado.data[0]; stateContainer.csvData = resultado.data.slice(1); asegurarColumnasEstructura(stateContainer); UI.log(`[OK] CSV cargado. Filas: ${stateContainer.csvData.length}`); UI.actualizarTextoBotonSync(); UI.renderTable(); } } });
+                window.Papa.parse(text, { skipEmptyLines: true, complete: (resultado) => { 
+                    if (resultado.data && resultado.data.length > 0) { 
+                        stateContainer.headers = resultado.data[0]; 
+                        stateContainer.csvData = resultado.data.slice(1); 
+                        // PRIMERO DE TODO: Crear y asegurar columnas antes de mostrar nada
+                        asegurarColumnasEstructura(stateContainer);
+                        UI.log(`[OK] CSV cargado y columnas aseguradas. Filas: ${stateContainer.csvData.length}`); 
+                        UI.actualizarTextoBotonSync(); 
+                        UI.renderTable(); 
+                    } 
+                } });
             } else {
                 const lineas = text.split(/\r?\n/).filter(line => line.trim() !== "");
-                if (lineas.length > 0) { stateContainer.headers = lineas[0].split(",").map(h => h.replace(/^"|"$/g, '').trim()); stateContainer.csvData = lineas.slice(1).map(f => f.split(",").map(v => v.replace(/^"|"$/g, '').trim())); asegurarColumnasEstructura(stateContainer); UI.log(`[OK] CSV cargado (Fallback).`); UI.actualizarTextoBotonSync(); UI.renderTable(); }
+                if (lineas.length > 0) { 
+                    stateContainer.headers = lineas[0].split(",").map(h => h.replace(/^"|"$/g, '').trim()); 
+                    stateContainer.csvData = lineas.slice(1).map(f => f.split(",").map(v => v.replace(/^"|"$/g, '').trim())); 
+                    // PRIMERO DE TODO: Crear y asegurar columnas antes de mostrar nada
+                    asegurarColumnasEstructura(stateContainer);
+                    UI.log(`[OK] CSV cargado (Fallback) y columnas aseguradas.`); 
+                    UI.actualizarTextoBotonSync(); 
+                    UI.renderTable(); 
+                }
             }
         } catch (e) { UI.log("[Error] Fallo al descargar CSV: " + e.message); }
     },
@@ -251,8 +279,9 @@ export const UI = {
         UI.log(`[Import] Destino asignado: ${getModoAlias(modoDefinitivo)}`);
         UI.importarCSV(file, (headers, data) => {
             stateContainer.headers = headers; stateContainer.csvData = data;
+            // PRIMERO DE TODO: Crear y asegurar columnas tras importar archivo local
             asegurarColumnasEstructura(stateContainer);
-            UI.log(`[OK] Archivo cargado. Filas: ${data.length}`);
+            UI.log(`[OK] Archivo cargado y columnas aseguradas. Filas: ${data.length}`);
             UI.actualizarTextoBotonSync();
             if (typeof UI.renderTable === 'function') UI.renderTable();
         });
@@ -300,7 +329,8 @@ export const UI = {
         const activeStateContainer = stateContainerParam || stateContainer;
         if (!activeStateContainer || !activeStateContainer.headers || !activeStateContainer.csvData) return UI.log("[Error] Estructura de datos vacía.");
         
-        // Asegurar columnas de inmediato antes de procesar nada
+        // ASEGURAMIENTO OBLIGATORIO: PRIMERO DE TODO ANTES DE EVALUAR NADA
+        UI.log("[Info] Verificando estructura de columnas antes de procesar...");
         asegurarColumnasEstructura(activeStateContainer);
 
         const selectorInicio = document.getElementById('rangoInicio');
