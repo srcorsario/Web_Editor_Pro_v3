@@ -1,8 +1,8 @@
 // ui.js (Web_Editor_Pro)
-// Versión con verificación y creación estricta de columnas previa
+// Versión con inicialización estricta de columnas (NOMBRE_ y INFO_) y arquitectura de Dos Fases
 
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.ui = '1.3.3-ESTRICTA-COLUMNAS';
+window.APP_VERSIONS.ui = '1.3.4-ESTRICTA-TOTAL';
 
 window.APP_VERSIONS.config = window.APP_VERSIONS.config || '2.2.0';
 window.APP_VERSIONS.app = window.APP_VERSIONS.app || '1.0.33';
@@ -18,11 +18,15 @@ const stateContainer = {
     currentProMode: 'restaurante001' 
 };
 
-// Función estricta para garantizar la existencia de columnas de idiomas e info
+// Función estricta y definitiva para garantizar la existencia de TODAS las columnas (NOMBRE_ y INFO_)
 function asegurarColumnasEstructura(container) {
-    if (!container || !container.headers || !container.csvData) return;
+    if (!container || !container.headers || !container.csvData) {
+        console.warn("[Aviso] Contenedor de datos inválido.");
+        return;
+    }
     
-    console.log("[Info] Chequeando y creando columnas faltantes...");
+    console.log("[Info] Chequeando y creando columnas faltantes (NOMBRE_ y INFO_)...");
+    
     const idiomasConfigurados = Object.keys(window.IDIOMAS_CONFIG || {
         "ES": 1, "EN": 1, "DE": 1, "FR": 1, "IT": 1, "RU": 1, "NL": 1, "PL": 1, 
         "SV": 1, "NO": 1, "DA": 1, "FI": 1, "PT": 1, "RO": 1, "HU": 1, "CS": 1, 
@@ -31,28 +35,29 @@ function asegurarColumnasEstructura(container) {
     });
 
     let columnasCreadasCount = 0;
+    container.headers = container.headers.map(h => h ? h.trim() : "");
 
     idiomasConfigurados.forEach(lang => {
+        // Verificar NOMBRE_
         const nombreHeader = `NOMBRE_${lang}`;
-        if (!container.headers.some(h => h && h.toUpperCase() === nombreHeader)) {
+        if (!container.headers.some(h => h.toUpperCase() === nombreHeader.toUpperCase())) {
             container.headers.push(nombreHeader);
             container.csvData.forEach(row => row.push(""));
-            console.log(`[Info] Columna ${nombreHeader} creada dinámicamente.`);
+            console.log(`[Info] ➕ Columna creada: ${nombreHeader}`);
             columnasCreadasCount++;
         }
 
+        // Verificar INFO_
         const infoHeader = `INFO_${lang}`;
-        if (!container.headers.some(h => h && h.toUpperCase() === infoHeader)) {
+        if (!container.headers.some(h => h.toUpperCase() === infoHeader.toUpperCase())) {
             container.headers.push(infoHeader);
             container.csvData.forEach(row => row.push(""));
-            console.log(`[Info] Columna ${infoHeader} creada dinámicamente.`);
+            console.log(`[Info] ➕ Columna creada: ${infoHeader}`);
             columnasCreadasCount++;
         }
     });
 
-    if (columnasCreadasCount === 0) {
-        console.log("[Info] Todas las columnas de idiomas e info ya existían.");
-    }
+    console.log(`[Info] Verificación terminada. Se añadieron ${columnasCreadasCount} columnas nuevas.`);
 }
 
 export const UI = {
@@ -156,7 +161,6 @@ export const UI = {
                     if (resultado.data && resultado.data.length > 0) { 
                         stateContainer.headers = resultado.data[0]; 
                         stateContainer.csvData = resultado.data.slice(1); 
-                        // PRIMERO DE TODO: Crear y asegurar columnas antes de mostrar nada
                         asegurarColumnasEstructura(stateContainer);
                         UI.log(`[OK] CSV cargado y columnas aseguradas. Filas: ${stateContainer.csvData.length}`); 
                         UI.actualizarTextoBotonSync(); 
@@ -168,7 +172,6 @@ export const UI = {
                 if (lineas.length > 0) { 
                     stateContainer.headers = lineas[0].split(",").map(h => h.replace(/^"|"$/g, '').trim()); 
                     stateContainer.csvData = lineas.slice(1).map(f => f.split(",").map(v => v.replace(/^"|"$/g, '').trim())); 
-                    // PRIMERO DE TODO: Crear y asegurar columnas antes de mostrar nada
                     asegurarColumnasEstructura(stateContainer);
                     UI.log(`[OK] CSV cargado (Fallback) y columnas aseguradas.`); 
                     UI.actualizarTextoBotonSync(); 
@@ -279,7 +282,6 @@ export const UI = {
         UI.log(`[Import] Destino asignado: ${getModoAlias(modoDefinitivo)}`);
         UI.importarCSV(file, (headers, data) => {
             stateContainer.headers = headers; stateContainer.csvData = data;
-            // PRIMERO DE TODO: Crear y asegurar columnas tras importar archivo local
             asegurarColumnasEstructura(stateContainer);
             UI.log(`[OK] Archivo cargado y columnas aseguradas. Filas: ${data.length}`);
             UI.actualizarTextoBotonSync();
@@ -329,7 +331,7 @@ export const UI = {
         const activeStateContainer = stateContainerParam || stateContainer;
         if (!activeStateContainer || !activeStateContainer.headers || !activeStateContainer.csvData) return UI.log("[Error] Estructura de datos vacía.");
         
-        // ASEGURAMIENTO OBLIGATORIO: PRIMERO DE TODO ANTES DE EVALUAR NADA
+        // ASEGURAMIENTO OBLIGATORIO ANTES DE EVALUAR NADA
         UI.log("[Info] Verificando estructura de columnas antes de procesar...");
         asegurarColumnasEstructura(activeStateContainer);
 
@@ -398,26 +400,29 @@ export const UI = {
                         if (respuestaJsonData.error?.code === 429) { currentKeyIndex = (currentKeyIndex + 1) % listaClavesAPI.length; UI.log(`[Aviso] Límite superado. Rotando Key...`); await new Promise(r => setTimeout(r, 3000)); continue; }
 
                         const textoLimpioIA = respuestaJsonData.candidates?.[0]?.content?.parts?.[0]?.text;
-                        if (textoLimpioIA) {
-                            const jsonSanitizado = textoLimpioIA.replace(/```json/g, '').replace(/```/g, '').trim();
-                            const objetoParseado = JSON.parse(jsonSanitizado);
-
-                            if (objetoParseado && objetoParseado.lote) {
-                                objetoParseado.lote.forEach(filaLote => {
-                                    const objetivo = loteActual.find(p => p.numeroFilaHumana === parseInt(filaLote.id_fila));
-                                    if (objetivo && filaLote.traducciones) {
-                                        objetivo.indicesColumnasFaltantes.forEach(idxCol => {
-                                            const codigoISO = activeStateContainer.headers[idxCol].toUpperCase().replace("NOMBRE_", "");
-                                            if (filaLote.traducciones[codigoISO]) {
-                                                activeStateContainer.csvData[objetivo.indiceMatriz][idxCol] = filaLote.traducciones[codigoISO].replace(/[\(\)""'']/g, '');
-                                            }
-                                        });
-                                    }
-                                });
-                                UI.log(`[OK Fase 1] [${secuenciaImpresion}] traducido con éxito.`);
-                                satisfecho = true;
-                            } else throw new Error("JSON inválido en nombres.");
+                        if (!textoLimpioIA) {
+                            console.error("Respuesta cruda de la API:", respuestaJsonData);
+                            throw new Error("La API no devolvió contenido válido (posible bloqueo HTML).");
                         }
+
+                        const jsonSanitizado = textoLimpioIA.replace(/```json/g, '').replace(/```/g, '').trim();
+                        const objetoParseado = JSON.parse(jsonSanitizado);
+
+                        if (objetoParseado && objetoParseado.lote) {
+                            objetoParseado.lote.forEach(filaLote => {
+                                const objetivo = loteActual.find(p => p.numeroFilaHumana === parseInt(filaLote.id_fila));
+                                if (objetivo && filaLote.traducciones) {
+                                    objetivo.indicesColumnasFaltantes.forEach(idxCol => {
+                                        const codigoISO = activeStateContainer.headers[idxCol].toUpperCase().replace("NOMBRE_", "");
+                                        if (filaLote.traducciones[codigoISO]) {
+                                            activeStateContainer.csvData[objetivo.indiceMatriz][idxCol] = filaLote.traducciones[codigoISO].replace(/[\(\)""'']/g, '');
+                                        }
+                                    });
+                                }
+                            });
+                            UI.log(`[OK Fase 1] [${secuenciaImpresion}] traducido con éxito.`);
+                            satisfecho = true;
+                        } else throw new Error("JSON inválido en nombres.");
                     } catch (err) {
                         UI.log(`[Error Fase 1] [${secuenciaImpresion}]: ${err.message}`);
                         await new Promise(r => setTimeout(r, 3000));
@@ -486,28 +491,31 @@ export const UI = {
                         if (respuestaJsonData.error?.code === 429) { currentKeyIndex = (currentKeyIndex + 1) % listaClavesAPI.length; UI.log(`[Aviso] Límite superado. Rotando Key...`); await new Promise(r => setTimeout(r, 3000)); continue; }
 
                         const textoLimpioIA = respuestaJsonData.candidates?.[0]?.content?.parts?.[0]?.text;
-                        if (textoLimpioIA) {
-                            const jsonSanitizado = textoLimpioIA.replace(/```json/g, '').replace(/```/g, '').trim();
-                            const objetoParseado = JSON.parse(jsonSanitizado);
-
-                            if (objetoParseado && objetoParseado.lote) {
-                                objetoParseado.lote.forEach(filaLote => {
-                                    const objetivo = loteInfoActual.find(p => p.numeroFilaHumana === parseInt(filaLote.id_fila));
-                                    if (objetivo && filaLote.info) {
-                                        objetivo.infoFaltantes.forEach(lang => {
-                                            if (filaLote.info[lang]) {
-                                                const idxInfoCol = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === `INFO_${lang}`);
-                                                if (idxInfoCol !== -1) {
-                                                    activeStateContainer.csvData[objetivo.indiceMatriz][idxInfoCol] = JSON.stringify(filaLote.info[lang]);
-                                                }
-                                            }
-                                        });
-                                    }
-                                });
-                                UI.log(`[OK Fase 2] [${secuenciaInfo}] inyectada con éxito.`);
-                                satisfechoInfo = true;
-                            } else throw new Error("JSON inválido en info extendida.");
+                        if (!textoLimpioIA) {
+                            console.error("Respuesta cruda de la API (Fase 2):", respuestaJsonData);
+                            throw new Error("La API no devolvió contenido válido (posible bloqueo HTML).");
                         }
+
+                        const jsonSanitizado = textoLimpioIA.replace(/```json/g, '').replace(/```/g, '').trim();
+                        const objetoParseado = JSON.parse(jsonSanitizado);
+
+                        if (objetoParseado && objetoParseado.lote) {
+                            objetoParseado.lote.forEach(filaLote => {
+                                const objetivo = loteInfoActual.find(p => p.numeroFilaHumana === parseInt(filaLote.id_fila));
+                                if (objetivo && filaLote.info) {
+                                    objetivo.infoFaltantes.forEach(lang => {
+                                        if (filaLote.info[lang]) {
+                                            const idxInfoCol = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === `INFO_${lang}`);
+                                            if (idxInfoCol !== -1) {
+                                                activeStateContainer.csvData[objetivo.indiceMatriz][idxInfoCol] = JSON.stringify(filaLote.info[lang]);
+                                            }
+                                        }
+                                    });
+                                }
+                            });
+                            UI.log(`[OK Fase 2] [${secuenciaInfo}] inyectada con éxito.`);
+                            satisfechoInfo = true;
+                        } else throw new Error("JSON inválido en info extendida.");
                     } catch (err) {
                         UI.log(`[Error Fase 2] [${secuenciaInfo}]: ${err.message}`);
                         await new Promise(r => setTimeout(r, 3000));
