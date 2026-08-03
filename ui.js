@@ -1,8 +1,8 @@
 // ui.js (Web_Editor_Pro)
-// Versión con arquitectura de Dos Fases y Creación Dinámica Segura de Columnas
+// Versión con inicialización inmediata de columnas y arquitectura de Dos Fases
 
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.ui = '1.3.1-DOS-FASES-SEGURA';
+window.APP_VERSIONS.ui = '1.3.2-DOS-FASES-INMEDIATA';
 
 window.APP_VERSIONS.config = window.APP_VERSIONS.config || '2.2.0';
 window.APP_VERSIONS.app = window.APP_VERSIONS.app || '1.0.33';
@@ -17,6 +17,34 @@ const stateContainer = {
     csvData: [],
     currentProMode: 'restaurante001' 
 };
+
+// Función auxiliar global para asegurar e inicializar las columnas de idiomas e info inmediatamente
+function asegurarColumnasEstructura(container) {
+    if (!container || !container.headers || !container.csvData) return;
+    
+    const idiomasConfigurados = Object.keys(window.IDIOMAS_CONFIG || {
+        "ES": 1, "EN": 1, "DE": 1, "FR": 1, "IT": 1, "RU": 1, "NL": 1, "PL": 1, 
+        "SV": 1, "NO": 1, "DA": 1, "FI": 1, "PT": 1, "RO": 1, "HU": 1, "CS": 1, 
+        "EL": 1, "TR": 1, "AR": 1, "ZH": 1, "JA": 1, "CA": 1, "EU": 1, "GL": 1, 
+        "VA": 1, "KO": 1
+    });
+
+    idiomasConfigurados.forEach(lang => {
+        const nombreHeader = `NOMBRE_${lang}`;
+        if (!container.headers.some(h => h && h.toUpperCase() === nombreHeader)) {
+            container.headers.push(nombreHeader);
+            container.csvData.forEach(row => row.push(""));
+            console.log(`[Info] Columna ${nombreHeader} creada dinámicamente.`);
+        }
+
+        const infoHeader = `INFO_${lang}`;
+        if (!container.headers.some(h => h && h.toUpperCase() === infoHeader)) {
+            container.headers.push(infoHeader);
+            container.csvData.forEach(row => row.push(""));
+            console.log(`[Info] Columna ${infoHeader} creada dinámicamente.`);
+        }
+    });
+}
 
 export const UI = {
     log: (mensaje) => {
@@ -114,10 +142,10 @@ export const UI = {
             if (!resp.ok) throw new Error("Error HTTP " + resp.status);
             const text = await resp.text();
             if (window.Papa) {
-                window.Papa.parse(text, { skipEmptyLines: true, complete: (resultado) => { if (resultado.data && resultado.data.length > 0) { stateContainer.headers = resultado.data[0]; stateContainer.csvData = resultado.data.slice(1); UI.log(`[OK] CSV cargado. Filas: ${stateContainer.csvData.length}`); UI.actualizarTextoBotonSync(); UI.renderTable(); } } });
+                window.Papa.parse(text, { skipEmptyLines: true, complete: (resultado) => { if (resultado.data && resultado.data.length > 0) { stateContainer.headers = resultado.data[0]; stateContainer.csvData = resultado.data.slice(1); asegurarColumnasEstructura(stateContainer); UI.log(`[OK] CSV cargado. Filas: ${stateContainer.csvData.length}`); UI.actualizarTextoBotonSync(); UI.renderTable(); } } });
             } else {
                 const lineas = text.split(/\r?\n/).filter(line => line.trim() !== "");
-                if (lineas.length > 0) { stateContainer.headers = lineas[0].split(",").map(h => h.replace(/^"|"$/g, '').trim()); stateContainer.csvData = lineas.slice(1).map(f => f.split(",").map(v => v.replace(/^"|"$/g, '').trim())); UI.log(`[OK] CSV cargado (Fallback).`); UI.actualizarTextoBotonSync(); UI.renderTable(); }
+                if (lineas.length > 0) { stateContainer.headers = lineas[0].split(",").map(h => h.replace(/^"|"$/g, '').trim()); stateContainer.csvData = lineas.slice(1).map(f => f.split(",").map(v => v.replace(/^"|"$/g, '').trim())); asegurarColumnasEstructura(stateContainer); UI.log(`[OK] CSV cargado (Fallback).`); UI.actualizarTextoBotonSync(); UI.renderTable(); }
             }
         } catch (e) { UI.log("[Error] Fallo al descargar CSV: " + e.message); }
     },
@@ -223,6 +251,7 @@ export const UI = {
         UI.log(`[Import] Destino asignado: ${getModoAlias(modoDefinitivo)}`);
         UI.importarCSV(file, (headers, data) => {
             stateContainer.headers = headers; stateContainer.csvData = data;
+            asegurarColumnasEstructura(stateContainer);
             UI.log(`[OK] Archivo cargado. Filas: ${data.length}`);
             UI.actualizarTextoBotonSync();
             if (typeof UI.renderTable === 'function') UI.renderTable();
@@ -262,7 +291,7 @@ export const UI = {
     },
 
     // -------------------------------------------------------------
-    // ARQUITECTURA DE DOS FASES CON CREACIÓN DINÁMICA SEGURA
+    // ARQUITECTURA DE DOS FASES
     // -------------------------------------------------------------
     iniciarTraduccionPorLotes: async (stateContainerParam) => {
         procesoDetenido = false; procesoPausado = false;
@@ -271,34 +300,19 @@ export const UI = {
         const activeStateContainer = stateContainerParam || stateContainer;
         if (!activeStateContainer || !activeStateContainer.headers || !activeStateContainer.csvData) return UI.log("[Error] Estructura de datos vacía.");
         
+        // Asegurar columnas de inmediato antes de procesar nada
+        asegurarColumnasEstructura(activeStateContainer);
+
         const selectorInicio = document.getElementById('rangoInicio');
         const selectorFin = document.getElementById('rangoFin');
         const rangoInicio = selectorInicio ? (parseInt(selectorInicio.value) - 2 || 0) : 0;
         const rangoFin = selectorFin ? (parseInt(selectorFin.value) - 1 || activeStateContainer.csvData.length) : activeStateContainer.csvData.length;
         
-        // Obtener la lista oficial de idiomas desde la configuración
         const idiomasConfigurados = Object.keys(window.IDIOMAS_CONFIG || {
             "ES": 1, "EN": 1, "DE": 1, "FR": 1, "IT": 1, "RU": 1, "NL": 1, "PL": 1, 
             "SV": 1, "NO": 1, "DA": 1, "FI": 1, "PT": 1, "RO": 1, "HU": 1, "CS": 1, 
             "EL": 1, "TR": 1, "AR": 1, "ZH": 1, "JA": 1, "CA": 1, "EU": 1, "GL": 1, 
             "VA": 1, "KO": 1
-        });
-
-        // Asegurar de forma estricta y segura que existan tanto las columnas NOMBRE_ como INFO_ en memoria y en las filas
-        idiomasConfigurados.forEach(lang => {
-            const nombreHeader = `NOMBRE_${lang}`;
-            if (!activeStateContainer.headers.some(h => h && h.toUpperCase() === nombreHeader)) {
-                activeStateContainer.headers.push(nombreHeader);
-                activeStateContainer.csvData.forEach(row => row.push(""));
-                UI.log(`[Info] Columna ${nombreHeader} creada dinámicamente.`);
-            }
-
-            const infoHeader = `INFO_${lang}`;
-            if (!activeStateContainer.headers.some(h => h && h.toUpperCase() === infoHeader)) {
-                activeStateContainer.headers.push(infoHeader);
-                activeStateContainer.csvData.forEach(row => row.push(""));
-                UI.log(`[Info] Columna ${infoHeader} creada dinámicamente.`);
-            }
         });
 
         const idiomasDetectados = idiomasConfigurados.filter(code => code !== 'ES');
