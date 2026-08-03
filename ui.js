@@ -1,8 +1,8 @@
 // ui.js (Web_Editor_Pro)
-// Versión completa con Diagnóstico Detallado de Columnas y Soporte Dinámico Total
+// Versión completa con Diagnóstico Detallado de Columnas, Auto-inicialización y Protección DOM
 
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.ui = '1.4.0-DIAGNOSTICO-AVANZADO';
+window.APP_VERSIONS.ui = '1.4.1-SEGURO-AUTO';
 
 window.APP_VERSIONS.config = window.APP_VERSIONS.config || '2.2.0';
 window.APP_VERSIONS.app = window.APP_VERSIONS.app || '1.0.33';
@@ -37,12 +37,10 @@ function asegurarColumnasEstructura(container) {
         "VA": 1, "KO": 1
     });
 
-    // 1. Limpiar y normalizar cabeceras actuales
     container.headers = container.headers.map(h => h ? String(h).trim() : "");
 
     let columnasCreadasNuevas = [];
 
-    // 2. Comprobar y crear cada NOMBRE_ y INFO_ si no están en el array de headers
     idiomasConfigurados.forEach(lang => {
         const nombreHeader = `NOMBRE_${lang}`;
         if (!container.headers.some(h => h.toUpperCase() === nombreHeader.toUpperCase())) {
@@ -61,7 +59,6 @@ function asegurarColumnasEstructura(container) {
     console.log(columnasCreadasNuevas.length > 0 ? JSON.stringify(columnasCreadasNuevas) : "Ninguna (todas ya existían)");
     console.log("-----------------------------------------");
 
-    // 3. Sincronizar TODAS las filas (csvData) para que tengan exactamente el mismo largo que headers
     const totalColumnas = container.headers.length;
     container.csvData.forEach((row) => {
         while (row.length < totalColumnas) {
@@ -69,7 +66,6 @@ function asegurarColumnasEstructura(container) {
         }
     });
 
-    // --- DIAGNOSTICO VISUAL EN CONSOLA (MAPA NUMÉRICO COMPLETO) ---
     console.log(`[DIAGNÓSTICO] 3. Listado total definitivo de columnas en memoria (${totalColumnas} columnas):`);
     container.headers.forEach((h, index) => {
         console.log(`  [Columna índice ${index}] -> ${h}`);
@@ -100,7 +96,7 @@ export const UI = {
     actualizarListaKeys: (selectorElemento = '.select-keys') => {
         const selectEl = document.querySelector(selectorElemento) || document.getElementById('selectKeys');
         if (!selectEl) return;
-        const keys = getKeys();
+        const keys = (typeof getKeys === 'function') ? getKeys() : [];
         if (keys.length === 0) { selectEl.innerHTML = '<option value="">No hay API Keys cargadas</option>'; selectEl.disabled = true; return; }
         selectEl.disabled = false;
         selectEl.innerHTML = keys.map((k, i) => {
@@ -200,13 +196,14 @@ export const UI = {
         const btn = document.getElementById('btnSyncSheets');
         if (!btn) return;
         const contexto = stateContainer.currentProMode || 'restaurante001';
-        btn.innerText = `☁️ Sincronizar con Google Sheet ${getModoAlias(contexto)}`;
+        const alias = (typeof getModoAlias === 'function') ? getModoAlias(contexto) : contexto;
+        btn.innerText = `☁️ Sincronizar con Google Sheet ${alias}`;
     },
 
     sincronizarConGoogleSheets: async () => {
         if (stateContainer.headers.length === 0 || stateContainer.csvData.length === 0) return UI.log("[Error] No hay datos en memoria.");
         const modo = stateContainer.currentProMode;
-        const contextoNombre = getModoAlias(modo);
+        const contextoNombre = (typeof getModoAlias === 'function') ? getModoAlias(modo) : modo;
         UI.log(`[Sincro] Preparando envío a: ${contextoNombre}...`);
         
         const findIdx = (keywords) => { for (const kw of keywords) { const idx = stateContainer.headers.findIndex(h => h && h.toUpperCase().includes(kw)); if (idx !== -1) return idx; } return -1; };
@@ -283,7 +280,11 @@ export const UI = {
         if (inputImportar) {
             inputImportar.onchange = (e) => {
                 const file = e.target.files[0];
-                if (file) { window.UI.tempImportFile = file; document.getElementById('modal-seleccionar-destino').style.display = 'block'; }
+                if (file) { 
+                    window.UI.tempImportFile = file; 
+                    const modal = document.getElementById('modal-seleccionar-destino');
+                    if (modal) modal.style.display = 'block'; 
+                }
             };
         }
 
@@ -301,7 +302,8 @@ export const UI = {
         const modoDefinitivo = (mode === 'RG') ? 'restaurante001' : (mode === 'USOPEN') ? 'restaurante002' : mode;
         stateContainer.currentProMode = modoDefinitivo;
         window.currentMode = modoDefinitivo;
-        UI.log(`[Import] Destino asignado: ${getModoAlias(modoDefinitivo)}`);
+        const alias = (typeof getModoAlias === 'function') ? getModoAlias(modoDefinitivo) : modoDefinitivo;
+        UI.log(`[Import] Destino asignado: ${alias}`);
         UI.importarCSV(file, (headers, data) => {
             stateContainer.headers = headers; stateContainer.csvData = data;
             asegurarColumnasEstructura(stateContainer);
@@ -317,7 +319,7 @@ export const UI = {
         if (modal) modal.style.display = 'none';
         const input = document.getElementById('archivoLocal');
         if (input) input.value = '';
-        window.UI.tempImportFile = null;
+        if (window.UI) window.UI.tempImportFile = null;
     },
 
     exportarCSV: (headers, csvData) => {
@@ -345,7 +347,7 @@ export const UI = {
 
     iniciarTraduccionPorLotes: async (stateContainerParam) => {
         procesoDetenido = false; procesoPausado = false;
-        const listaClavesAPI = getKeys();
+        const listaClavesAPI = (typeof getKeys === 'function') ? getKeys() : [];
         if (listaClavesAPI.length === 0) return UI.log("[Error] Introduzca al menos una API Key.");
         const activeStateContainer = stateContainerParam || stateContainer;
         if (!activeStateContainer || !activeStateContainer.headers || !activeStateContainer.csvData) return UI.log("[Error] Estructura de datos vacía.");
@@ -554,3 +556,16 @@ export const UI = {
         UI.log("[FIN] ¡Flujo masivo completado! Base de datos de traducciones al día.");
     }
 };
+
+// Auto-inicialización segura para garantizar que la botonera e interfaz aparezcan siempre al cargar
+document.addEventListener("DOMContentLoaded", () => {
+    setTimeout(() => {
+        try {
+            if (typeof UI.renderRadiosIdiomas === 'function') UI.renderRadiosIdiomas();
+            if (typeof UI.inicializarAjustesExpertos === 'function') UI.inicializarAjustesExpertos();
+            if (typeof UI.actualizarListaKeys === 'function') UI.actualizarListaKeys();
+        } catch (e) {
+            console.warn("[Aviso Auto-UI] Interfaz inicializada parcialmente o esperando datos del app.js:", e.message);
+        }
+    }, 150);
+});
