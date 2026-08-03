@@ -1,8 +1,8 @@
 // ui.js (Web_Editor_Pro)
-// Versión con inicialización estricta de columnas (NOMBRE_ y INFO_) y arquitectura de Dos Fases
+// Versión con trazabilidad detallada paso a paso para la creación de columnas
 
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.ui = '1.3.4-ESTRICTA-TOTAL';
+window.APP_VERSIONS.ui = '1.3.5-TRACE-COLS';
 
 window.APP_VERSIONS.config = window.APP_VERSIONS.config || '2.2.0';
 window.APP_VERSIONS.app = window.APP_VERSIONS.app || '1.0.33';
@@ -18,14 +18,15 @@ const stateContainer = {
     currentProMode: 'restaurante001' 
 };
 
-// Función estricta y definitiva para garantizar la existencia de TODAS las columnas (NOMBRE_ y INFO_)
+// Función con logs detallados paso a paso para auditar la creación de columnas
 function asegurarColumnasEstructura(container) {
     if (!container || !container.headers || !container.csvData) {
-        console.warn("[Aviso] Contenedor de datos inválido.");
+        console.warn("[Trace Cols] ❌ Contenedor de datos inválido o vacío.");
         return;
     }
     
-    console.log("[Info] Chequeando y creando columnas faltantes (NOMBRE_ y INFO_)...");
+    console.log("[Trace Cols] 🔍 INICIO: Analizando cabeceras actuales...");
+    console.log("[Trace Cols] Cabeceras recibidas en memoria:", JSON.stringify(container.headers));
     
     const idiomasConfigurados = Object.keys(window.IDIOMAS_CONFIG || {
         "ES": 1, "EN": 1, "DE": 1, "FR": 1, "IT": 1, "RU": 1, "NL": 1, "PL": 1, 
@@ -35,29 +36,40 @@ function asegurarColumnasEstructura(container) {
     });
 
     let columnasCreadasCount = 0;
+    
+    // Normalizar cabeceras actuales para eliminar espacios o caracteres extraños
     container.headers = container.headers.map(h => h ? h.trim() : "");
 
     idiomasConfigurados.forEach(lang => {
-        // Verificar NOMBRE_
+        // 1. Comprobar NOMBRE_
         const nombreHeader = `NOMBRE_${lang}`;
-        if (!container.headers.some(h => h.toUpperCase() === nombreHeader.toUpperCase())) {
+        const existeNombre = container.headers.some(h => h.toUpperCase() === nombreHeader.toUpperCase());
+        
+        if (!existeNombre) {
+            console.log(`[Trace Cols] ➕ No existe '${nombreHeader}'. Añadiendo columna y rellenando filas con ""...`);
             container.headers.push(nombreHeader);
             container.csvData.forEach(row => row.push(""));
-            console.log(`[Info] ➕ Columna creada: ${nombreHeader}`);
             columnasCreadasCount++;
+        } else {
+            console.log(`[Trace Cols] ✔️ Ya existe '${nombreHeader}'. Omitiendo creación.`);
         }
 
-        // Verificar INFO_
+        // 2. Comprobar INFO_
         const infoHeader = `INFO_${lang}`;
-        if (!container.headers.some(h => h.toUpperCase() === infoHeader.toUpperCase())) {
+        const existeInfo = container.headers.some(h => h.toUpperCase() === infoHeader.toUpperCase());
+        
+        if (!existeInfo) {
+            console.log(`[Trace Cols] ➕ No existe '${infoHeader}'. Añadiendo columna y rellenando filas con ""...`);
             container.headers.push(infoHeader);
             container.csvData.forEach(row => row.push(""));
-            console.log(`[Info] ➕ Columna creada: ${infoHeader}`);
             columnasCreadasCount++;
+        } else {
+            console.log(`[Trace Cols] ✔️ Ya existe '${infoHeader}'. Omitiendo creación.`);
         }
     });
 
-    console.log(`[Info] Verificación terminada. Se añadieron ${columnasCreadasCount} columnas nuevas.`);
+    console.log(`[Trace Cols] 🏁 FIN: Verificación de estructura finalizada. Total columnas nuevas añadidas: ${columnasCreadasCount}`);
+    console.log("[Trace Cols] Cabeceras finales resultantes:", JSON.stringify(container.headers));
 }
 
 export const UI = {
@@ -331,7 +343,6 @@ export const UI = {
         const activeStateContainer = stateContainerParam || stateContainer;
         if (!activeStateContainer || !activeStateContainer.headers || !activeStateContainer.csvData) return UI.log("[Error] Estructura de datos vacía.");
         
-        // ASEGURAMIENTO OBLIGATORIO ANTES DE EVALUAR NADA
         UI.log("[Info] Verificando estructura de columnas antes de procesar...");
         asegurarColumnasEstructura(activeStateContainer);
 
@@ -355,7 +366,7 @@ export const UI = {
         const techoLimiteEvaluacion = Math.min(rangoFin, activeStateContainer.csvData.length);
 
         // =========================================================
-        // FASE 1: TRADUCCIÓN MASIVA DE NOMBRES (Lote estándar)
+        // FASE 1: TRADUCCIÓN MASIVA DE NOMBRES
         // =========================================================
         const filasPendientesNombres = [];
         for (let i = Math.max(0, rangoInicio); i < techoLimiteEvaluacion; i++) {
@@ -439,7 +450,7 @@ export const UI = {
         if (procesoDetenido) return UI.log(`[FIN] Proceso detenido por el usuario.`);
 
         // =========================================================
-        // FASE 2: INFORMACIÓN EXTENDIDA Y Q&A EN JSON (Lote ultra reducido)
+        // FASE 2: INFORMACIÓN EXTENDIDA Y Q&A EN JSON
         // =========================================================
         const filasPendientesInfo = [];
         for (let i = Math.max(0, rangoInicio); i < techoLimiteEvaluacion; i++) {
