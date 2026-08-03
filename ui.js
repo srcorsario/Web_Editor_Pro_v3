@@ -1,10 +1,10 @@
 // ui.js (Web_Editor_Pro)
-// Versión con arquitectura de Dos Fases (Traducción de Nombres + Info Extendida en JSON)
+// Versión con arquitectura de Dos Fases y Creación Dinámica Segura de Columnas
 
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.ui = '1.3.0-DOS-FASES';
+window.APP_VERSIONS.ui = '1.3.1-DOS-FASES-SEGURA';
 
-window.APP_VERSIONS.config = window.APP_VERSIONS.config || '1.1.0';
+window.APP_VERSIONS.config = window.APP_VERSIONS.config || '2.2.0';
 window.APP_VERSIONS.app = window.APP_VERSIONS.app || '1.0.33';
 
 let currentKeyIndex = 0;
@@ -262,7 +262,7 @@ export const UI = {
     },
 
     // -------------------------------------------------------------
-    // ARQUITECTURA DE DOS FASES
+    // ARQUITECTURA DE DOS FASES CON CREACIÓN DINÁMICA SEGURA
     // -------------------------------------------------------------
     iniciarTraduccionPorLotes: async (stateContainerParam) => {
         procesoDetenido = false; procesoPausado = false;
@@ -276,12 +276,23 @@ export const UI = {
         const rangoInicio = selectorInicio ? (parseInt(selectorInicio.value) - 2 || 0) : 0;
         const rangoFin = selectorFin ? (parseInt(selectorFin.value) - 1 || activeStateContainer.csvData.length) : activeStateContainer.csvData.length;
         
-        const idiomasDetectados = activeStateContainer.headers
-            .filter(h => h && h.toUpperCase().startsWith("NOMBRE_"))
-            .map(h => h.toUpperCase().replace("NOMBRE_", ""));
+        // Obtener la lista oficial de idiomas desde la configuración
+        const idiomasConfigurados = Object.keys(window.IDIOMAS_CONFIG || {
+            "ES": 1, "EN": 1, "DE": 1, "FR": 1, "IT": 1, "RU": 1, "NL": 1, "PL": 1, 
+            "SV": 1, "NO": 1, "DA": 1, "FI": 1, "PT": 1, "RO": 1, "HU": 1, "CS": 1, 
+            "EL": 1, "TR": 1, "AR": 1, "ZH": 1, "JA": 1, "CA": 1, "EU": 1, "GL": 1, 
+            "VA": 1, "KO": 1
+        });
 
-        // Asegurar columnas INFO_ dinámicas
-        idiomasDetectados.forEach(lang => {
+        // Asegurar de forma estricta y segura que existan tanto las columnas NOMBRE_ como INFO_ en memoria y en las filas
+        idiomasConfigurados.forEach(lang => {
+            const nombreHeader = `NOMBRE_${lang}`;
+            if (!activeStateContainer.headers.some(h => h && h.toUpperCase() === nombreHeader)) {
+                activeStateContainer.headers.push(nombreHeader);
+                activeStateContainer.csvData.forEach(row => row.push(""));
+                UI.log(`[Info] Columna ${nombreHeader} creada dinámicamente.`);
+            }
+
             const infoHeader = `INFO_${lang}`;
             if (!activeStateContainer.headers.some(h => h && h.toUpperCase() === infoHeader)) {
                 activeStateContainer.headers.push(infoHeader);
@@ -290,6 +301,7 @@ export const UI = {
             }
         });
 
+        const idiomasDetectados = idiomasConfigurados.filter(code => code !== 'ES');
         const columnasIdiomasDestino = activeStateContainer.headers.map((h, i) => (h && h.toUpperCase().startsWith("NOMBRE_") && h.toUpperCase() !== "NOMBRE_ES") ? i : -1).filter(i => i !== -1);
         const indiceCastellanoBase = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === 'NOMBRE_ES');
         if (indiceCastellanoBase === -1) return UI.log("[Error] Falta la columna 'Nombre_ES'.");
@@ -301,8 +313,11 @@ export const UI = {
         // =========================================================
         const filasPendientesNombres = [];
         for (let i = Math.max(0, rangoInicio); i < techoLimiteEvaluacion; i++) {
-            const cadenaCastellano = activeStateContainer.csvData[i][indiceCastellanoBase] || "Sin nombre";
-            const indicesColumnasVacias = columnasIdiomasDestino.filter(idx => !activeStateContainer.csvData[i][idx] || activeStateContainer.csvData[i][idx].trim() === "");
+            const row = activeStateContainer.csvData[i];
+            while (row.length < activeStateContainer.headers.length) row.push("");
+
+            const cadenaCastellano = row[indiceCastellanoBase] || "Sin nombre";
+            const indicesColumnasVacias = columnasIdiomasDestino.filter(idx => !row[idx] || row[idx].trim() === "");
             if (indicesColumnasVacias.length > 0) {
                 filasPendientesNombres.push({
                     indiceMatriz: i,
@@ -316,7 +331,7 @@ export const UI = {
 
         if (filasPendientesNombres.length > 0) {
             UI.log(`[Fase 1] Detectadas ${filasPendientesNombres.length} filas sin nombres traducidos. Procesando...`);
-            const tamanoLoteNombres = window.TRADUCCION_TAMANO_LOTE || 5;
+            const tamanoLoteNombres = window.TRADUCCION_TAMANO_LOTE || 3;
 
             for (let j = 0; j < filasPendientesNombres.length; j += tamanoLoteNombres) {
                 if (procesoDetenido) break;
@@ -379,12 +394,15 @@ export const UI = {
         // =========================================================
         const filasPendientesInfo = [];
         for (let i = Math.max(0, rangoInicio); i < techoLimiteEvaluacion; i++) {
-            const cadenaCastellano = activeStateContainer.csvData[i][indiceCastellanoBase] || "Sin nombre";
+            const row = activeStateContainer.csvData[i];
+            while (row.length < activeStateContainer.headers.length) row.push("");
+
+            const cadenaCastellano = row[indiceCastellanoBase] || "Sin nombre";
             const infoFaltantes = [];
             
             idiomasDetectados.forEach(lang => {
                 const idxInfo = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === `INFO_${lang}`);
-                if (idxInfo !== -1 && (!activeStateContainer.csvData[i][idxInfo] || activeStateContainer.csvData[i][idxInfo].trim() === "")) {
+                if (idxInfo !== -1 && (!row[idxInfo] || row[idxInfo].trim() === "")) {
                     infoFaltantes.push(lang);
                 }
             });
@@ -401,7 +419,7 @@ export const UI = {
 
         if (filasPendientesInfo.length > 0) {
             UI.log(`[Fase 2] Detectadas ${filasPendientesInfo.length} filas sin información extendida. Procesando en lotes reducidos...`);
-            const tamanoLoteInfo = window.INFO_EXTENDIDA_TAMANO_LOTE || 2; // Lote ultra seguro de 2 en 2
+            const tamanoLoteInfo = window.INFO_EXTENDIDA_TAMANO_LOTE || 2;
 
             for (let k = 0; k < filasPendientesInfo.length; k += tamanoLoteInfo) {
                 if (procesoDetenido) break;
