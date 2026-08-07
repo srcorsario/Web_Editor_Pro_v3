@@ -5,7 +5,7 @@
 // =========================================
 
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.ui = '1.4.4-ACTIVA-FIX-STRICT';
+window.APP_VERSIONS.ui = '1.4.6-ROBUST-ALERGENOS';
 
 window.APP_VERSIONS.config = window.APP_VERSIONS.config || '2.2.0';
 window.APP_VERSIONS.app = window.APP_VERSIONS.app || '1.0.33';
@@ -391,11 +391,13 @@ export const UI = {
             "VA": 1, "KO": 1
         });
 
-        // MODIFICADO: Incluimos 'ES' en la lista de idiomas para asegurar que también se procese y se guarde en INFO_ES
         const idiomasDetectados = idiomasConfigurados; 
         const columnasIdiomasDestino = activeStateContainer.headers.map((h, i) => (h && h.toUpperCase().startsWith("NOMBRE_") && h.toUpperCase() !== "NOMBRE_ES") ? i : -1).filter(i => i !== -1);
         const indiceCastellanoBase = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === 'NOMBRE_ES');
         if (indiceCastellanoBase === -1) return UI.log("[Error] Falta la columna 'Nombre_ES'.");
+
+        // MODIFICADO: Búsqueda robusta e insensible a mayúsculas para localizar "ALERGENOS_COD", "Alergenos_Cod", etc.
+        const indiceAlergenos = activeStateContainer.headers.findIndex(h => h && h.toUpperCase().replace(/[^A-Z]/g, '') === 'ALERGENOSCOD');
 
         const techoLimiteEvaluacion = Math.min(rangoFin, activeStateContainer.csvData.length);
 
@@ -492,6 +494,9 @@ export const UI = {
             while (row.length < activeStateContainer.headers.length) row.push("");
 
             const cadenaCastellano = row[indiceCastellanoBase] || "Sin nombre";
+            // MODIFICADO: Extraemos el valor real de los alérgenos de la celda (ej: "GLUTEN, SESAMO, CACAHUETE...")
+            const alergenosValor = indiceAlergenos !== -1 ? (row[indiceAlergenos] || "Ninguno") : "No especificado";
+
             const infoFaltantes = [];
             
             idiomasDetectados.forEach(lang => {
@@ -506,6 +511,7 @@ export const UI = {
                     indiceMatriz: i,
                     numeroFilaHumana: i + 2,
                     textoES: cadenaCastellano,
+                    alergenos: alergenosValor,
                     infoFaltantes: infoFaltantes
                 });
             }
@@ -520,7 +526,7 @@ export const UI = {
                 while (procesoPausado) await new Promise(resolve => setTimeout(resolve, 500));
 
                 const loteInfoActual = filasPendientesInfo.slice(k, k + tamanoLoteInfo);
-                const payloadInfo = loteInfoActual.map(p => ({ id_fila: p.numeroFilaHumana, texto: p.textoES, idiomas: p.infoFaltantes }));
+                const payloadInfo = loteInfoActual.map(p => ({ id_fila: p.numeroFilaHumana, texto: p.textoES, alérgenos_reales: p.alergenos, idiomas: p.infoFaltantes }));
                 const secuenciaInfo = loteInfoActual.map(p => p.numeroFilaHumana).join(', ');
 
                 UI.log(`[Fase 2 Lote Info] [${secuenciaInfo}]...`);
@@ -528,10 +534,12 @@ export const UI = {
 
                 while (!satisfechoInfo && !procesoDetenido) {
                     try {
-                        // NUEVO/MODIFICADO: Incluimos la regla de "PRECISIÓN OBLIGATORIA" para evitar inventar acompañamientos, técnicas o temperaturas, y asegurar que el castellano (ES) también se devuelva y guarde correctamente.
-                        const promptInfo = `Actúa como camarero explicando un plato a un cliente en la mesa, de forma natural y directa. Para el plato: ${JSON.stringify(payloadInfo)}, genera una descripción breve (máximo 2 frases cortas) y 3 preguntas con respuestas cortas de interés. 
+                        // NUEVO/MODIFICADO: Instrucción estricta para cruzar los alérgenos reales especificados en la hoja de cálculo.
+                        const promptInfo = `Actúa como camarero explicando un plato a un cliente en la mesa, de forma natural y directa. Para los siguientes platos (incluyendo su nombre y los alérgenos reales indicados en su ficha, como GLUTEN, SESAMO, CACAHUETE, SOJA, FRUTOSCASCARA, APIO, HUEVO, PESCADO, MOSTAZA, MOLUSCO, SULFITOS, etc.): ${JSON.stringify(payloadInfo)}, genera una descripción breve (máximo 2 frases cortas) y 3 preguntas con respuestas cortas de interés. 
 ESTILO OBLIGATORIO: lenguaje sencillo y concreto, como una explicación oral, no como texto de marketing. Nada de adjetivos grandilocuentes ("joya", "explosión", "auténtico", "esencial", "indulge", "journey", "unparalleled") ni metáforas. Céntrate en ingredientes reales, técnica de cocción y sabor, sin exagerar. Evita frases genéricas de relleno.
-REGLA DE PRECISIÓN OBLIGATORIA: El modelo solo puede usar lo que ya está estrictamente en el nombre o ingredientes del plato proporcionado. Está terminantemente prohibido inventar acompañamientos, técnicas de corte, temperatura de servicio, guarniciones o ingredientes que no aparezcan explícitos. Si no hay datos suficientes para una pregunta de interés, usa alternativas seguras (alérgenos lógicos, origen del ingrediente principal o tipo de cocción si ya está en el nombre) en lugar de inventar.
+REGLA DE PRECISIÓN Y CRUCE DE ALÉRGENOS OBLIGATORIA: 
+1. El modelo DEBE respetar y reflejar con absoluta veracidad los "alérgenos_reales" facilitados en los datos de entrada. Si un plato incluye GLUTEN (o cualquier otro alérgeno en esa lista), está terminantemente prohibido afirmar o insinuar que el plato no tiene gluten o que es apto para celíacos. 
+2. Solo puede usar lo que ya esté estrictamente en el nombre o ingredientes del plato. Está prohibido inventar acompañamientos, técnicas de corte, temperatura de servicio o guarniciones no explícitas.
 Tradúcelo a los idiomas solicitados (incluyendo 'ES' si está en la lista) manteniendo ese mismo tono sencillo y estricto en cada idioma. Responde EXCLUSIVAMENTE con un JSON válido, sin markdown: {"lote": [{"id_fila": 8, "info": {"EN": {"desc": "...", "q1": "...", "r1": "...", "q2": "...", "r2": "...", "q3": "...", "r3": "..."}, "ES": {"desc": "...", "q1": "...", "r1": "...", "q2": "...", "r2": "...", "q3": "...", "r3": "..."}}}]}`;
 
                         const callResponse = await fetch(`${window.GEMINI_ENDPOINT_URL || 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent'}?key=${listaClavesAPI[currentKeyIndex]}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: promptInfo }] }] }) });
@@ -566,7 +574,7 @@ Tradúcelo a los idiomas solicitados (incluyendo 'ES' si está en la lista) mant
                                     });
                                 }
                             });
-                            UI.log(`[OK Fase 2] [${secuenciaInfo}] inyectada con éxito.`);
+                            UI.log(`[OK Fase 2] [${secuenciaInfo}] inyectada cruzando alérgenos correctamente.`);
                             satisfechoInfo = true;
                         } else throw new Error("Estructura JSON inválida en info.");
                     } catch (err) {
