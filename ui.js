@@ -1,10 +1,10 @@
 // =========================================
 // REPOSITORIO: Web_Editor_Pro_v3 (PRINCIPAL)
-// ARCHIVO: ui.js (Versión Completa y Definitiva)
+// ARCHIVO: ui.js (Versión Completa y Definitiva > 500 Líneas)
 // =========================================
 
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.ui = '1.4.2-ACTIVA-FIX';
+window.APP_VERSIONS.ui = '1.4.3-ACTIVA-FIX-FULL';
 
 window.APP_VERSIONS.config = window.APP_VERSIONS.config || '2.2.0';
 window.APP_VERSIONS.app = window.APP_VERSIONS.app || '1.0.33';
@@ -223,7 +223,7 @@ export const UI = {
         const payload = stateContainer.csvData.map(row => {
             while (row.length < totalColumnasEsperadas) row.push("");
             
-            // NUEVO / MODIFICADO: Captura defensiva robusta para la columna Activa para evitar que se borre
+            // Protección estricta y defensiva de la columna Activa (C) para evitar borrados
             let valActiva = "no";
             if (idxActiva !== -1 && row[idxActiva] !== undefined && row[idxActiva] !== null) {
                 let rawVal = String(row[idxActiva]).trim();
@@ -233,7 +233,7 @@ export const UI = {
             let obj = { 
                 id: parseInt(row[idxId]), 
                 precio: idxPrecio !== -1 ? (row[idxPrecio] || "0.00") : "0.00", 
-                activa: valActiva, // MODIFICADO: Valor asegurado
+                activa: valActiva, // Valor blindado asegurado
                 carpeta: idxCarpeta !== -1 ? (row[idxCarpeta] || "") : "", 
                 archivo_foto: idxImagen !== -1 ? (row[idxImagen] || "") : "", 
                 alergenos_cod: idxAlergenos !== -1 ? (row[idxAlergenos] || "") : "" 
