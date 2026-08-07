@@ -1,3 +1,4 @@
+// [🔒 ARCHIVO DIVIDIDO - PARTE 1 DE 2]
 // =========================================
 // REPOSITORIO: Web_Editor_Pro_v3 (PRINCIPAL)
 // ARCHIVO: ui.js (Versión Completa y Definitiva > 500 Líneas)
@@ -222,7 +223,6 @@ export const UI = {
         const payload = stateContainer.csvData.map(row => {
             while (row.length < totalColumnasEsperadas) row.push("");
             
-            // Blindaje estricto de la columna Activa: Respeta "si", "no" o cualquier valor válido existente
             let valActiva = "si";
             if (idxActiva !== -1 && row[idxActiva] !== undefined && row[idxActiva] !== null) {
                 let rawVal = String(row[idxActiva]).trim().toLowerCase();
@@ -240,7 +240,7 @@ export const UI = {
             let obj = { 
                 id: parseInt(row[idxId]), 
                 precio: idxPrecio !== -1 ? (row[idxPrecio] || "0.00") : "0.00", 
-                activa: valActiva, // Valor blindado de manera segura
+                activa: valActiva,
                 carpeta: idxCarpeta !== -1 ? (row[idxCarpeta] || "") : "", 
                 archivo_foto: idxImagen !== -1 ? (row[idxImagen] || "") : "", 
                 alergenos_cod: idxAlergenos !== -1 ? (row[idxAlergenos] || "") : "" 
@@ -391,7 +391,8 @@ export const UI = {
             "VA": 1, "KO": 1
         });
 
-        const idiomasDetectados = idiomasConfigurados.filter(code => code !== 'ES');
+        // MODIFICADO: Incluimos 'ES' en la lista de idiomas para asegurar que también se procese y se guarde en INFO_ES
+        const idiomasDetectados = idiomasConfigurados; 
         const columnasIdiomasDestino = activeStateContainer.headers.map((h, i) => (h && h.toUpperCase().startsWith("NOMBRE_") && h.toUpperCase() !== "NOMBRE_ES") ? i : -1).filter(i => i !== -1);
         const indiceCastellanoBase = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === 'NOMBRE_ES');
         if (indiceCastellanoBase === -1) return UI.log("[Error] Falta la columna 'Nombre_ES'.");
@@ -527,9 +528,11 @@ export const UI = {
 
                 while (!satisfechoInfo && !procesoDetenido) {
                     try {
+                        // NUEVO/MODIFICADO: Incluimos la regla de "PRECISIÓN OBLIGATORIA" para evitar inventar acompañamientos, técnicas o temperaturas, y asegurar que el castellano (ES) también se devuelva y guarde correctamente.
                         const promptInfo = `Actúa como camarero explicando un plato a un cliente en la mesa, de forma natural y directa. Para el plato: ${JSON.stringify(payloadInfo)}, genera una descripción breve (máximo 2 frases cortas) y 3 preguntas con respuestas cortas de interés. 
 ESTILO OBLIGATORIO: lenguaje sencillo y concreto, como una explicación oral, no como texto de marketing. Nada de adjetivos grandilocuentes ("joya", "explosión", "auténtico", "esencial", "indulge", "journey", "unparalleled") ni metáforas. Céntrate en ingredientes reales, técnica de cocción y sabor, sin exagerar. Evita frases genéricas de relleno.
-Tradúcelo a los idiomas solicitados manteniendo ese mismo tono sencillo en cada idioma (no lo "adornes" al traducir). Responde EXCLUSIVAMENTE con un JSON válido, sin markdown: {"lote": [{"id_fila": 8, "info": {"EN": {"desc": "...", "q1": "...", "r1": "...", "q2": "...", "r2": "...", "q3": "...", "r3": "..."}, "ES": {"desc": "...", "q1": "...", "r1": "...", "q2": "...", "r2": "...", "q3": "...", "r3": "..."}}}]}`;
+REGLA DE PRECISIÓN OBLIGATORIA: El modelo solo puede usar lo que ya está estrictamente en el nombre o ingredientes del plato proporcionado. Está terminantemente prohibido inventar acompañamientos, técnicas de corte, temperatura de servicio, guarniciones o ingredientes que no aparezcan explícitos. Si no hay datos suficientes para una pregunta de interés, usa alternativas seguras (alérgenos lógicos, origen del ingrediente principal o tipo de cocción si ya está en el nombre) en lugar de inventar.
+Tradúcelo a los idiomas solicitados (incluyendo 'ES' si está en la lista) manteniendo ese mismo tono sencillo y estricto en cada idioma. Responde EXCLUSIVAMENTE con un JSON válido, sin markdown: {"lote": [{"id_fila": 8, "info": {"EN": {"desc": "...", "q1": "...", "r1": "...", "q2": "...", "r2": "...", "q3": "...", "r3": "..."}, "ES": {"desc": "...", "q1": "...", "r1": "...", "q2": "...", "r2": "...", "q3": "...", "r3": "..."}}}]}`;
 
                         const callResponse = await fetch(`${window.GEMINI_ENDPOINT_URL || 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent'}?key=${listaClavesAPI[currentKeyIndex]}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: promptInfo }] }] }) });
                         
