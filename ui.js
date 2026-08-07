@@ -527,7 +527,9 @@ export const UI = {
 
                 while (!satisfechoInfo && !procesoDetenido) {
                     try {
-                        const promptInfo = `Actúa como chef experto. Para el plato: ${JSON.stringify(payloadInfo)}, genera una descripción apetitosa y 3 preguntas con respuestas cortas de interés. Tradúcelo a los idiomas solicitados. Responde EXCLUSIVAMENTE con un JSON válido, sin markdown: {"lote": [{"id_fila": 8, "info": {"EN": {"desc": "...", "q1": "...", "r1": "...", "q2": "...", "r2": "...", "q3": "...", "r3": "..."}, "ES": {"desc": "...", "q1": "...", "r1": "...", "q2": "...", "r2": "...", "q3": "...", "r3": "..."}}}]}`;
+                        const promptInfo = `Actúa como camarero explicando un plato a un cliente en la mesa, de forma natural y directa. Para el plato: ${JSON.stringify(payloadInfo)}, genera una descripción breve (máximo 2 frases cortas) y 3 preguntas con respuestas cortas de interés. 
+ESTILO OBLIGATORIO: lenguaje sencillo y concreto, como una explicación oral, no como texto de marketing. Nada de adjetivos grandilocuentes ("joya", "explosión", "auténtico", "esencial", "indulge", "journey", "unparalleled") ni metáforas. Céntrate en ingredientes reales, técnica de cocción y sabor, sin exagerar. Evita frases genéricas de relleno.
+Tradúcelo a los idiomas solicitados manteniendo ese mismo tono sencillo en cada idioma (no lo "adornes" al traducir). Responde EXCLUSIVAMENTE con un JSON válido, sin markdown: {"lote": [{"id_fila": 8, "info": {"EN": {"desc": "...", "q1": "...", "r1": "...", "q2": "...", "r2": "...", "q3": "...", "r3": "..."}, "ES": {"desc": "...", "q1": "...", "r1": "...", "q2": "...", "r2": "...", "q3": "...", "r3": "..."}}}]}`;
 
                         const callResponse = await fetch(`${window.GEMINI_ENDPOINT_URL || 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent'}?key=${listaClavesAPI[currentKeyIndex]}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: promptInfo }] }] }) });
                         
