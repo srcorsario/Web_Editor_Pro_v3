@@ -1,10 +1,10 @@
 // =========================================
 // REPOSITORIO: Web_Editor_Pro_v3 (PRINCIPAL)
-// ARCHIVO: ui.js (Versión Completa y Definitiva - ES/EN Directo y Profesional)
+// ARCHIVO: ui.js (Versión Completa y Definitiva - Control Estricto de Alérgenos)
 // =========================================
 
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.ui = '1.5.0-DIRECTO-ES-EN';
+window.APP_VERSIONS.ui = '1.5.1-CONTROL-ALERGENOS';
 
 window.APP_VERSIONS.config = window.APP_VERSIONS.config || '2.2.0';
 window.APP_VERSIONS.app = window.APP_VERSIONS.app || '1.0.33';
@@ -353,7 +353,7 @@ export const UI = {
             const blob = new Blob([resultadoTexto], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = 'exportacion_expertos_final.csv'; link.click();
             UI.log("[OK] CSV descargado.");
-        } catch (err) { UI.log(`[Error Exportar] ${err.message}`); }
+        } catch (err) { UI.log(`[Error Exportار] ${err.message}`); }
     },
 
     importarCSV: (file, callback) => {
@@ -369,7 +369,7 @@ export const UI = {
     },
 
     // ==========================================
-    // FLUJO PILOTO (ES Y EN - DIRECTO, CLARO Y SIN ADORNOS)
+    // FLUJO PILOTO (ES Y EN - CONTROL ESTRICTO DE ALÉRGENOS)
     // ==========================================
     iniciarTraduccionPorLotes: async (stateContainerParam) => {
         procesoDetenido = false; procesoPausado = false;
@@ -411,7 +411,7 @@ export const UI = {
             const nombreEnActual = row[indiceInglesBase] || "";
             const infoEsActual = row[indiceInfoEs] || "";
             const infoEnActual = row[indiceInfoIngles] || "";
-            const alergenosValor = indiceAlergenos !== -1 ? (row[indiceAlergenos] || "Ninguno") : "No especificado";
+            const alergenosValor = indiceAlergenos !== -1 ? (row[indiceAlergenos] || "").trim() : "";
 
             if (!nombreEnActual || !infoEsActual || !infoEnActual) {
                 UI.log(`[Piloto ES/EN] Procesando fila ${i + 2}: "${nombreEs}"...`);
@@ -422,11 +422,14 @@ export const UI = {
                         const promptPiloto = `Actúa como un responsable de carta de restaurante. Define el siguiente plato de forma clara, natural, concisa y estrictamente profesional. 
 REGLAS DE ESTILO OBLIGATORIAS:
 - CERO saludos informales, muletillas o frases coloquiales (prohibido "Hey there!", "So...", "Sure!"). Ve absolutamente directo al grano.
-- Evita lenguaje gourmet pomposo o adjetivos exagerados (ej: nada de "melt-in-your-mouth", "exquisite", etc.). 
-- Las respuestas sobre alérgenos deben ser exactas según los datos proporcionados.
+- Evita lenguaje gourmet pomposo o adjetivos exagerados.
+
+REGLA ESTRICTA DE ALÉRGENOS:
+- Información base proporcionada: "${alergenosValor}".
+- SI LA INFORMACIÓN DE ALÉRGENOS ESTÁ VACÍA, ES "NINGUNO", "0" O "SIN ALÉRGENOS": Queda PROHIBIDO incluir preguntas o respuestas sobre alérgenos (q3 y r3 deben omitirse, dejarse en blanco, o diseñarse para consultar otro aspecto culinario del plato como su elaboración o ingredientes generales, pero NUNCA alérgenos).
+- SI CONTIENE ALÉRGENOS: Únicamente puedes mencionar los alérgenos explícitamente indicados en la información base. No inventes alérgenos adicionales.
 
 Plato ES: "${nombreEs}"
-Alérgenos reales: "${alergenosValor}"
 
 Genera un JSON estricto sin markdown con esta estructura exacta para castellano (es) e inglés (en):
 {
