@@ -1,8 +1,10 @@
-// ui.js (Web_Editor_Pro)
-// Versión completa con Diagnóstico Detallado de Columnas, Auto-inicialización y Protección DOM
+// =========================================
+// REPOSITORIO: Web_Editor_Pro_v3 (PRINCIPAL)
+// ARCHIVO: ui.js (Versión Completa y Definitiva)
+// =========================================
 
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.ui = '1.4.1-SEGURO-AUTO';
+window.APP_VERSIONS.ui = '1.4.2-ACTIVA-FIX';
 
 window.APP_VERSIONS.config = window.APP_VERSIONS.config || '2.2.0';
 window.APP_VERSIONS.app = window.APP_VERSIONS.app || '1.0.33';
@@ -206,35 +208,35 @@ export const UI = {
         const contextoNombre = (typeof getModoAlias === 'function') ? getModoAlias(modo) : modo;
         UI.log(`[Sincro] Preparando envío a: ${contextoNombre}...`);
         
-        // MODIFICIFICADO: Búsqueda estricta de índices de columnas para evitar conflictos de subcadenas con columnas de idiomas
         const findExactIdx = (name) => stateContainer.headers.findIndex(h => h && h.toUpperCase() === name.toUpperCase());
-        const findIdx = (keywords) => { 
-            for (const kw of keywords) { 
-                const idx = stateContainer.headers.findIndex(h => h && h.toUpperCase() === kw); 
-                if (idx !== -1) return idx; 
-            } 
-            return -1; 
-        };
         
         const idxId = findExactIdx('ID'); 
         const idxPrecio = findExactIdx('PRECIO'); 
-        const idxActiva = findExactIdx('ACTIVA'); // MODIFICADO: Búsqueda exacta para Activa
+        const idxActiva = findExactIdx('ACTIVA'); 
         const idxCarpeta = findExactIdx('CARPETA'); 
-        const idxImagen = findExactIdx('ARCHIVO_FOTO'); // MODIFICADO: Búsqueda exacta para Archivo_Foto
-        const idxAlergenos = findExactIdx('ALERGENOS_COD'); // MODIFICADO: Búsqueda exacta para Alergenos_Cod
+        const idxImagen = findExactIdx('ARCHIVO_FOTO'); 
+        const idxAlergenos = findExactIdx('ALERGENOS_COD'); 
         
         if (idxId === -1) return UI.log("[Error Crítico] No se encuentra la columna 'ID'.");
         
         const totalColumnasEsperadas = stateContainer.headers.length;
         const payload = stateContainer.csvData.map(row => {
             while (row.length < totalColumnasEsperadas) row.push("");
+            
+            // NUEVO / MODIFICADO: Captura defensiva robusta para la columna Activa para evitar que se borre
+            let valActiva = "no";
+            if (idxActiva !== -1 && row[idxActiva] !== undefined && row[idxActiva] !== null) {
+                let rawVal = String(row[idxActiva]).trim();
+                if (rawVal !== "") valActiva = rawVal;
+            }
+
             let obj = { 
                 id: parseInt(row[idxId]), 
                 precio: idxPrecio !== -1 ? (row[idxPrecio] || "0.00") : "0.00", 
-                activa: idxActiva !== -1 ? (row[idxActiva] || "no") : "no", // MODIFICADO: Mapeo correcto para Activa
+                activa: valActiva, // MODIFICADO: Valor asegurado
                 carpeta: idxCarpeta !== -1 ? (row[idxCarpeta] || "") : "", 
-                archivo_foto: idxImagen !== -1 ? (row[idxImagen] || "") : "", // MODIFICADO: Clave exacta archivo_foto
-                alergenos_cod: idxAlergenos !== -1 ? (row[idxAlergenos] || "") : "" // MODIFICADO: Clave exacta alergenos_cod
+                archivo_foto: idxImagen !== -1 ? (row[idxImagen] || "") : "", 
+                alergenos_cod: idxAlergenos !== -1 ? (row[idxAlergenos] || "") : "" 
             };
             
             stateContainer.headers.forEach((h, i) => { 
@@ -245,7 +247,7 @@ export const UI = {
                     obj[`nombre_${langKey}`] = row[i] || ""; 
                 } else if (hUpper.startsWith("INFO_")) {
                     let langKey = hUpper.replace("INFO_", "").toLowerCase(); 
-                    obj[`info_${langKey}`] = row[i] || ""; // MODIFICADO: Soporte estricto para columnas INFO_ dinámicas
+                    obj[`info_${langKey}`] = row[i] || ""; 
                 }
             });
             return obj;
