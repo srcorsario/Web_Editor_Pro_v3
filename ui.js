@@ -1,10 +1,10 @@
 // =========================================
 // REPOSITORIO: Web_Editor_Pro_v3 (PRINCIPAL)
-// ARCHIVO: ui.js (Versión Completa y Definitiva - Estreno Profesional)
+// ARCHIVO: ui.js (Versión Completa y Definitiva - ES/EN Directo y Profesional)
 // =========================================
 
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.ui = '1.4.9-ROBUST-PILOTO-PROFESSIONAL';
+window.APP_VERSIONS.ui = '1.5.0-DIRECTO-ES-EN';
 
 window.APP_VERSIONS.config = window.APP_VERSIONS.config || '2.2.0';
 window.APP_VERSIONS.app = window.APP_VERSIONS.app || '1.0.33';
@@ -369,7 +369,7 @@ export const UI = {
     },
 
     // ==========================================
-    // FLUJO PILOTO (SOLO CASTELLANO E INGLÉS - ESTILO PROFESIONAL Y DIRECTO)
+    // FLUJO PILOTO (ES Y EN - DIRECTO, CLARO Y SIN ADORNOS)
     // ==========================================
     iniciarTraduccionPorLotes: async (stateContainerParam) => {
         procesoDetenido = false; procesoPausado = false;
@@ -388,16 +388,17 @@ export const UI = {
         
         const indiceCastellanoBase = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === 'NOMBRE_ES');
         const indiceInglesBase = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === 'NOMBRE_EN');
+        const indiceInfoEs = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === 'INFO_ES');
         const indiceInfoIngles = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === 'INFO_EN');
         const indiceAlergenos = activeStateContainer.headers.findIndex(h => h && h.toUpperCase().replace(/[^A-Z]/g, '') === 'ALERGENOSCOD');
 
-        if (indiceCastellanoBase === -1 || indiceInglesBase === -1 || indiceInfoIngles === -1) {
-            return UI.log("[Error Crítico] Faltan columnas base obligatorias (NOMBRE_ES, NOMBRE_EN o INFO_EN).");
+        if (indiceCastellanoBase === -1 || indiceInglesBase === -1 || indiceInfoEs === -1 || indiceInfoIngles === -1) {
+            return UI.log("[Error Crítico] Faltan columnas base obligatorias (NOMBRE_ES, NOMBRE_EN, INFO_ES o INFO_EN).");
         }
 
         const techoLimiteEvaluacion = Math.min(rangoFin, activeStateContainer.csvData.length);
 
-        UI.log("[Paso 1] Generando y revisando borradores en Inglés (EN)...");
+        UI.log("[Paso 1] Generando contenido en Castellano e Inglés (ES / EN)...");
         
         for (let i = Math.max(0, rangoInicio); i < techoLimiteEvaluacion; i++) {
             if (procesoDetenido) break;
@@ -408,28 +409,31 @@ export const UI = {
 
             const nombreEs = row[indiceCastellanoBase] || "";
             const nombreEnActual = row[indiceInglesBase] || "";
+            const infoEsActual = row[indiceInfoEs] || "";
             const infoEnActual = row[indiceInfoIngles] || "";
             const alergenosValor = indiceAlergenos !== -1 ? (row[indiceAlergenos] || "Ninguno") : "No especificado";
 
-            if (!nombreEnActual || !infoEnActual) {
-                UI.log(`[Piloto EN] Procesando fila ${i + 2}: "${nombreEs}"...`);
+            if (!nombreEnActual || !infoEsActual || !infoEnActual) {
+                UI.log(`[Piloto ES/EN] Procesando fila ${i + 2}: "${nombreEs}"...`);
                 let satisfechoPiloto = false;
 
                 while (!satisfechoPiloto && !procesoDetenido) {
                     try {
-                        const promptPiloto = `Actúa estrictamente como un chef o maître profesional de un restaurante de categoría. Traduce y adapta el siguiente plato del castellano al inglés con un tono profesional, claro, apetitoso y directo. 
+                        const promptPiloto = `Actúa como un responsable de carta de restaurante. Define el siguiente plato de forma clara, natural, concisa y estrictamente profesional. 
 REGLAS DE ESTILO OBLIGATORIAS:
-- PROHIBIDO usar saludos informales, muletillas o frases coloquiales (como "Hey there!", "So...", "Sure!"). Ve directo al grano.
-- La descripción debe ser elegante y concisa, explicando el plato sin florituras exageradas.
-- Adapta modismos locales a estándares claros (ej: all i oli como garlic mayonnaise).
+- CERO saludos informales, muletillas o frases coloquiales (prohibido "Hey there!", "So...", "Sure!"). Ve absolutamente directo al grano.
+- Evita lenguaje gourmet pomposo o adjetivos exagerados (ej: nada de "melt-in-your-mouth", "exquisite", etc.). 
+- Las respuestas sobre alérgenos deben ser exactas según los datos proporcionados.
 
 Plato ES: "${nombreEs}"
 Alérgenos reales: "${alergenosValor}"
 
-Genera un JSON estricto sin markdown con esta estructura exacta:
-{"nombre_en": "...", "info_en": {"desc": "...", "q1": "...", "r1": "...", "q2": "...", "r2": "...", "q3": "...", "r3": "..."}}
-
-REGLA DE ALÉRGENOS: Si los alérgenos indican algún componente crítico (como gluten, lácteos, etc.), respétalo estrictamente y menciónalo de forma clara y directa donde corresponda.`;
+Genera un JSON estricto sin markdown con esta estructura exacta para castellano (es) e inglés (en):
+{
+  "nombre_en": "...",
+  "es": {"desc": "...", "q1": "...", "r1": "...", "q2": "...", "r2": "...", "q3": "...", "r3": "..."},
+  "en": {"desc": "...", "q1": "...", "r1": "...", "q2": "...", "r2": "...", "q3": "...", "r3": "..."}
+}`;
 
                         const callResponse = await fetch(`${window.GEMINI_ENDPOINT_URL || 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent'}?key=${listaClavesAPI[currentKeyIndex]}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: promptPiloto }] }] }) });
                         
@@ -454,13 +458,14 @@ REGLA DE ALÉRGENOS: Si los alérgenos indican algún componente crítico (como 
                         const jsonSanitizado = textoLimpioIA.replace(/```json/g, '').replace(/```/g, '').trim();
                         const parsed = JSON.parse(jsonSanitizado);
 
-                        if (parsed.nombre_en && parsed.info_en) {
+                        if (parsed.nombre_en && parsed.es && parsed.en) {
                             if (!nombreEnActual) row[indiceInglesBase] = parsed.nombre_en;
-                            if (!infoEnActual) row[indiceInfoIngles] = JSON.stringify(parsed.info_en);
+                            if (!infoEsActual) row[indiceInfoEs] = JSON.stringify(parsed.es);
+                            if (!infoEnActual) row[indiceInfoIngles] = JSON.stringify(parsed.en);
                             satisfechoPiloto = true;
-                        } else throw new Error("Estructura JSON inválida en piloto EN.");
+                        } else throw new Error("Estructura JSON inválida en piloto ES/EN.");
                     } catch (err) {
-                        UI.log(`[Error Piloto EN] Fila ${i + 2}: ${err.message}`);
+                        UI.log(`[Error Piloto ES/EN] Fila ${i + 2}: ${err.message}`);
                         await new Promise(r => setTimeout(r, 3000));
                         currentKeyIndex = (currentKeyIndex + 1) % listaClavesAPI.length;
                     }
@@ -470,7 +475,7 @@ REGLA DE ALÉRGENOS: Si los alérgenos indican algún componente crítico (como 
             }
         }
 
-        UI.log("[FIN] Proceso finalizado. Borradores en Inglés generados con estilo profesional y listos para verificar en la interfaz.");
+        UI.log("[FIN] Proceso finalizado. Contenido en Castellano e Inglés generado con éxito.");
     }
 };
 
