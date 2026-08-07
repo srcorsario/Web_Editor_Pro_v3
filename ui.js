@@ -1,10 +1,10 @@
 // =========================================
 // REPOSITORIO: Web_Editor_Pro_v3 (PRINCIPAL)
-// ARCHIVO: ui.js (Versión Completa y Definitiva)
+// ARCHIVO: ui.js (Versión Completa y Definitiva - ES/EN Pilot)
 // =========================================
 
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.ui = '1.4.7-ROBUST-PILOTO-EN';
+window.APP_VERSIONS.ui = '1.4.8-ROBUST-PILOTO-ES-EN';
 
 window.APP_VERSIONS.config = window.APP_VERSIONS.config || '2.2.0';
 window.APP_VERSIONS.app = window.APP_VERSIONS.app || '1.0.33';
@@ -369,7 +369,7 @@ export const UI = {
     },
 
     // ==========================================
-    // FLUJO MASIVO EN DOS FASES (PILOTO EN INGLÉS -> PROPAGACIÓN)
+    // FLUJO PILOTO (SOLO CASTELLANO E INGLÉS - ESTILO NATURAL Y DIRECTO)
     // ==========================================
     iniciarTraduccionPorLotes: async (stateContainerParam) => {
         procesoDetenido = false; procesoPausado = false;
@@ -397,10 +397,7 @@ export const UI = {
 
         const techoLimiteEvaluacion = Math.min(rangoFin, activeStateContainer.csvData.length);
 
-        // ==========================================
-        // PASO 1: GENERACIÓN PILOTO ÚNICAMENTE EN INGLÉS
-        // ==========================================
-        UI.log("[Paso 1] Verificando y generando borradores piloto en Inglés (EN)...");
+        UI.log("[Paso 1] Generando y revisando borradores en Inglés (EN)...");
         
         for (let i = Math.max(0, rangoInicio); i < techoLimiteEvaluacion; i++) {
             if (procesoDetenido) break;
@@ -420,12 +417,12 @@ export const UI = {
 
                 while (!satisfechoPiloto && !procesoDetenido) {
                     try {
-                        const promptPiloto = `Actúa como chef ejecutivo internacional. Traduce y adapta el siguiente plato del castellano al inglés de forma natural y comercialmente clara (ej: adapta modismos locales a términos comprensibles internacionalmente como 'garlic mayonnaise'). 
+                        const promptPiloto = `Actúa como un camarero explicando un plato de forma natural, clara y directa. Traduce y adapta el siguiente plato del castellano al inglés con un tono fresco y cotidiano, sin florituras pomposas ni metáforas exageradas (ej: adapta modismos locales como all i oli a garlic mayonnaise).
 Plato ES: "${nombreEs}"
 Alérgenos reales: "${alergenosValor}"
 Genera un JSON estricto sin markdown con esta estructura exacta:
 {"nombre_en": "...", "info_en": {"desc": "...", "q1": "...", "r1": "...", "q2": "...", "r2": "...", "q3": "...", "r3": "..."}}
-REGLA DE ALÉRGENOS: Si los alérgenos indican GLUTEN u otro componente, respétalo estrictamente en la descripción/preguntas en inglés.`;
+REGLA DE ALÉRGENOS: Si los alérgenos indican algún componente crítico (como gluten, frutos secos, pescado, etc.), respétalo estrictamente y menciónalo de forma clara donde corresponda en las respuestas.`;
 
                         const callResponse = await fetch(`${window.GEMINI_ENDPOINT_URL || 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent'}?key=${listaClavesAPI[currentKeyIndex]}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: promptPiloto }] }] }) });
                         
@@ -466,94 +463,7 @@ REGLA DE ALÉRGENOS: Si los alérgenos indican GLUTEN u otro componente, respét
             }
         }
 
-        UI.log("[Paso 1 Completado] Borradores en Inglés listos y verificados.");
-        if (procesoDetenido) return UI.log(`[FIN] Proceso detenido por el usuario.`);
-
-        // ==========================================
-        // PASO 2: PROPAGACIÓN MASIVA DESDE EL INGLÉS VALIDADO
-        // ==========================================
-        UI.log("[Paso 2] Propagando traducciones desde el Inglés validado al resto de idiomas...");
-
-        const idiomasConfigurados = Object.keys(window.IDIOMAS_CONFIG || {}).filter(lang => lang !== 'ES' && lang !== 'EN');
-        
-        for (let i = Math.max(0, rangoInicio); i < techoLimiteEvaluacion; i++) {
-            if (procesoDetenido) break;
-            while (procesoPausado) await new Promise(resolve => setTimeout(resolve, 500));
-
-            const row = activeStateContainer.csvData[i];
-            
-            const textoEnBase = row[indiceInglesBase];
-            const infoEnBase = row[indiceInfoIngles];
-            const alergenosValor = indiceAlergenos !== -1 ? (row[indiceAlergenos] || "Ninguno") : "No especificado";
-
-            const idiomasFaltantes = idiomasConfigurados.filter(lang => {
-                const idxNom = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === `NOMBRE_${lang}`);
-                const idxInf = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === `INFO_${lang}`);
-                return (idxNom !== -1 && !row[idxNom]) || (idxInf !== -1 && !row[idxInf]);
-            });
-
-            if (idiomasFaltantes.length > 0 && textoEnBase) {
-                UI.log(`[Propagación] Fila ${i + 2} -> Traduciendo a: ${idiomasFaltantes.join(', ')}...`);
-                let satisfechoPropagacion = false;
-
-                while (!satisfechoPropagacion && !procesoDetenido) {
-                    try {
-                        const promptProp = `Actúa como traductor gastronómico experto. Tomando como base oficial este plato en Inglés ya validado:
-Nombre EN: "${textoEnBase}"
-Info EN (JSON): ${infoEnBase}
-Alérgenos reales: "${alergenosValor}"
-Tradúcelo con precisión a los siguientes idiomas destino: ${JSON.stringify(idiomasFaltantes)}.
-Mantén estrictamente el mismo tono, estructura y respeta la alerta de alérgenos.
-Responde EXCLUSIVAMENTE con un JSON válido sin markdown:
-{"traducciones": {"DE": {"nombre": "...", "info": {"desc": "...", "q1": "...", "r1": "...", "q2": "...", "r2": "...", "q3": "...", "r3": "..."}}, "FR": {...}}}`;
-
-                        const callResponse = await fetch(`${window.GEMINI_ENDPOINT_URL || 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent'}?key=${listaClavesAPI[currentKeyIndex]}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: promptProp }] }] }) });
-                        
-                        const textResponse = await callResponse.text();
-                        let respuestaJsonData;
-                        try {
-                            respuestaJsonData = JSON.parse(textResponse);
-                        } catch (e) {
-                            throw new Error("La API devolvió HTML o texto plano (Posible 403 o error de cuota).");
-                        }
-
-                        if (respuestaJsonData.error?.code === 429) { 
-                            currentKeyIndex = (currentKeyIndex + 1) % listaClavesAPI.length; 
-                            UI.log(`[Aviso] Límite superado. Rotando Key...`);
-                            await new Promise(r => setTimeout(r, 4000)); 
-                            continue; 
-                        }
-
-                        const textoLimpioIA = respuestaJsonData.candidates?.[0]?.content?.parts?.[0]?.text;
-                        if (!textoLimpioIA) throw new Error("La API no devolvió contenido.");
-
-                        const jsonSanitizado = textoLimpioIA.replace(/```json/g, '').replace(/```/g, '').trim();
-                        const parsed = JSON.parse(jsonSanitizado);
-
-                        if (parsed && parsed.traducciones) {
-                            Object.keys(parsed.traducciones).forEach(lang => {
-                                const datosLang = parsed.traducciones[lang];
-                                const idxNom = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === `NOMBRE_${lang}`);
-                                const idxInf = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === `INFO_${lang}`);
-                                
-                                if (idxNom !== -1 && datosLang.nombre) row[idxNom] = datosLang.nombre;
-                                if (idxInf !== -1 && datosLang.info) row[idxInf] = JSON.stringify(datosLang.info);
-                            });
-                            UI.log(`[OK Propagación] Fila ${i + 2} propagada con éxito.`);
-                            satisfechoPropagacion = true;
-                        } else throw new Error("Estructura JSON inválida en propagación.");
-                    } catch (err) {
-                        UI.log(`[Error Propagación] Fila ${i + 2}: ${err.message}`);
-                        await new Promise(r => setTimeout(r, 3000));
-                        currentKeyIndex = (currentKeyIndex + 1) % listaClavesAPI.length;
-                    }
-                }
-                await new Promise(r => setTimeout(r, 1500));
-                if (typeof UI.renderTable === 'function') UI.renderTable();
-            }
-        }
-
-        UI.log("[FIN] ¡Flujo masivo completado en dos fases!");
+        UI.log("[FIN] Proceso finalizado. Borradores en Inglés generados y listos para verificar en la interfaz.");
     }
 };
 
