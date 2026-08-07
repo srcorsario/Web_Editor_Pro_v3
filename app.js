@@ -712,7 +712,7 @@ async function enviarAlExcel() {
     sessionStorage.setItem('optState_' + modo, JSON.stringify(window.optimisticState[modo]));
     
     const payload = datosLocales.map(p => {
-        let obj = { id: p.id, precio: p.precio, estado: p.activa ? 'si' : 'no', carpeta: p.carpeta, imagen: p.imagen, alergenos: p.alergenos };
+        let obj = { id: p.id, precio: p.precio, activa: p.activa ? 'si' : 'no', carpeta: p.carpeta, imagen: p.imagen, alergenos: p.alergenos };
         if (window.IDIOMAS_ORDEN) {
             window.IDIOMAS_ORDEN.forEach(l => { obj[`nombre_${l}`] = p[l] || ""; });
         }
