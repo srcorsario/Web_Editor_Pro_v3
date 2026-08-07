@@ -206,8 +206,23 @@ export const UI = {
         const contextoNombre = (typeof getModoAlias === 'function') ? getModoAlias(modo) : modo;
         UI.log(`[Sincro] Preparando envío a: ${contextoNombre}...`);
         
-        const findIdx = (keywords) => { for (const kw of keywords) { const idx = stateContainer.headers.findIndex(h => h && h.toUpperCase().includes(kw)); if (idx !== -1) return idx; } return -1; };
-        const idxId = findIdx(['ID']); const idxPrecio = findIdx(['PRECIO', 'PRICE']); const idxEstado = findIdx(['ACTIVA', 'ESTADO', 'ACTIVO']); const idxCarpeta = findIdx(['CARPETA', 'FOLDER']); const idxImagen = findIdx(['ARCHIVO_FOTO', 'IMAGEN', 'FOTO']); const idxAlergenos = findIdx(['ALERGENOS_COD', 'ALERG']);
+        // MODIFICIFICADO: Búsqueda estricta de índices de columnas para evitar conflictos de subcadenas con columnas de idiomas
+        const findExactIdx = (name) => stateContainer.headers.findIndex(h => h && h.toUpperCase() === name.toUpperCase());
+        const findIdx = (keywords) => { 
+            for (const kw of keywords) { 
+                const idx = stateContainer.headers.findIndex(h => h && h.toUpperCase() === kw); 
+                if (idx !== -1) return idx; 
+            } 
+            return -1; 
+        };
+        
+        const idxId = findExactIdx('ID'); 
+        const idxPrecio = findExactIdx('PRECIO'); 
+        const idxActiva = findExactIdx('ACTIVA'); // MODIFICADO: Búsqueda exacta para Activa
+        const idxCarpeta = findExactIdx('CARPETA'); 
+        const idxImagen = findExactIdx('ARCHIVO_FOTO'); // MODIFICADO: Búsqueda exacta para Archivo_Foto
+        const idxAlergenos = findExactIdx('ALERGENOS_COD'); // MODIFICADO: Búsqueda exacta para Alergenos_Cod
+        
         if (idxId === -1) return UI.log("[Error Crítico] No se encuentra la columna 'ID'.");
         
         const totalColumnasEsperadas = stateContainer.headers.length;
@@ -216,10 +231,10 @@ export const UI = {
             let obj = { 
                 id: parseInt(row[idxId]), 
                 precio: idxPrecio !== -1 ? (row[idxPrecio] || "0.00") : "0.00", 
-                estado: idxEstado !== -1 ? (row[idxEstado] || "no") : "no", 
+                activa: idxActiva !== -1 ? (row[idxActiva] || "no") : "no", // MODIFICADO: Mapeo correcto para Activa
                 carpeta: idxCarpeta !== -1 ? (row[idxCarpeta] || "") : "", 
-                imagen: idxImagen !== -1 ? (row[idxImagen] || "") : "", 
-                alergenos: idxAlergenos !== -1 ? (row[idxAlergenos] || "") : "" 
+                archivo_foto: idxImagen !== -1 ? (row[idxImagen] || "") : "", // MODIFICADO: Clave exacta archivo_foto
+                alergenos_cod: idxAlergenos !== -1 ? (row[idxAlergenos] || "") : "" // MODIFICADO: Clave exacta alergenos_cod
             };
             
             stateContainer.headers.forEach((h, i) => { 
@@ -230,7 +245,7 @@ export const UI = {
                     obj[`nombre_${langKey}`] = row[i] || ""; 
                 } else if (hUpper.startsWith("INFO_")) {
                     let langKey = hUpper.replace("INFO_", "").toLowerCase(); 
-                    obj[`info_${langKey}`] = row[i] || ""; 
+                    obj[`info_${langKey}`] = row[i] || ""; // MODIFICADO: Soporte estricto para columnas INFO_ dinámicas
                 }
             });
             return obj;
