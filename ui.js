@@ -4,7 +4,7 @@
 // =========================================
 
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.ui = '1.4.3-ACTIVA-FIX-FULL';
+window.APP_VERSIONS.ui = '1.4.4-ACTIVA-FIX-STRICT';
 
 window.APP_VERSIONS.config = window.APP_VERSIONS.config || '2.2.0';
 window.APP_VERSIONS.app = window.APP_VERSIONS.app || '1.0.33';
@@ -20,7 +20,6 @@ const stateContainer = {
     currentProMode: 'restaurante001' 
 };
 
-// Función de diagnóstico estricto: Lista lo que trae y lo que genera
 function asegurarColumnasEstructura(container) {
     if (!container || !container.headers || !container.csvData) {
         console.error("[CRÍTICO] Contenedor de datos inválido en asegurarColumnasEstructura");
@@ -223,17 +222,25 @@ export const UI = {
         const payload = stateContainer.csvData.map(row => {
             while (row.length < totalColumnasEsperadas) row.push("");
             
-            // Protección estricta y defensiva de la columna Activa (C) para evitar borrados
-            let valActiva = "no";
+            // Blindaje estricto de la columna Activa: Respeta "si", "no" o cualquier valor válido existente
+            let valActiva = "si";
             if (idxActiva !== -1 && row[idxActiva] !== undefined && row[idxActiva] !== null) {
-                let rawVal = String(row[idxActiva]).trim();
-                if (rawVal !== "") valActiva = rawVal;
+                let rawVal = String(row[idxActiva]).trim().toLowerCase();
+                if (rawVal === "no" || rawVal === "false" || rawVal === "0") {
+                    valActiva = "no";
+                } else if (rawVal === "si" || rawVal === "sí" || rawVal === "true" || rawVal === "1") {
+                    valActiva = "si";
+                } else if (rawVal !== "") {
+                    valActiva = rawVal;
+                } else {
+                    valActiva = "no";
+                }
             }
 
             let obj = { 
                 id: parseInt(row[idxId]), 
                 precio: idxPrecio !== -1 ? (row[idxPrecio] || "0.00") : "0.00", 
-                activa: valActiva, // Valor blindado asegurado
+                activa: valActiva, // Valor blindado de manera segura
                 carpeta: idxCarpeta !== -1 ? (row[idxCarpeta] || "") : "", 
                 archivo_foto: idxImagen !== -1 ? (row[idxImagen] || "") : "", 
                 alergenos_cod: idxAlergenos !== -1 ? (row[idxAlergenos] || "") : "" 
@@ -574,7 +581,6 @@ export const UI = {
     }
 };
 
-// Auto-inicialización segura para garantizar que la botonera e interfaz aparezcan siempre al cargar
 document.addEventListener("DOMContentLoaded", () => {
     setTimeout(() => {
         try {
