@@ -1,5 +1,3 @@
-// [🔒 ARCHIVO DIVIDIDO - PARTE 1 DE 2]
-// =========================================
 // REPOSITORIO: Web_Editor_Pro_v3 (PRINCIPAL)
 // ARCHIVO: ui.js (Versión Completa y Definitiva > 500 Líneas)
 // =========================================
