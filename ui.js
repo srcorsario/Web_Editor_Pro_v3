@@ -1,10 +1,10 @@
 // =========================================
 // REPOSITORIO: Web_Editor_Pro_v3 (PRINCIPAL)
-// ARCHIVO: ui.js (Versión Completa y Definitiva - ES/EN Pilot)
+// ARCHIVO: ui.js (Versión Completa y Definitiva - Estreno Profesional)
 // =========================================
 
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.ui = '1.4.8-ROBUST-PILOTO-ES-EN';
+window.APP_VERSIONS.ui = '1.4.9-ROBUST-PILOTO-PROFESSIONAL';
 
 window.APP_VERSIONS.config = window.APP_VERSIONS.config || '2.2.0';
 window.APP_VERSIONS.app = window.APP_VERSIONS.app || '1.0.33';
@@ -369,7 +369,7 @@ export const UI = {
     },
 
     // ==========================================
-    // FLUJO PILOTO (SOLO CASTELLANO E INGLÉS - ESTILO NATURAL Y DIRECTO)
+    // FLUJO PILOTO (SOLO CASTELLANO E INGLÉS - ESTILO PROFESIONAL Y DIRECTO)
     // ==========================================
     iniciarTraduccionPorLotes: async (stateContainerParam) => {
         procesoDetenido = false; procesoPausado = false;
@@ -417,12 +417,19 @@ export const UI = {
 
                 while (!satisfechoPiloto && !procesoDetenido) {
                     try {
-                        const promptPiloto = `Actúa como un camarero explicando un plato de forma natural, clara y directa. Traduce y adapta el siguiente plato del castellano al inglés con un tono fresco y cotidiano, sin florituras pomposas ni metáforas exageradas (ej: adapta modismos locales como all i oli a garlic mayonnaise).
+                        const promptPiloto = `Actúa estrictamente como un chef o maître profesional de un restaurante de categoría. Traduce y adapta el siguiente plato del castellano al inglés con un tono profesional, claro, apetitoso y directo. 
+REGLAS DE ESTILO OBLIGATORIAS:
+- PROHIBIDO usar saludos informales, muletillas o frases coloquiales (como "Hey there!", "So...", "Sure!"). Ve directo al grano.
+- La descripción debe ser elegante y concisa, explicando el plato sin florituras exageradas.
+- Adapta modismos locales a estándares claros (ej: all i oli como garlic mayonnaise).
+
 Plato ES: "${nombreEs}"
 Alérgenos reales: "${alergenosValor}"
+
 Genera un JSON estricto sin markdown con esta estructura exacta:
 {"nombre_en": "...", "info_en": {"desc": "...", "q1": "...", "r1": "...", "q2": "...", "r2": "...", "q3": "...", "r3": "..."}}
-REGLA DE ALÉRGENOS: Si los alérgenos indican algún componente crítico (como gluten, frutos secos, pescado, etc.), respétalo estrictamente y menciónalo de forma clara donde corresponda en las respuestas.`;
+
+REGLA DE ALÉRGENOS: Si los alérgenos indican algún componente crítico (como gluten, lácteos, etc.), respétalo estrictamente y menciónalo de forma clara y directa donde corresponda.`;
 
                         const callResponse = await fetch(`${window.GEMINI_ENDPOINT_URL || 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent'}?key=${listaClavesAPI[currentKeyIndex]}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: promptPiloto }] }] }) });
                         
@@ -463,7 +470,7 @@ REGLA DE ALÉRGENOS: Si los alérgenos indican algún componente crítico (como 
             }
         }
 
-        UI.log("[FIN] Proceso finalizado. Borradores en Inglés generados y listos para verificar en la interfaz.");
+        UI.log("[FIN] Proceso finalizado. Borradores en Inglés generados con estilo profesional y listos para verificar en la interfaz.");
     }
 };
 
