@@ -1,9 +1,10 @@
+// =========================================
 // REPOSITORIO: Web_Editor_Pro_v3 (PRINCIPAL)
-// ARCHIVO: ui.js (Versión Completa y Definitiva > 500 Líneas)
+// ARCHIVO: ui.js (Versión Completa y Definitiva)
 // =========================================
 
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.ui = '1.4.6-ROBUST-ALERGENOS';
+window.APP_VERSIONS.ui = '1.4.7-ROBUST-PILOTO-EN';
 
 window.APP_VERSIONS.config = window.APP_VERSIONS.config || '2.2.0';
 window.APP_VERSIONS.app = window.APP_VERSIONS.app || '1.0.33';
@@ -367,6 +368,9 @@ export const UI = {
         lector.readAsText(file);
     },
 
+    // ==========================================
+    // FLUJO MASIVO EN DOS FASES (PILOTO EN INGLÉS -> PROPAGACIÓN)
+    // ==========================================
     iniciarTraduccionPorLotes: async (stateContainerParam) => {
         procesoDetenido = false; procesoPausado = false;
         const listaClavesAPI = (typeof getKeys === 'function') ? getKeys() : [];
@@ -374,7 +378,7 @@ export const UI = {
         const activeStateContainer = stateContainerParam || stateContainer;
         if (!activeStateContainer || !activeStateContainer.headers || !activeStateContainer.csvData) return UI.log("[Error] Estructura de datos vacía.");
         
-        UI.log("[Info] Forzando y asegurando estructura de columnas en memoria...");
+        UI.log("[Info] Asegurando estructura de columnas en memoria...");
         asegurarColumnasEstructura(activeStateContainer);
 
         const selectorInicio = document.getElementById('rangoInicio');
@@ -382,165 +386,48 @@ export const UI = {
         const rangoInicio = selectorInicio ? (parseInt(selectorInicio.value) - 2 || 0) : 0;
         const rangoFin = selectorFin ? (parseInt(selectorFin.value) - 1 || activeStateContainer.csvData.length) : activeStateContainer.csvData.length;
         
-        const idiomasConfigurados = Object.keys(window.IDIOMAS_CONFIG || {
-            "ES": 1, "EN": 1, "DE": 1, "FR": 1, "IT": 1, "RU": 1, "NL": 1, "PL": 1, 
-            "SV": 1, "NO": 1, "DA": 1, "FI": 1, "PT": 1, "RO": 1, "HU": 1, "CS": 1, 
-            "EL": 1, "TR": 1, "AR": 1, "ZH": 1, "JA": 1, "CA": 1, "EU": 1, "GL": 1, 
-            "VA": 1, "KO": 1
-        });
-
-        const idiomasDetectados = idiomasConfigurados; 
-        const columnasIdiomasDestino = activeStateContainer.headers.map((h, i) => (h && h.toUpperCase().startsWith("NOMBRE_") && h.toUpperCase() !== "NOMBRE_ES") ? i : -1).filter(i => i !== -1);
         const indiceCastellanoBase = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === 'NOMBRE_ES');
-        if (indiceCastellanoBase === -1) return UI.log("[Error] Falta la columna 'Nombre_ES'.");
-
-        // MODIFICADO: Búsqueda robusta e insensible a mayúsculas para localizar "ALERGENOS_COD", "Alergenos_Cod", etc.
+        const indiceInglesBase = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === 'NOMBRE_EN');
+        const indiceInfoIngles = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === 'INFO_EN');
         const indiceAlergenos = activeStateContainer.headers.findIndex(h => h && h.toUpperCase().replace(/[^A-Z]/g, '') === 'ALERGENOSCOD');
+
+        if (indiceCastellanoBase === -1 || indiceInglesBase === -1 || indiceInfoIngles === -1) {
+            return UI.log("[Error Crítico] Faltan columnas base obligatorias (NOMBRE_ES, NOMBRE_EN o INFO_EN).");
+        }
 
         const techoLimiteEvaluacion = Math.min(rangoFin, activeStateContainer.csvData.length);
 
-        // FASE 1: NOMBRES
-        const filasPendientesNombres = [];
+        // ==========================================
+        // PASO 1: GENERACIÓN PILOTO ÚNICAMENTE EN INGLÉS
+        // ==========================================
+        UI.log("[Paso 1] Verificando y generando borradores piloto en Inglés (EN)...");
+        
         for (let i = Math.max(0, rangoInicio); i < techoLimiteEvaluacion; i++) {
+            if (procesoDetenido) break;
+            while (procesoPausado) await new Promise(resolve => setTimeout(resolve, 500));
+
             const row = activeStateContainer.csvData[i];
             while (row.length < activeStateContainer.headers.length) row.push("");
 
-            const cadenaCastellano = row[indiceCastellanoBase] || "Sin nombre";
-            const indicesColumnasVacias = columnasIdiomasDestino.filter(idx => !row[idx] || row[idx].trim() === "");
-            if (indicesColumnasVacias.length > 0) {
-                filasPendientesNombres.push({
-                    indiceMatriz: i,
-                    numeroFilaHumana: i + 2,
-                    textoES: cadenaCastellano,
-                    indicesColumnasFaltantes: indicesColumnasVacias,
-                    codigosIdiomas: indicesColumnasVacias.map(idx => activeStateContainer.headers[idx].toUpperCase().replace("NOMBRE_", ""))
-                });
-            }
-        }
-
-        if (filasPendientesNombres.length > 0) {
-            UI.log(`[Fase 1] Detectadas ${filasPendientesNombres.length} filas sin nombres traducidos. Procesando...`);
-            const tamanoLoteNombres = window.TRADUCCION_TAMANO_LOTE || 2;
-
-            for (let j = 0; j < filasPendientesNombres.length; j += tamanoLoteNombres) {
-                if (procesoDetenido) break;
-                while (procesoPausado) await new Promise(resolve => setTimeout(resolve, 500));
-
-                const loteActual = filasPendientesNombres.slice(j, j + tamanoLoteNombres);
-                const payloadNombres = loteActual.map(p => ({ id_fila: p.numeroFilaHumana, texto: p.textoES, idiomas: p.codigosIdiomas }));
-                const secuenciaImpresion = loteActual.map(p => p.numeroFilaHumana).join(', ');
-                
-                UI.log(`[Fase 1 Lote] [${secuenciaImpresion}]...`);
-                let satisfecho = false;
-
-                while (!satisfecho && !procesoDetenido) {
-                    try {
-                        const promptNombres = `Actúa como traductor gastronómico profesional. Traduce los siguientes nombres de platos al castellano según se indica: ${JSON.stringify(payloadNombres)}. Responde EXCLUSIVAMENTE con un JSON válido, sin markdown: {"lote": [{"id_fila": 8, "traducciones": {"EN": "Name EN", "KO": "Name KO"}}]}`;
-
-                        const callResponse = await fetch(`${window.GEMINI_ENDPOINT_URL || 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent'}?key=${listaClavesAPI[currentKeyIndex]}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: promptNombres }] }] }) });
-                        
-                        const textResponse = await callResponse.text();
-                        let respuestaJsonData;
-                        try {
-                            respuestaJsonData = JSON.parse(textResponse);
-                        } catch (e) {
-                            throw new Error("La API devolvió HTML o texto plano (Posible 403 o error de cuota).");
-                        }
-
-                        if (respuestaJsonData.error?.code === 429) { currentKeyIndex = (currentKeyIndex + 1) % listaClavesAPI.length; UI.log(`[Aviso] Límite superado. Rotando Key...`); await new Promise(r => setTimeout(r, 4000)); continue; }
-
-                        const textoLimpioIA = respuestaJsonData.candidates?.[0]?.content?.parts?.[0]?.text;
-                        if (!textoLimpioIA) throw new Error("La API no devolvió contenido.");
-
-                        const jsonSanitizado = textoLimpioIA.replace(/```json/g, '').replace(/```/g, '').trim();
-                        const objetoParseado = JSON.parse(jsonSanitizado);
-
-                        if (objetoParseado && objetoParseado.lote) {
-                            objetoParseado.lote.forEach(filaLote => {
-                                const objetivo = loteActual.find(p => p.numeroFilaHumana === parseInt(filaLote.id_fila));
-                                if (objetivo && filaLote.traducciones) {
-                                    objetivo.indicesColumnasFaltantes.forEach(idxCol => {
-                                        const codigoISO = activeStateContainer.headers[idxCol].toUpperCase().replace("NOMBRE_", "");
-                                        if (filaLote.traducciones[codigoISO]) {
-                                            activeStateContainer.csvData[objetivo.indiceMatriz][idxCol] = filaLote.traducciones[codigoISO].replace(/[\(\)""'']/g, '');
-                                        }
-                                    });
-                                }
-                            });
-                            UI.log(`[OK Fase 1] [${secuenciaImpresion}] traducido con éxito.`);
-                            satisfecho = true;
-                        } else throw new Error("Estructura JSON inválida en nombres.");
-                    } catch (err) {
-                        UI.log(`[Error Fase 1] [${secuenciaImpresion}]: ${err.message}`);
-                        await new Promise(r => setTimeout(r, 3000));
-                        currentKeyIndex = (currentKeyIndex + 1) % listaClavesAPI.length;
-                    }
-                }
-                await new Promise(r => setTimeout(r, 1500));
-                if (typeof UI.renderTable === 'function') UI.renderTable();
-            }
-        } else {
-            UI.log(`[Fase 1] Nombres de platos ya completos.`);
-        }
-
-        if (procesoDetenido) return UI.log(`[FIN] Proceso detenido por el usuario.`);
-
-        // FASE 2: INFO EXTENDIDA
-        const filasPendientesInfo = [];
-        for (let i = Math.max(0, rangoInicio); i < techoLimiteEvaluacion; i++) {
-            const row = activeStateContainer.csvData[i];
-            while (row.length < activeStateContainer.headers.length) row.push("");
-
-            const cadenaCastellano = row[indiceCastellanoBase] || "Sin nombre";
-            // MODIFICADO: Extraemos el valor real de los alérgenos de la celda (ej: "GLUTEN, SESAMO, CACAHUETE...")
+            const nombreEs = row[indiceCastellanoBase] || "";
+            const nombreEnActual = row[indiceInglesBase] || "";
+            const infoEnActual = row[indiceInfoIngles] || "";
             const alergenosValor = indiceAlergenos !== -1 ? (row[indiceAlergenos] || "Ninguno") : "No especificado";
 
-            const infoFaltantes = [];
-            
-            idiomasDetectados.forEach(lang => {
-                const idxInfo = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === `INFO_${lang}`);
-                if (idxInfo !== -1 && (!row[idxInfo] || row[idxInfo].trim() === "")) {
-                    infoFaltantes.push(lang);
-                }
-            });
+            if (!nombreEnActual || !infoEnActual) {
+                UI.log(`[Piloto EN] Procesando fila ${i + 2}: "${nombreEs}"...`);
+                let satisfechoPiloto = false;
 
-            if (infoFaltantes.length > 0) {
-                filasPendientesInfo.push({
-                    indiceMatriz: i,
-                    numeroFilaHumana: i + 2,
-                    textoES: cadenaCastellano,
-                    alergenos: alergenosValor,
-                    infoFaltantes: infoFaltantes
-                });
-            }
-        }
-
-        if (filasPendientesInfo.length > 0) {
-            UI.log(`[Fase 2] Detectadas ${filasPendientesInfo.length} filas sin información extendida. Procesando...`);
-            const tamanoLoteInfo = window.INFO_EXTENDIDA_TAMANO_LOTE || 1;
-
-            for (let k = 0; k < filasPendientesInfo.length; k += tamanoLoteInfo) {
-                if (procesoDetenido) break;
-                while (procesoPausado) await new Promise(resolve => setTimeout(resolve, 500));
-
-                const loteInfoActual = filasPendientesInfo.slice(k, k + tamanoLoteInfo);
-                const payloadInfo = loteInfoActual.map(p => ({ id_fila: p.numeroFilaHumana, texto: p.textoES, alérgenos_reales: p.alergenos, idiomas: p.infoFaltantes }));
-                const secuenciaInfo = loteInfoActual.map(p => p.numeroFilaHumana).join(', ');
-
-                UI.log(`[Fase 2 Lote Info] [${secuenciaInfo}]...`);
-                let satisfechoInfo = false;
-
-                while (!satisfechoInfo && !procesoDetenido) {
+                while (!satisfechoPiloto && !procesoDetenido) {
                     try {
-                        // NUEVO/MODIFICADO: Instrucción estricta para cruzar los alérgenos reales especificados en la hoja de cálculo.
-                        const promptInfo = `Actúa como camarero explicando un plato a un cliente en la mesa, de forma natural y directa. Para los siguientes platos (incluyendo su nombre y los alérgenos reales indicados en su ficha, como GLUTEN, SESAMO, CACAHUETE, SOJA, FRUTOSCASCARA, APIO, HUEVO, PESCADO, MOSTAZA, MOLUSCO, SULFITOS, etc.): ${JSON.stringify(payloadInfo)}, genera una descripción breve (máximo 2 frases cortas) y 3 preguntas con respuestas cortas de interés. 
-ESTILO OBLIGATORIO: lenguaje sencillo y concreto, como una explicación oral, no como texto de marketing. Nada de adjetivos grandilocuentes ("joya", "explosión", "auténtico", "esencial", "indulge", "journey", "unparalleled") ni metáforas. Céntrate en ingredientes reales, técnica de cocción y sabor, sin exagerar. Evita frases genéricas de relleno.
-REGLA DE PRECISIÓN Y CRUCE DE ALÉRGENOS OBLIGATORIA: 
-1. El modelo DEBE respetar y reflejar con absoluta veracidad los "alérgenos_reales" facilitados en los datos de entrada. Si un plato incluye GLUTEN (o cualquier otro alérgeno en esa lista), está terminantemente prohibido afirmar o insinuar que el plato no tiene gluten o que es apto para celíacos. 
-2. Solo puede usar lo que ya esté estrictamente en el nombre o ingredientes del plato. Está prohibido inventar acompañamientos, técnicas de corte, temperatura de servicio o guarniciones no explícitas.
-Tradúcelo a los idiomas solicitados (incluyendo 'ES' si está en la lista) manteniendo ese mismo tono sencillo y estricto en cada idioma. Responde EXCLUSIVAMENTE con un JSON válido, sin markdown: {"lote": [{"id_fila": 8, "info": {"EN": {"desc": "...", "q1": "...", "r1": "...", "q2": "...", "r2": "...", "q3": "...", "r3": "..."}, "ES": {"desc": "...", "q1": "...", "r1": "...", "q2": "...", "r2": "...", "q3": "...", "r3": "..."}}}]}`;
+                        const promptPiloto = `Actúa como chef ejecutivo internacional. Traduce y adapta el siguiente plato del castellano al inglés de forma natural y comercialmente clara (ej: adapta modismos locales a términos comprensibles internacionalmente como 'garlic mayonnaise'). 
+Plato ES: "${nombreEs}"
+Alérgenos reales: "${alergenosValor}"
+Genera un JSON estricto sin markdown con esta estructura exacta:
+{"nombre_en": "...", "info_en": {"desc": "...", "q1": "...", "r1": "...", "q2": "...", "r2": "...", "q3": "...", "r3": "..."}}
+REGLA DE ALÉRGENOS: Si los alérgenos indican GLUTEN u otro componente, respétalo estrictamente en la descripción/preguntas en inglés.`;
 
-                        const callResponse = await fetch(`${window.GEMINI_ENDPOINT_URL || 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent'}?key=${listaClavesAPI[currentKeyIndex]}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: promptInfo }] }] }) });
+                        const callResponse = await fetch(`${window.GEMINI_ENDPOINT_URL || 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent'}?key=${listaClavesAPI[currentKeyIndex]}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: promptPiloto }] }] }) });
                         
                         const textResponse = await callResponse.text();
                         let respuestaJsonData;
@@ -550,33 +437,113 @@ Tradúcelo a los idiomas solicitados (incluyendo 'ES' si está en la lista) mant
                             throw new Error("La API devolvió HTML o texto plano (Posible 403 o error de cuota).");
                         }
 
-                        if (respuestaJsonData.error?.code === 429) { currentKeyIndex = (currentKeyIndex + 1) % listaClavesAPI.length; UI.log(`[Aviso] Límite superado. Rotando Key...`); await new Promise(r => setTimeout(r, 4000)); continue; }
+                        if (respuestaJsonData.error?.code === 429) { 
+                            currentKeyIndex = (currentKeyIndex + 1) % listaClavesAPI.length; 
+                            UI.log(`[Aviso] Límite superado. Rotando Key...`);
+                            await new Promise(r => setTimeout(r, 4000)); 
+                            continue; 
+                        }
 
                         const textoLimpioIA = respuestaJsonData.candidates?.[0]?.content?.parts?.[0]?.text;
                         if (!textoLimpioIA) throw new Error("La API no devolvió contenido.");
 
                         const jsonSanitizado = textoLimpioIA.replace(/```json/g, '').replace(/```/g, '').trim();
-                        const objetoParseado = JSON.parse(jsonSanitizado);
+                        const parsed = JSON.parse(jsonSanitizado);
 
-                        if (objetoParseado && objetoParseado.lote) {
-                            objetoParseado.lote.forEach(filaLote => {
-                                const objetivo = loteInfoActual.find(p => p.numeroFilaHumana === parseInt(filaLote.id_fila));
-                                if (objetivo && filaLote.info) {
-                                    objetivo.infoFaltantes.forEach(lang => {
-                                        if (filaLote.info[lang]) {
-                                            const idxInfoCol = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === `INFO_${lang}`);
-                                            if (idxInfoCol !== -1) {
-                                                activeStateContainer.csvData[objetivo.indiceMatriz][idxInfoCol] = JSON.stringify(filaLote.info[lang]);
-                                            }
-                                        }
-                                    });
-                                }
-                            });
-                            UI.log(`[OK Fase 2] [${secuenciaInfo}] inyectada cruzando alérgenos correctamente.`);
-                            satisfechoInfo = true;
-                        } else throw new Error("Estructura JSON inválida en info.");
+                        if (parsed.nombre_en && parsed.info_en) {
+                            if (!nombreEnActual) row[indiceInglesBase] = parsed.nombre_en;
+                            if (!infoEnActual) row[indiceInfoIngles] = JSON.stringify(parsed.info_en);
+                            satisfechoPiloto = true;
+                        } else throw new Error("Estructura JSON inválida en piloto EN.");
                     } catch (err) {
-                        UI.log(`[Error Fase 2] [${secuenciaInfo}]: ${err.message}`);
+                        UI.log(`[Error Piloto EN] Fila ${i + 2}: ${err.message}`);
+                        await new Promise(r => setTimeout(r, 3000));
+                        currentKeyIndex = (currentKeyIndex + 1) % listaClavesAPI.length;
+                    }
+                }
+                await new Promise(r => setTimeout(r, 1000));
+                if (typeof UI.renderTable === 'function') UI.renderTable();
+            }
+        }
+
+        UI.log("[Paso 1 Completado] Borradores en Inglés listos y verificados.");
+        if (procesoDetenido) return UI.log(`[FIN] Proceso detenido por el usuario.`);
+
+        // ==========================================
+        // PASO 2: PROPAGACIÓN MASIVA DESDE EL INGLÉS VALIDADO
+        // ==========================================
+        UI.log("[Paso 2] Propagando traducciones desde el Inglés validado al resto de idiomas...");
+
+        const idiomasConfigurados = Object.keys(window.IDIOMAS_CONFIG || {}).filter(lang => lang !== 'ES' && lang !== 'EN');
+        
+        for (let i = Math.max(0, rangoInicio); i < techoLimiteEvaluacion; i++) {
+            if (procesoDetenido) break;
+            while (procesoPausado) await new Promise(resolve => setTimeout(resolve, 500));
+
+            const row = activeStateContainer.csvData[i];
+            
+            const textoEnBase = row[indiceInglesBase];
+            const infoEnBase = row[indiceInfoIngles];
+            const alergenosValor = indiceAlergenos !== -1 ? (row[indiceAlergenos] || "Ninguno") : "No especificado";
+
+            const idiomasFaltantes = idiomasConfigurados.filter(lang => {
+                const idxNom = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === `NOMBRE_${lang}`);
+                const idxInf = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === `INFO_${lang}`);
+                return (idxNom !== -1 && !row[idxNom]) || (idxInf !== -1 && !row[idxInf]);
+            });
+
+            if (idiomasFaltantes.length > 0 && textoEnBase) {
+                UI.log(`[Propagación] Fila ${i + 2} -> Traduciendo a: ${idiomasFaltantes.join(', ')}...`);
+                let satisfechoPropagacion = false;
+
+                while (!satisfechoPropagacion && !procesoDetenido) {
+                    try {
+                        const promptProp = `Actúa como traductor gastronómico experto. Tomando como base oficial este plato en Inglés ya validado:
+Nombre EN: "${textoEnBase}"
+Info EN (JSON): ${infoEnBase}
+Alérgenos reales: "${alergenosValor}"
+Tradúcelo con precisión a los siguientes idiomas destino: ${JSON.stringify(idiomasFaltantes)}.
+Mantén estrictamente el mismo tono, estructura y respeta la alerta de alérgenos.
+Responde EXCLUSIVAMENTE con un JSON válido sin markdown:
+{"traducciones": {"DE": {"nombre": "...", "info": {"desc": "...", "q1": "...", "r1": "...", "q2": "...", "r2": "...", "q3": "...", "r3": "..."}}, "FR": {...}}}`;
+
+                        const callResponse = await fetch(`${window.GEMINI_ENDPOINT_URL || 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent'}?key=${listaClavesAPI[currentKeyIndex]}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: promptProp }] }] }) });
+                        
+                        const textResponse = await callResponse.text();
+                        let respuestaJsonData;
+                        try {
+                            respuestaJsonData = JSON.parse(textResponse);
+                        } catch (e) {
+                            throw new Error("La API devolvió HTML o texto plano (Posible 403 o error de cuota).");
+                        }
+
+                        if (respuestaJsonData.error?.code === 429) { 
+                            currentKeyIndex = (currentKeyIndex + 1) % listaClavesAPI.length; 
+                            UI.log(`[Aviso] Límite superado. Rotando Key...`);
+                            await new Promise(r => setTimeout(r, 4000)); 
+                            continue; 
+                        }
+
+                        const textoLimpioIA = respuestaJsonData.candidates?.[0]?.content?.parts?.[0]?.text;
+                        if (!textoLimpioIA) throw new Error("La API no devolvió contenido.");
+
+                        const jsonSanitizado = textoLimpioIA.replace(/```json/g, '').replace(/```/g, '').trim();
+                        const parsed = JSON.parse(jsonSanitizado);
+
+                        if (parsed && parsed.traducciones) {
+                            Object.keys(parsed.traducciones).forEach(lang => {
+                                const datosLang = parsed.traducciones[lang];
+                                const idxNom = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === `NOMBRE_${lang}`);
+                                const idxInf = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === `INFO_${lang}`);
+                                
+                                if (idxNom !== -1 && datosLang.nombre) row[idxNom] = datosLang.nombre;
+                                if (idxInf !== -1 && datosLang.info) row[idxInf] = JSON.stringify(datosLang.info);
+                            });
+                            UI.log(`[OK Propagación] Fila ${i + 2} propagada con éxito.`);
+                            satisfechoPropagacion = true;
+                        } else throw new Error("Estructura JSON inválida en propagación.");
+                    } catch (err) {
+                        UI.log(`[Error Propagación] Fila ${i + 2}: ${err.message}`);
                         await new Promise(r => setTimeout(r, 3000));
                         currentKeyIndex = (currentKeyIndex + 1) % listaClavesAPI.length;
                     }
@@ -584,11 +551,9 @@ Tradúcelo a los idiomas solicitados (incluyendo 'ES' si está en la lista) mant
                 await new Promise(r => setTimeout(r, 1500));
                 if (typeof UI.renderTable === 'function') UI.renderTable();
             }
-        } else {
-            UI.log(`[Fase 2] Información extendida ya completa.`);
         }
 
-        UI.log("[FIN] ¡Flujo masivo completado! Base de datos de traducciones al día.");
+        UI.log("[FIN] ¡Flujo masivo completado en dos fases!");
     }
 };
 
