@@ -1,10 +1,10 @@
 // =========================================
 // REPOSITORIO: Web_Editor_Pro_v3 (PRINCIPAL)
-// ARCHIVO: ui.js (Versión Completa y Definitiva - Control Estricto y Blindado de Alérgenos)
+// ARCHIVO: ui.js (Versión Completa y Definitiva - Sin Maridaje de Vinos)
 // =========================================
 
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.ui = '1.5.2-BLINDADA-TOTAL';
+window.APP_VERSIONS.ui = '1.5.3-SIN-MARIDAJE';
 
 window.APP_VERSIONS.config = window.APP_VERSIONS.config || '2.2.0';
 window.APP_VERSIONS.app = window.APP_VERSIONS.app || '1.0.33';
@@ -369,7 +369,7 @@ export const UI = {
     },
 
     // ==========================================
-    // FLUJO PILOTO (ES Y EN - CONTROL ESTRICTO Y BLINDADO DE ALÉRGENOS)
+    // FLUJO PILOTO (ES Y EN - CONTROL ESTRICTO Y BLINDADO DE ALÉRGENOS SIN MARIDAJE)
     // ==========================================
     iniciarTraduccionPorLotes: async (stateContainerParam) => {
         procesoDetenido = false; procesoPausado = false;
@@ -398,7 +398,7 @@ export const UI = {
 
         const techoLimiteEvaluacion = Math.min(rangoFin, activeStateContainer.csvData.length);
 
-        UI.log("[Paso 1] Generando contenido en Castellano e Inglés (ES / EN) con Alérgenos Blindados...");
+        UI.log("[Paso 1] Generando contenido en Castellano e Inglés (ES / EN) sin maridajes y con alérgenos blindados...");
         
         for (let i = Math.max(0, rangoInicio); i < techoLimiteEvaluacion; i++) {
             if (procesoDetenido) break;
@@ -421,17 +421,18 @@ export const UI = {
 
                 while (!satisfechoPiloto && !procesoDetenido) {
                     try {
-                        // PROMPT BLINDADO: Evita preguntas absurdas e inserta de forma inalterable la lista de alérgenos
+                        // PROMPT BLINDADO SIN MARIDAJE DE VINOS
                         const promptPiloto = `Actúa como un responsable de carta de restaurante de alta gama. Define el siguiente plato de forma clara, natural, concisa y profesional. 
 
 REGLAS DE ESTILO OBLIGATORIAS:
 - CERO saludos informales o muletillas. Ve directo al grano.
 - Evita lenguaje gourmet pomposo.
-- PREGUNTAS LÓGICAS: q1 y q2 deben tratar sobre elaboración, origen o sugerencias (ej: maridaje, opción sin gluten). NUNCA hagas preguntas absurdas u obvias sobre si contiene un ingrediente que ya es principal en el plato.
+- PREGUNTAS LÓGICAS: q1 y q2 deben tratar exclusivamente sobre métodos de cocinado, texturas, origen de los ingredientes o temperaturas de servicio.
+- PROHIBICIÓN ABSOLUTA: NUNCA sugieras maridajes de vino ni menciones bebidas (cerveza, vino, sake, etc.). No incluyas preguntas sobre maridaje.
 
 REGLA ESTRICTA DE ALÉRGENOS (q3 y r3):
 ${tieneAlergenos ? `- q3 debe preguntar por adaptaciones o necesidades alimentarias (ej: "¿Es posible adaptar este plato a mis necesidades alimentarias?").
-- r3 DEBE contener EXACTAMENTE esta cadena de texto sin resumir, editar ni filtrar: "${alergenosValor}".` : `- Si no hay alérgenos, omite o enfoca q3/r3 a otro aspecto culinario.`}
+- r3 DEBE contener EXACTAMENTE esta cadena de texto sin resumir, editar ni filtrar: "${alergenosValor}".` : `- Si no hay alérgenos, omite o enfoca q3/r3 a otro aspecto culinario del plato.`}
 
 Plato ES: "${nombreEs}"
 
@@ -496,7 +497,7 @@ Genera un JSON estricto sin markdown con esta estructura exacta:
             }
         }
 
-        UI.log("[FIN] Proceso finalizado. Contenido en Castellano e Inglés generado con éxito.");
+        UI.log("[FIN] Proceso finalizado. Contenido generado con éxito sin referencias a vinos.");
     }
 };
 
