@@ -85,6 +85,27 @@ Genera un JSON estricto sin markdown con esta estructura exacta:
     "r2": "..." 
     ${tieneAlergenos ? `, "q3": "...", "r3": "..."` : ""} 
   }
+}`,
+
+    // ---------------------------------------------------------
+    // Usado en ui.js > iniciarTraduccionPorLotes() [Vinos: solo descripción, sin Q&A]
+    // Genera únicamente una descripción breve, en ES y EN, para un vino.
+    // ---------------------------------------------------------
+    vino: (nombreVino) => `Actúa como sumiller redactando una ficha breve de carta de vinos. Redacta una descripción breve (máximo 2 frases cortas) del siguiente vino, basándote ÚNICAMENTE en el nombre proporcionado (que puede incluir denominación de origen tras un guion, y variedad de uva tras el separador "//").
+
+REGLAS OBLIGATORIAS:
+- Estilo sencillo y directo, sin adjetivos vacíos ni lenguaje grandilocuente ("exquisito", "excepcional", "auténtico").
+- Si el nombre incluye una D.O./D.O.P./I.G.P., puedes mencionarla. Si incluye variedad de uva, puedes describir el perfil de sabor GENÉRICO y conocido de esa variedad (ej. lo típico de un Monastrell o un Chardonnay en general), pero sin inventar notas de cata específicas de esta añada/botella concretas que no puedas conocer.
+- PROHIBIDO: inventar año de cosecha, premios, puntuaciones, tiempo de crianza, o cualquier dato que no esté literalmente en el nombre proporcionado.
+- PROHIBIDO: sugerir maridajes con platos o comida concreta.
+
+Vino ES: "${nombreVino}"
+
+Genera un JSON estricto sin markdown con esta estructura exacta:
+{
+  "nombre_en": "...",
+  "es": { "desc": "..." },
+  "en": { "desc": "..." }
 }`
 
 };

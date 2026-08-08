@@ -172,6 +172,7 @@ export const UI = {
         const esIdx = stateContainer.headers.findIndex(h => h && h.toUpperCase() === 'NOMBRE_ES');
         const infoEsIdx = stateContainer.headers.findIndex(h => h && h.toUpperCase() === 'INFO_ES');
         const infoEnIdx = stateContainer.headers.findIndex(h => h && h.toUpperCase() === 'INFO_EN');
+        const carpetaIdx = stateContainer.headers.findIndex(h => h && h.toUpperCase() === 'CARPETA');
 
         if (esIdx === -1 || infoEsIdx === -1 || infoEnIdx === -1) {
             cont.innerHTML = '<p class="text-center py-8 text-slate-500 italic">Faltan columnas NOMBRE_ES, INFO_ES o INFO_EN en la lista cargada.</p>';
@@ -246,6 +247,7 @@ export const UI = {
 
         filas.forEach(({ row, index }) => {
             const nombreEs = row[esIdx] || `(Fila ${index + 2} sin nombre)`;
+            const esVinoFila = carpetaIdx !== -1 && (row[carpetaIdx] || '').trim().toLowerCase() === 'vinos';
 
             // --- Cabecera del acordeón (siempre visible) ---
             const item = document.createElement('div');
@@ -296,6 +298,8 @@ export const UI = {
                     }
 
                     CAMPOS.forEach(campo => {
+                        // Los vinos solo llevan descripción (sin preguntas/respuestas).
+                        if (esVinoFila && campo.key !== 'desc') return;
                         // q3/r3 solo se muestran si el plato ya los tiene (no todos llevan alérgenos)
                         if ((campo.key === 'q3' || campo.key === 'r3') && obj[campo.key] === undefined) return;
                         const wrap = document.createElement('div');
@@ -593,6 +597,8 @@ export const UI = {
         const indiceInfoEs = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === 'INFO_ES');
         const indiceInfoIngles = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === 'INFO_EN');
         const indiceAlergenos = activeStateContainer.headers.findIndex(h => h && h.toUpperCase().replace(/[^A-Z]/g, '') === 'ALERGENOSCOD');
+        const indiceId = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === 'ID');
+        const indiceCarpeta = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === 'CARPETA');
 
         if (indiceCastellanoBase === -1 || indiceInglesBase === -1 || indiceInfoEs === -1 || indiceInfoIngles === -1) {
             return UI.log("[Error Crítico] Faltan columnas base obligatorias (NOMBRE_ES, NOMBRE_EN, INFO_ES o INFO_EN).");
@@ -600,7 +606,10 @@ export const UI = {
 
         const techoLimiteEvaluacion = Math.min(rangoFin, activeStateContainer.csvData.length);
 
-        UI.log("[Paso 1] Generando contenido en Castellano e Inglés (ES / EN) sin maridajes y con alérgenos blindados...");
+        // Carpetas de bebidas simples que no necesitan descripción ni preguntas generadas por IA.
+        const CARPETAS_SIN_IA = ['cafe', 'refrescos', 'cerveza'];
+
+        UI.log("[Paso 1] Generando contenido en Castellano e Inglés (ES / EN) sin maridajes y con alérgenos blindados. Vinos: solo descripción. Bebidas simples (café/refrescos/cerveza) y cabeceras de categoría: omitidas...");
         
         for (let i = Math.max(0, rangoInicio); i < techoLimiteEvaluacion; i++) {
             if (procesoDetenido) break;
@@ -614,17 +623,28 @@ export const UI = {
             const infoEsActual = row[indiceInfoEs] || "";
             const infoEnActual = row[indiceInfoIngles] || "";
             const alergenosValor = indiceAlergenos !== -1 ? (row[indiceAlergenos] || "").trim() : "";
-            
+            const idValor = indiceId !== -1 ? parseInt(row[indiceId]) : NaN;
+            const carpetaValor = indiceCarpeta !== -1 ? (row[indiceCarpeta] || "").trim().toLowerCase() : "";
+
+            // Filas de cabecera de sección (ID 1-12: "Entrantes", "Postres"...) no son platos reales.
+            const esCabeceraCategoria = !isNaN(idValor) && idValor >= 1 && idValor <= 12;
+            const esBebidaSimple = CARPETAS_SIN_IA.includes(carpetaValor);
+            const esVino = carpetaValor === 'vinos';
+
+            if (esCabeceraCategoria || esBebidaSimple) {
+                continue; // No necesita descripción ni preguntas: se salta sin gastar llamadas a la API.
+            }
+
             const tieneAlergenos = alergenosValor && alergenosValor.toUpperCase() !== 'NINGUNO' && alergenosValor !== '0' && alergenosValor !== '';
 
             if (!nombreEnActual || !infoEsActual || !infoEnActual) {
-                UI.log(`[Piloto ES/EN] Procesando fila ${i + 2}: "${nombreEs}"...`);
+                UI.log(`[${esVino ? 'Piloto Vino ES/EN' : 'Piloto ES/EN'}] Procesando fila ${i + 2}: "${nombreEs}"...`);
                 let satisfechoPiloto = false;
 
                 while (!satisfechoPiloto && !procesoDetenido) {
                     try {
-                        // Prompt centralizado en prompts.js (window.PROMPTS.piloto)
-                        const promptPiloto = window.PROMPTS.piloto(nombreEs, tieneAlergenos, alergenosValor);
+                        // Prompt centralizado en prompts.js (window.PROMPTS.piloto / window.PROMPTS.vino)
+                        const promptPiloto = esVino ? window.PROMPTS.vino(nombreEs) : window.PROMPTS.piloto(nombreEs, tieneAlergenos, alergenosValor);
 
                         const callResponse = await fetch(`${window.GEMINI_ENDPOINT_URL || 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent'}?key=${listaClavesAPI[currentKeyIndex]}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: promptPiloto }] }] }) });
                         
@@ -650,8 +670,8 @@ export const UI = {
                         const parsed = JSON.parse(jsonSanitizado);
 
                         if (parsed.nombre_en && parsed.es && parsed.en) {
-                            // Red de seguridad: si hay alérgenos pero el modelo no rellenó q3/r3, no lo dejamos vacío.
-                            if (tieneAlergenos) {
+                            // Red de seguridad: si hay alérgenos pero el modelo no rellenó q3/r3, no lo dejamos vacío (solo aplica a platos, no a vinos).
+                            if (!esVino && tieneAlergenos) {
                                 if (!parsed.es.q3 || !parsed.es.r3 || !parsed.es.r3.trim()) {
                                     parsed.es.q3 = parsed.es.q3 || "¿Contiene este plato algún alérgeno?";
                                     parsed.es.r3 = `Este plato contiene: ${alergenosValor}.`;
@@ -665,9 +685,9 @@ export const UI = {
                             if (!infoEsActual) row[indiceInfoEs] = JSON.stringify(parsed.es);
                             if (!infoEnActual) row[indiceInfoIngles] = JSON.stringify(parsed.en);
                             satisfechoPiloto = true;
-                        } else throw new Error("Estructura JSON inválida en piloto ES/EN.");
+                        } else throw new Error(`Estructura JSON inválida en piloto ${esVino ? 'Vino' : 'ES/EN'}.`);
                     } catch (err) {
-                        UI.log(`[Error Piloto ES/EN] Fila ${i + 2}: ${err.message}`);
+                        UI.log(`[Error Piloto ${esVino ? 'Vino' : 'ES/EN'}] Fila ${i + 2}: ${err.message}`);
                         await new Promise(r => setTimeout(r, 3000));
                         currentKeyIndex = (currentKeyIndex + 1) % listaClavesAPI.length;
                     }
