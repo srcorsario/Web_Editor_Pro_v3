@@ -121,6 +121,63 @@ Genera un JSON estricto sin markdown con esta estructura exacta:
   "nombre_en": "...",
   "es": { "desc": "..." },
   "en": { "desc": "..." }
+}`,
+
+    // ---------------------------------------------------------
+    // Usado en ui.js > iniciarTraduccionPorLotes() [Flujo Piloto ES/EN EN BLOQUE]
+    // Igual que piloto(), pero para varios platos EN UNA SOLA LLAMADA a la IA
+    // (ahorra tokens de instrucciones repetidas y reduce peticiones frente a la cuota).
+    // ---------------------------------------------------------
+    pilotoLote: (itemsArray) => `Actúa como un responsable de carta de restaurante de alta gama. Te paso una lista de ${itemsArray.length} platos. Para CADA UNO, define su información de forma clara, natural, concisa y profesional, basándote ÚNICAMENTE en el nombre de ese plato.
+
+REGLAS DE ESTILO OBLIGATORIAS:
+- CERO saludos informales o muletillas. Ve directo al grano.
+- Evita lenguaje gourmet pomposo y adjetivos vacíos ("exquisito", "delicioso", "auténtico", "delicado").
+
+REGLA DE PRECISIÓN OBLIGATORIA (LA MÁS IMPORTANTE):
+- Usa EXCLUSIVAMENTE la información que aparece en el nombre de cada plato. NO inventes ni asumas datos que no estén ahí escritos: nada de variedad o raza concreta de un ingrediente (ej. "atún de aleta amarilla", "ternera de pasto", "gamba de Huelva"), origen o procedencia, temperatura de servicio (frío/caliente/templado), grado de cocción, tiempos, tamaño de ración, ni acompañamientos no mencionados.
+- Si el nombre ya incluye una técnica culinaria (ej. "tataki", "a la brasa", "al horno Josper", "frito", "carpaccio"), puedes explicar en qué consiste esa técnica EN GENERAL, pero sin afirmar detalles concretos de cómo se ha aplicado a ese plato en particular si no están en el nombre.
+- Si no puedes responder una pregunta con datos verificables del propio nombre del plato, cambia la pregunta por otra que sí puedas responder con seguridad (p. ej. qué significa un término del nombre, o una pregunta orientada a alérgenos).
+
+PREGUNTAS LÓGICAS: q1 y q2 deben tratar exclusivamente sobre el significado de términos culinarios ya presentes en el nombre del plato, la técnica de cocinado (explicada de forma genérica) o los ingredientes ya mencionados — nunca sobre datos no verificables como origen, raza, o temperatura de servicio.
+- PROHIBICIÓN ABSOLUTA: NUNCA sugieras maridajes de vino ni menciones bebidas (cerveza, vino, sake, etc.). No incluyas preguntas sobre maridaje.
+
+REGLA ESTRICTA DE ALÉRGENOS (q3 y r3) — se indica por plato en la lista de abajo si tiene alérgenos registrados:
+- Si un plato SÍ tiene alérgenos indicados: q3 debe ser una pregunta relacionada con alérgenos o necesidades alimentarias (varía la redacción de un plato a otro, no uses siempre la misma frase). r3 debe ser una frase natural y breve (no una lista de códigos en mayúsculas) que mencione TODOS y CADA UNO de los alérgenos indicados para ese plato, ni uno más ni uno menos, traducidos a su nombre común en el idioma correspondiente. PROHIBIDO pegar el texto en bruto de los códigos tal cual, inventar alérgenos que no estén en la lista de ese plato, u omitir alguno. Es información de seguridad alimentaria: la fidelidad total es obligatoria, solo cambia la redacción.
+- Si un plato NO tiene alérgenos indicados: formula su q3/r3 sobre otro aspecto culinario verificable de ESE plato (ver regla de precisión), nunca sobre alérgenos.
+- No mezcles alérgenos de un plato con los de otro: cada plato de la lista es independiente.
+
+Platos a procesar (el número al inicio de cada línea es su índice, empezando en 0):
+${itemsArray.map((it, idx) => `${idx}. ES: "${it.nombreEs}"${it.tieneAlergenos ? ` | Alérgenos de ESTE plato a mencionar en su q3/r3: ${it.alergenosValor}` : ' | Sin alérgenos registrados para este plato'}`).join('\n')}
+
+Responde EXCLUSIVAMENTE con un objeto JSON válido, sin texto fuera del JSON ni markdown. La clave de primer nivel debe ser el índice numérico del plato tal cual aparece arriba (como string).
+Estructura exacta esperada (ejemplo con 2 platos):
+{
+  "0": { "nombre_en": "...", "es": { "desc": "...", "q1": "...", "r1": "...", "q2": "...", "r2": "...", "q3": "...", "r3": "..." }, "en": { "desc": "...", "q1": "...", "r1": "...", "q2": "...", "r2": "...", "q3": "...", "r3": "..." } },
+  "1": { "nombre_en": "...", "es": { "desc": "...", "q1": "...", "r1": "...", "q2": "...", "r2": "...", "q3": "...", "r3": "..." }, "en": { "desc": "...", "q1": "...", "r1": "...", "q2": "...", "r2": "...", "q3": "...", "r3": "..." } }
+}`,
+
+    // ---------------------------------------------------------
+    // Usado en ui.js > iniciarTraduccionPorLotes() [Vinos EN BLOQUE: solo descripción, sin Q&A]
+    // Igual que vino(), pero para varios vinos EN UNA SOLA LLAMADA a la IA.
+    // ---------------------------------------------------------
+    vinoLote: (itemsArray) => `Actúa como sumiller redactando fichas breves de carta de vinos. Te paso una lista de ${itemsArray.length} vinos. Para CADA UNO, redacta una descripción breve (máximo 2 frases cortas), basándote ÚNICAMENTE en el nombre proporcionado (que puede incluir denominación de origen tras un guion, y variedad de uva tras el separador "//").
+
+REGLAS OBLIGATORIAS:
+- Estilo sencillo y directo, sin adjetivos vacíos ni lenguaje grandilocuente ("exquisito", "excepcional", "auténtico").
+- Si el nombre incluye una D.O./D.O.P./I.G.P., puedes mencionarla. Si incluye variedad de uva, puedes describir el perfil de sabor GENÉRICO y conocido de esa variedad (ej. lo típico de un Monastrell o un Chardonnay en general), pero sin inventar notas de cata específicas de esta añada/botella concretas que no puedas conocer.
+- PROHIBIDO: inventar año de cosecha, premios, puntuaciones, tiempo de crianza, o cualquier dato que no esté literalmente en el nombre proporcionado.
+- PROHIBIDO: sugerir maridajes con platos o comida concreta.
+- No mezcles datos de un vino con los de otro: cada vino de la lista es independiente.
+
+Vinos a procesar (el número al inicio de cada línea es su índice, empezando en 0):
+${itemsArray.map((it, idx) => `${idx}. ES: "${it.nombreVino}"`).join('\n')}
+
+Responde EXCLUSIVAMENTE con un objeto JSON válido, sin texto fuera del JSON ni markdown. La clave de primer nivel debe ser el índice numérico del vino tal cual aparece arriba (como string).
+Estructura exacta esperada (ejemplo con 2 vinos):
+{
+  "0": { "nombre_en": "...", "es": { "desc": "..." }, "en": { "desc": "..." } },
+  "1": { "nombre_en": "...", "es": { "desc": "..." }, "en": { "desc": "..." } }
 }`
 
 };
