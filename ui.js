@@ -774,8 +774,8 @@ export const UI = {
             const indicesLote = filasPendientes.slice(lote, lote + TAMANO_LOTE);
             UI.log(`[Lote ${Math.floor(lote / TAMANO_LOTE) + 1}/${Math.ceil(filasPendientes.length / TAMANO_LOTE)}] Procesando filas ${indicesLote.map(i => i + 2).join(', ')}...`);
 
-            await Promise.all(indicesLote.map(async (i) => {
-                if (procesoDetenido) return;
+            // Preparar los datos de cada plato del lote (sin llamar aún a la IA)
+            const itemsLote = indicesLote.map(i => {
                 const row = activeStateContainer.csvData[i];
                 const nombreEs = row[indiceCastellanoBase] || "";
                 const nombreEn = row[indiceInglesBase] || "";
@@ -787,61 +787,70 @@ export const UI = {
                 const textoCompletoEs = (desglosadoEs.nombre + (desglosadoEs.uvas ? ' // ' + desglosadoEs.uvas : '')).replace(/"/g, "'");
                 const textoCompletoEn = (desglosadoEn.nombre + (desglosadoEn.uvas ? ' // ' + desglosadoEn.uvas : '')).replace(/"/g, "'");
 
-                const idiomasFaltantes = idiomasObjetivo.filter(l => indicesObjetivo[l] !== -1 && !(row[indicesObjetivo[l]] || "").trim()).map(l => l.toUpperCase());
-                if (idiomasFaltantes.length === 0) return;
+                return { fila: i, row, esVino, textoCompletoEs, textoCompletoEn };
+            }).filter(it => it.textoCompletoEs);
 
-                // Prompt centralizado en prompts.js (window.PROMPTS.autoTraduccionResto) - el mismo que usa el botón manual de un solo plato.
-                const promptTraduccion = window.PROMPTS.autoTraduccionResto(textoCompletoEs, textoCompletoEn, esVino, idiomasFaltantes);
+            if (itemsLote.length === 0) continue;
 
-                let satisfecho = false;
-                let intentosFila = 0;
-                const maxIntentosFila = Math.max(3, listaClavesAPI.length * 2);
+            // CORREGIDO: una única llamada a Gemini para TODO el lote (antes se hacía una llamada
+            // por plato en paralelo, lo que multiplicaba el consumo de cuota/tokens por 3 en vez de
+            // amortizar las instrucciones del prompt entre los 3 platos, como se hacía originalmente).
+            const promptTraduccion = window.PROMPTS.autoTraduccionRestoLote(itemsLote, idiomasObjetivo.map(l => l.toUpperCase()));
 
-                while (!satisfecho && !procesoDetenido && intentosFila < maxIntentosFila) {
+            let satisfecho = false;
+            let intentosLote = 0;
+            const maxIntentosLote = Math.max(3, listaClavesAPI.length * 2);
+
+            while (!satisfecho && !procesoDetenido && intentosLote < maxIntentosLote) {
+                try {
+                    const callResponse = await fetch(`${window.GEMINI_ENDPOINT_URL || 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent'}?key=${listaClavesAPI[currentKeyIndex]}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: promptTraduccion }] }] }) });
+
+                    const textResponse = await callResponse.text();
+                    let respuestaJsonData;
                     try {
-                        const callResponse = await fetch(`${window.GEMINI_ENDPOINT_URL || 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent'}?key=${listaClavesAPI[currentKeyIndex]}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: promptTraduccion }] }] }) });
-
-                        const textResponse = await callResponse.text();
-                        let respuestaJsonData;
-                        try {
-                            respuestaJsonData = JSON.parse(textResponse);
-                        } catch (e) {
-                            throw new Error("La API devolvió HTML o texto plano (Posible 403 o error de cuota).");
-                        }
-
-                        if (respuestaJsonData.error?.code === 429) {
-                            currentKeyIndex = (currentKeyIndex + 1) % listaClavesAPI.length;
-                            UI.log(`[Aviso] Límite superado en fila ${i + 2}. Rotando Key...`);
-                            await new Promise(r => setTimeout(r, 4000));
-                            intentosFila++;
-                            continue;
-                        }
-
-                        const textoLimpioIA = respuestaJsonData.candidates?.[0]?.content?.parts?.[0]?.text;
-                        if (!textoLimpioIA) throw new Error("La API no devolvió contenido.");
-
-                        const traducciones = (typeof window.extraerJSON === 'function')
-                            ? window.extraerJSON(textoLimpioIA)
-                            : JSON.parse(textoLimpioIA.replace(/```json/g, '').replace(/```/g, '').trim());
-
-                        idiomasFaltantes.forEach(lUpper => {
-                            const l = lUpper.toLowerCase();
-                            if (traducciones[lUpper] && indicesObjetivo[l] !== -1) {
-                                const desglosadoTraduccion = (typeof window.desglosarNombre === 'function') ? window.desglosarNombre(traducciones[lUpper]) : { nombre: traducciones[lUpper], uvas: "" };
-                                let nombreFinal = desglosadoTraduccion.nombre;
-                                if (esVino && typeof window.formatWineName === 'function') nombreFinal = window.formatWineName(nombreFinal);
-                                row[indicesObjetivo[l]] = desglosadoTraduccion.uvas ? `${nombreFinal} // ${desglosadoTraduccion.uvas}` : nombreFinal;
-                            }
-                        });
-                        satisfecho = true;
-                    } catch (err) {
-                        UI.log(`[Error Traducción Nombres] Fila ${i + 2}: ${err.message}`);
-                        await new Promise(r => setTimeout(r, 3000));
-                        currentKeyIndex = (currentKeyIndex + 1) % listaClavesAPI.length;
-                        intentosFila++;
+                        respuestaJsonData = JSON.parse(textResponse);
+                    } catch (e) {
+                        throw new Error("La API devolvió HTML o texto plano (Posible 403 o error de cuota).");
                     }
+
+                    if (respuestaJsonData.error?.code === 429) {
+                        currentKeyIndex = (currentKeyIndex + 1) % listaClavesAPI.length;
+                        UI.log(`[Aviso] Límite superado en el lote (filas ${itemsLote.map(it => it.fila + 2).join(', ')}). Rotando Key...`);
+                        await new Promise(r => setTimeout(r, 4000));
+                        intentosLote++;
+                        continue;
+                    }
+
+                    const textoLimpioIA = respuestaJsonData.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (!textoLimpioIA) throw new Error("La API no devolvió contenido.");
+
+                    const traduccionesLote = (typeof window.extraerJSON === 'function')
+                        ? window.extraerJSON(textoLimpioIA)
+                        : JSON.parse(textoLimpioIA.replace(/```json/g, '').replace(/```/g, '').trim());
+
+                    itemsLote.forEach((it, idx) => {
+                        const traducciones = traduccionesLote[String(idx)] || traduccionesLote[idx];
+                        if (!traducciones) return;
+                        idiomasObjetivo.forEach(l => {
+                            if (indicesObjetivo[l] === -1) return;
+                            if ((it.row[indicesObjetivo[l]] || "").trim()) return; // ya tenía valor: no lo tocamos
+                            const lUpper = l.toUpperCase();
+                            const valorTraducido = traducciones[lUpper] || traducciones[l];
+                            if (!valorTraducido) return;
+                            const desglosadoTraduccion = (typeof window.desglosarNombre === 'function') ? window.desglosarNombre(valorTraducido) : { nombre: valorTraducido, uvas: "" };
+                            let nombreFinal = desglosadoTraduccion.nombre;
+                            if (it.esVino && typeof window.formatWineName === 'function') nombreFinal = window.formatWineName(nombreFinal);
+                            it.row[indicesObjetivo[l]] = desglosadoTraduccion.uvas ? `${nombreFinal} // ${desglosadoTraduccion.uvas}` : nombreFinal;
+                        });
+                    });
+                    satisfecho = true;
+                } catch (err) {
+                    UI.log(`[Error Traducción Nombres] Lote (filas ${itemsLote.map(it => it.fila + 2).join(', ')}): ${err.message}`);
+                    await new Promise(r => setTimeout(r, 3000));
+                    currentKeyIndex = (currentKeyIndex + 1) % listaClavesAPI.length;
+                    intentosLote++;
                 }
-            }));
+            }
 
             if (typeof UI.renderTable === 'function') UI.renderTable();
             await new Promise(r => setTimeout(r, 1000));
