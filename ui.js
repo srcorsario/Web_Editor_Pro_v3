@@ -1,10 +1,10 @@
 // =========================================
 // REPOSITORIO: Web_Editor_Pro_v3 (PRINCIPAL)
-// ARCHIVO: ui.js (Versión Completa y Definitiva - Control Estricto de Alérgenos)
+// ARCHIVO: ui.js (Versión Completa y Definitiva - Control Estricto y Blindado de Alérgenos)
 // =========================================
 
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.ui = '1.5.1-CONTROL-ALERGENOS';
+window.APP_VERSIONS.ui = '1.5.2-BLINDADA-TOTAL';
 
 window.APP_VERSIONS.config = window.APP_VERSIONS.config || '2.2.0';
 window.APP_VERSIONS.app = window.APP_VERSIONS.app || '1.0.33';
@@ -353,7 +353,7 @@ export const UI = {
             const blob = new Blob([resultadoTexto], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = 'exportacion_expertos_final.csv'; link.click();
             UI.log("[OK] CSV descargado.");
-        } catch (err) { UI.log(`[Error Exportار] ${err.message}`); }
+        } catch (err) { UI.log(`[Error Exportar] ${err.message}`); }
     },
 
     importarCSV: (file, callback) => {
@@ -369,7 +369,7 @@ export const UI = {
     },
 
     // ==========================================
-    // FLUJO PILOTO (ES Y EN - CONTROL ESTRICTO DE ALÉRGENOS)
+    // FLUJO PILOTO (ES Y EN - CONTROL ESTRICTO Y BLINDADO DE ALÉRGENOS)
     // ==========================================
     iniciarTraduccionPorLotes: async (stateContainerParam) => {
         procesoDetenido = false; procesoPausado = false;
@@ -398,7 +398,7 @@ export const UI = {
 
         const techoLimiteEvaluacion = Math.min(rangoFin, activeStateContainer.csvData.length);
 
-        UI.log("[Paso 1] Generando contenido en Castellano e Inglés (ES / EN)...");
+        UI.log("[Paso 1] Generando contenido en Castellano e Inglés (ES / EN) con Alérgenos Blindados...");
         
         for (let i = Math.max(0, rangoInicio); i < techoLimiteEvaluacion; i++) {
             if (procesoDetenido) break;
@@ -412,6 +412,8 @@ export const UI = {
             const infoEsActual = row[indiceInfoEs] || "";
             const infoEnActual = row[indiceInfoIngles] || "";
             const alergenosValor = indiceAlergenos !== -1 ? (row[indiceAlergenos] || "").trim() : "";
+            
+            const tieneAlergenos = alergenosValor && alergenosValor.toUpperCase() !== 'NINGUNO' && alergenosValor !== '0' && alergenosValor !== '';
 
             if (!nombreEnActual || !infoEsActual || !infoEnActual) {
                 UI.log(`[Piloto ES/EN] Procesando fila ${i + 2}: "${nombreEs}"...`);
@@ -419,23 +421,39 @@ export const UI = {
 
                 while (!satisfechoPiloto && !procesoDetenido) {
                     try {
-                        const promptPiloto = `Actúa como un responsable de carta de restaurante. Define el siguiente plato de forma clara, natural, concisa y estrictamente profesional. 
-REGLAS DE ESTILO OBLIGATORIAS:
-- CERO saludos informales, muletillas o frases coloquiales (prohibido "Hey there!", "So...", "Sure!"). Ve absolutamente directo al grano.
-- Evita lenguaje gourmet pomposo o adjetivos exagerados.
+                        // PROMPT BLINDADO: Evita preguntas absurdas e inserta de forma inalterable la lista de alérgenos
+                        const promptPiloto = `Actúa como un responsable de carta de restaurante de alta gama. Define el siguiente plato de forma clara, natural, concisa y profesional. 
 
-REGLA ESTRICTA DE ALÉRGENOS:
-- Información base proporcionada: "${alergenosValor}".
-- SI LA INFORMACIÓN DE ALÉRGENOS ESTÁ VACÍA, ES "NINGUNO", "0" O "SIN ALÉRGENOS": Queda PROHIBIDO incluir preguntas o respuestas sobre alérgenos (q3 y r3 deben omitirse, dejarse en blanco, o diseñarse para consultar otro aspecto culinario del plato como su elaboración o ingredientes generales, pero NUNCA alérgenos).
-- SI CONTIENE ALÉRGENOS: Únicamente puedes mencionar los alérgenos explícitamente indicados en la información base. No inventes alérgenos adicionales.
+REGLAS DE ESTILO OBLIGATORIAS:
+- CERO saludos informales o muletillas. Ve directo al grano.
+- Evita lenguaje gourmet pomposo.
+- PREGUNTAS LÓGICAS: q1 y q2 deben tratar sobre elaboración, origen o sugerencias (ej: maridaje, opción sin gluten). NUNCA hagas preguntas absurdas u obvias sobre si contiene un ingrediente que ya es principal en el plato.
+
+REGLA ESTRICTA DE ALÉRGENOS (q3 y r3):
+${tieneAlergenos ? `- q3 debe preguntar por adaptaciones o necesidades alimentarias (ej: "¿Es posible adaptar este plato a mis necesidades alimentarias?").
+- r3 DEBE contener EXACTAMENTE esta cadena de texto sin resumir, editar ni filtrar: "${alergenosValor}".` : `- Si no hay alérgenos, omite o enfoca q3/r3 a otro aspecto culinario.`}
 
 Plato ES: "${nombreEs}"
 
-Genera un JSON estricto sin markdown con esta estructura exacta para castellano (es) e inglés (en):
+Genera un JSON estricto sin markdown con esta estructura exacta:
 {
   "nombre_en": "...",
-  "es": {"desc": "...", "q1": "...", "r1": "...", "q2": "...", "r2": "...", "q3": "...", "r3": "..."},
-  "en": {"desc": "...", "q1": "...", "r1": "...", "q2": "...", "r2": "...", "q3": "...", "r3": "..."}
+  "es": { 
+    "desc": "...", 
+    "q1": "...", 
+    "r1": "...", 
+    "q2": "...", 
+    "r2": "..." 
+    ${tieneAlergenos ? `, "q3": "¿Es posible adaptar este plato a mis necesidades alimentarias?", "r3": "${alergenosValor}"` : ""} 
+  },
+  "en": { 
+    "desc": "...", 
+    "q1": "...", 
+    "r1": "...", 
+    "q2": "...", 
+    "r2": "..." 
+    ${tieneAlergenos ? `, "q3": "Can this dish be adapted to my dietary needs?", "r3": "${alergenosValor}"` : ""} 
+  }
 }`;
 
                         const callResponse = await fetch(`${window.GEMINI_ENDPOINT_URL || 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent'}?key=${listaClavesAPI[currentKeyIndex]}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: promptPiloto }] }] }) });
