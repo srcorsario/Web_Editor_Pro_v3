@@ -213,84 +213,138 @@ export const UI = {
         }
 
         const CAMPOS = [
-            { key: 'desc', label: 'Descripción', filas: 2 },
-            { key: 'q1', label: 'Pregunta 1', filas: 1 },
-            { key: 'r1', label: 'Respuesta 1', filas: 1 },
-            { key: 'q2', label: 'Pregunta 2', filas: 1 },
-            { key: 'r2', label: 'Respuesta 2', filas: 1 },
-            { key: 'q3', label: 'Pregunta 3 (alérgenos)', filas: 1 },
-            { key: 'r3', label: 'Respuesta 3 (alérgenos)', filas: 2 },
+            { key: 'desc', label: 'Descripción' },
+            { key: 'q1', label: 'Pregunta 1' },
+            { key: 'r1', label: 'Respuesta 1' },
+            { key: 'q2', label: 'Pregunta 2' },
+            { key: 'r2', label: 'Respuesta 2' },
+            { key: 'q3', label: 'Pregunta 3 (alérgenos)' },
+            { key: 'r3', label: 'Respuesta 3 (alérgenos)' },
         ];
+
+        // Auto-size vertical de un textarea según su contenido (sin scroll interno).
+        const autoResize = (ta) => {
+            ta.style.height = 'auto';
+            ta.style.height = ta.scrollHeight + 'px';
+        };
+
+        // Iguala la altura entre el textarea ES y el EN del mismo campo (usa la más alta de las dos).
+        const sincronizarCampo = (bodyDiv, key) => {
+            const tas = bodyDiv.querySelectorAll(`textarea[data-field="${key}"]`);
+            if (tas.length === 0) return;
+            tas.forEach(ta => { ta.style.height = 'auto'; });
+            let maxH = 0;
+            tas.forEach(ta => { maxH = Math.max(maxH, ta.scrollHeight); });
+            tas.forEach(ta => { ta.style.height = maxH + 'px'; });
+        };
+
+        const sincronizarTodoElCuerpo = (bodyDiv) => {
+            CAMPOS.forEach(campo => sincronizarCampo(bodyDiv, campo.key));
+        };
 
         cont.innerHTML = '';
 
         filas.forEach(({ row, index }) => {
             const nombreEs = row[esIdx] || `(Fila ${index + 2} sin nombre)`;
-            const infoEs = parseInfo(row[infoEsIdx]);
-            const infoEn = parseInfo(row[infoEnIdx]);
 
-            const guardarEs = () => { row[infoEsIdx] = infoEs._errorParse ? infoEs._raw : (Object.keys(infoEs).length ? JSON.stringify(infoEs) : ''); };
-            const guardarEn = () => { row[infoEnIdx] = infoEn._errorParse ? infoEn._raw : (Object.keys(infoEn).length ? JSON.stringify(infoEn) : ''); };
+            // --- Cabecera del acordeón (siempre visible) ---
+            const item = document.createElement('div');
+            item.className = 'card mb-2';
+            item.style.padding = '0';
 
-            const buildCol = (obj, guardar, titulo) => {
-                const colDiv = document.createElement('div');
-                const h4 = document.createElement('h4');
-                h4.className = 'text-xs font-bold uppercase text-slate-400 mb-2';
-                h4.innerText = titulo;
-                colDiv.appendChild(h4);
+            const headerBtn = document.createElement('button');
+            headerBtn.type = 'button';
+            headerBtn.className = 'w-full text-left flex items-center justify-between';
+            headerBtn.style.cssText = 'padding:12px 14px; background:transparent; border:none; cursor:pointer; color:inherit;';
+            headerBtn.innerHTML = `<span class="font-semibold text-sm">Fila ${index + 2} — ${nombreEs}</span><span class="qa-chevron text-slate-400" style="display:inline-block; transition: transform 0.15s;">▸</span>`;
 
-                if (obj._errorParse) {
-                    const warn = document.createElement('p');
-                    warn.className = 'text-xs mb-1';
-                    warn.style.color = '#f87171';
-                    warn.innerText = '⚠️ Contenido guardado no es un JSON válido. Edítalo con cuidado:';
-                    colDiv.appendChild(warn);
-                    const raw = document.createElement('textarea');
-                    raw.className = 'input-estandar text-xs w-full';
-                    raw.rows = 5;
-                    raw.value = obj._raw;
-                    raw.addEventListener('input', () => { obj._raw = raw.value; guardar(); });
-                    colDiv.appendChild(raw);
+            const bodyDiv = document.createElement('div');
+            bodyDiv.style.display = 'none';
+            bodyDiv.style.padding = '0 14px 14px 14px';
+            bodyDiv.style.borderTop = '1px solid #334155';
+
+            let construido = false;
+
+            // --- Construcción perezosa del contenido (solo al desplegar por primera vez) ---
+            const construirCuerpo = () => {
+                const infoEs = parseInfo(row[infoEsIdx]);
+                const infoEn = parseInfo(row[infoEnIdx]);
+
+                const guardarEs = () => { row[infoEsIdx] = infoEs._errorParse ? infoEs._raw : (Object.keys(infoEs).length ? JSON.stringify(infoEs) : ''); };
+                const guardarEn = () => { row[infoEnIdx] = infoEn._errorParse ? infoEn._raw : (Object.keys(infoEn).length ? JSON.stringify(infoEn) : ''); };
+
+                const buildCol = (obj, guardar, titulo) => {
+                    const colDiv = document.createElement('div');
+                    const h4 = document.createElement('h4');
+                    h4.className = 'text-xs font-bold uppercase text-slate-400 mb-2 pt-3';
+                    h4.innerText = titulo;
+                    colDiv.appendChild(h4);
+
+                    if (obj._errorParse) {
+                        const warn = document.createElement('p');
+                        warn.className = 'text-xs mb-1';
+                        warn.style.color = '#f87171';
+                        warn.innerText = '⚠️ Contenido guardado no es un JSON válido. Edítalo con cuidado:';
+                        colDiv.appendChild(warn);
+                        const raw = document.createElement('textarea');
+                        raw.className = 'input-estandar text-xs w-full';
+                        raw.style.cssText = 'overflow:hidden; resize:none; min-height:60px;';
+                        raw.value = obj._raw;
+                        raw.addEventListener('input', () => { obj._raw = raw.value; guardar(); autoResize(raw); });
+                        colDiv.appendChild(raw);
+                        return colDiv;
+                    }
+
+                    CAMPOS.forEach(campo => {
+                        // q3/r3 solo se muestran si el plato ya los tiene (no todos llevan alérgenos)
+                        if ((campo.key === 'q3' || campo.key === 'r3') && obj[campo.key] === undefined) return;
+                        const wrap = document.createElement('div');
+                        wrap.className = 'mb-2';
+                        const lbl = document.createElement('label');
+                        lbl.className = 'text-[10px] font-semibold text-slate-400 block mb-0.5';
+                        lbl.innerText = campo.label;
+                        const txt = document.createElement('textarea');
+                        txt.className = 'input-estandar text-xs w-full';
+                        txt.dataset.field = campo.key;
+                        txt.style.cssText = 'overflow:hidden; resize:none; min-height:30px;';
+                        txt.value = obj[campo.key] || '';
+                        txt.addEventListener('input', () => {
+                            obj[campo.key] = txt.value;
+                            guardar();
+                            sincronizarCampo(bodyDiv, campo.key);
+                        });
+                        wrap.appendChild(lbl);
+                        wrap.appendChild(txt);
+                        colDiv.appendChild(wrap);
+                    });
                     return colDiv;
-                }
+                };
 
-                CAMPOS.forEach(campo => {
-                    // q3/r3 solo se muestran si el plato ya los tiene (no todos llevan alérgenos)
-                    if ((campo.key === 'q3' || campo.key === 'r3') && obj[campo.key] === undefined) return;
-                    const wrap = document.createElement('div');
-                    wrap.className = 'mb-2';
-                    const lbl = document.createElement('label');
-                    lbl.className = 'text-[10px] font-semibold text-slate-400 block mb-0.5';
-                    lbl.innerText = campo.label;
-                    const txt = document.createElement('textarea');
-                    txt.className = 'input-estandar text-xs w-full';
-                    txt.rows = campo.filas;
-                    txt.value = obj[campo.key] || '';
-                    txt.addEventListener('input', () => { obj[campo.key] = txt.value; guardar(); });
-                    wrap.appendChild(lbl);
-                    wrap.appendChild(txt);
-                    colDiv.appendChild(wrap);
-                });
-                return colDiv;
+                const grid = document.createElement('div');
+                grid.className = 'grid grid-cols-1 md:grid-cols-2 gap-6';
+                grid.appendChild(buildCol(infoEs, guardarEs, '🇪🇸 Español'));
+                grid.appendChild(buildCol(infoEn, guardarEn, '🇬🇧 Inglés'));
+                bodyDiv.appendChild(grid);
             };
 
-            const card = document.createElement('div');
-            card.className = 'card mb-4';
+            headerBtn.addEventListener('click', () => {
+                const abierto = bodyDiv.style.display !== 'none';
+                const chevron = headerBtn.querySelector('.qa-chevron');
+                if (abierto) {
+                    bodyDiv.style.display = 'none';
+                    if (chevron) chevron.style.transform = 'rotate(0deg)';
+                } else {
+                    if (!construido) { construirCuerpo(); construido = true; }
+                    bodyDiv.style.display = 'block';
+                    if (chevron) chevron.style.transform = 'rotate(90deg)';
+                    // El auto-size necesita que el bloque ya sea visible para medir el alto real.
+                    requestAnimationFrame(() => sincronizarTodoElCuerpo(bodyDiv));
+                }
+            });
 
-            const header = document.createElement('div');
-            header.className = 'mb-3';
-            header.style.borderBottom = '1px solid #334155';
-            header.style.paddingBottom = '8px';
-            header.innerHTML = `<span class="font-semibold text-sm">Fila ${index + 2} — ${nombreEs}</span>`;
-
-            const grid = document.createElement('div');
-            grid.className = 'grid grid-cols-1 md:grid-cols-2 gap-6';
-            grid.appendChild(buildCol(infoEs, guardarEs, '🇪🇸 Español'));
-            grid.appendChild(buildCol(infoEn, guardarEn, '🇬🇧 Inglés'));
-
-            card.appendChild(header);
-            card.appendChild(grid);
-            cont.appendChild(card);
+            item.appendChild(headerBtn);
+            item.appendChild(bodyDiv);
+            cont.appendChild(item);
         });
     },
 
