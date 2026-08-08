@@ -610,13 +610,17 @@ export const UI = {
 
         // Carpetas de bebidas simples que no necesitan descripción ni preguntas generadas por IA.
         const CARPETAS_SIN_IA = ['cafe', 'refrescos', 'cerveza'];
+        const TAMANO_LOTE_INFO = (typeof window.INFO_EXTENDIDA_TAMANO_LOTE === 'number' && window.INFO_EXTENDIDA_TAMANO_LOTE > 0) ? window.INFO_EXTENDIDA_TAMANO_LOTE : 2;
 
         UI.log("[Paso 1] Generando contenido en Castellano e Inglés (ES / EN) sin maridajes y con alérgenos blindados. Vinos: solo descripción. Bebidas simples (café/refrescos/cerveza) y cabeceras de categoría: omitidas...");
-        
-        for (let i = Math.max(0, rangoInicio); i < techoLimiteEvaluacion; i++) {
-            if (procesoDetenido) break;
-            while (procesoPausado) await new Promise(resolve => setTimeout(resolve, 500));
 
+        // CORREGIDO: se agrupan varios platos (y, por separado, varios vinos) en una sola
+        // llamada a la IA en vez de una llamada por fila, para ahorrar tokens de instrucciones
+        // repetidas y no agotar la cuota tan rápido. Se separan platos y vinos porque usan
+        // prompts distintos (los vinos no llevan preguntas/respuestas).
+        const pendientesPlatos = [];
+        const pendientesVinos = [];
+        for (let i = Math.max(0, rangoInicio); i < techoLimiteEvaluacion; i++) {
             const row = activeStateContainer.csvData[i];
             while (row.length < activeStateContainer.headers.length) row.push("");
 
@@ -624,79 +628,122 @@ export const UI = {
             const nombreEnActual = row[indiceInglesBase] || "";
             const infoEsActual = row[indiceInfoEs] || "";
             const infoEnActual = row[indiceInfoIngles] || "";
-            const alergenosValor = indiceAlergenos !== -1 ? (row[indiceAlergenos] || "").trim() : "";
             const idValor = indiceId !== -1 ? parseInt(row[indiceId]) : NaN;
             const carpetaValor = indiceCarpeta !== -1 ? (row[indiceCarpeta] || "").trim().toLowerCase() : "";
 
-            // Filas de cabecera de sección (ID 1-12: "Entrantes", "Postres"...) no son platos reales.
             const esCabeceraCategoria = !isNaN(idValor) && idValor >= 1 && idValor <= 12;
             const esBebidaSimple = CARPETAS_SIN_IA.includes(carpetaValor);
+            if (esCabeceraCategoria || esBebidaSimple) continue;
+            if (!nombreEs) continue;
+
             const esVino = carpetaValor === 'vinos';
+            if (nombreEnActual && infoEsActual && infoEnActual) continue; // ya está completo
 
-            if (esCabeceraCategoria || esBebidaSimple) {
-                continue; // No necesita descripción ni preguntas: se salta sin gastar llamadas a la API.
-            }
+            if (esVino) pendientesVinos.push(i); else pendientesPlatos.push(i);
+        }
 
-            const tieneAlergenos = alergenosValor && alergenosValor.toUpperCase() !== 'NINGUNO' && alergenosValor !== '0' && alergenosValor !== '';
+        UI.log(`[Info] Pendientes: ${pendientesPlatos.length} platos, ${pendientesVinos.length} vinos. Lotes de ${TAMANO_LOTE_INFO}.`);
 
-            if (!nombreEnActual || !infoEsActual || !infoEnActual) {
-                UI.log(`[${esVino ? 'Piloto Vino ES/EN' : 'Piloto ES/EN'}] Procesando fila ${i + 2}: "${nombreEs}"...`);
-                let satisfechoPiloto = false;
+        // ---------- Función interna reutilizada para procesar un lote (platos o vinos) ----------
+        const procesarLoteInfo = async (indicesLote, esVino) => {
+            const items = indicesLote.map(i => {
+                const row = activeStateContainer.csvData[i];
+                const nombreEs = row[indiceCastellanoBase] || "";
+                const alergenosValor = indiceAlergenos !== -1 ? (row[indiceAlergenos] || "").trim() : "";
+                const tieneAlergenos = alergenosValor && alergenosValor.toUpperCase() !== 'NINGUNO' && alergenosValor !== '0' && alergenosValor !== '';
+                return esVino ? { fila: i, row, nombreVino: nombreEs } : { fila: i, row, nombreEs, tieneAlergenos, alergenosValor };
+            });
 
-                while (!satisfechoPiloto && !procesoDetenido) {
+            const promptLote = esVino ? window.PROMPTS.vinoLote(items) : window.PROMPTS.pilotoLote(items);
+
+            let satisfecho = false;
+            let intentosLote = 0;
+            const maxIntentosLote = Math.max(3, listaClavesAPI.length * 2);
+
+            while (!satisfecho && !procesoDetenido && intentosLote < maxIntentosLote) {
+                try {
+                    const callResponse = await fetch(`${window.GEMINI_ENDPOINT_URL || 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent'}?key=${listaClavesAPI[currentKeyIndex]}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: promptLote }] }] }) });
+
+                    const textResponse = await callResponse.text();
+                    let respuestaJsonData;
                     try {
-                        // Prompt centralizado en prompts.js (window.PROMPTS.piloto / window.PROMPTS.vino)
-                        const promptPiloto = esVino ? window.PROMPTS.vino(nombreEs) : window.PROMPTS.piloto(nombreEs, tieneAlergenos, alergenosValor);
-
-                        const callResponse = await fetch(`${window.GEMINI_ENDPOINT_URL || 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent'}?key=${listaClavesAPI[currentKeyIndex]}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: promptPiloto }] }] }) });
-                        
-                        const textResponse = await callResponse.text();
-                        let respuestaJsonData;
-                        try {
-                            respuestaJsonData = JSON.parse(textResponse);
-                        } catch (e) {
-                            throw new Error("La API devolvió HTML o texto plano (Posible 403 o error de cuota).");
-                        }
-
-                        if (respuestaJsonData.error?.code === 429) { 
-                            currentKeyIndex = (currentKeyIndex + 1) % listaClavesAPI.length; 
-                            UI.log(`[Aviso] Límite superado. Rotando Key...`);
-                            await new Promise(r => setTimeout(r, 4000)); 
-                            continue; 
-                        }
-
-                        const textoLimpioIA = respuestaJsonData.candidates?.[0]?.content?.parts?.[0]?.text;
-                        if (!textoLimpioIA) throw new Error("La API no devolvió contenido.");
-
-                        const jsonSanitizado = textoLimpioIA.replace(/```json/g, '').replace(/```/g, '').trim();
-                        const parsed = JSON.parse(jsonSanitizado);
-
-                        if (parsed.nombre_en && parsed.es && parsed.en) {
-                            // Red de seguridad: si hay alérgenos pero el modelo no rellenó q3/r3, no lo dejamos vacío (solo aplica a platos, no a vinos).
-                            if (!esVino && tieneAlergenos) {
-                                if (!parsed.es.q3 || !parsed.es.r3 || !parsed.es.r3.trim()) {
-                                    parsed.es.q3 = parsed.es.q3 || "¿Contiene este plato algún alérgeno?";
-                                    parsed.es.r3 = `Este plato contiene: ${alergenosValor}.`;
-                                }
-                                if (!parsed.en.q3 || !parsed.en.r3 || !parsed.en.r3.trim()) {
-                                    parsed.en.q3 = parsed.en.q3 || "Does this dish contain any allergens?";
-                                    parsed.en.r3 = `This dish contains: ${alergenosValor}.`;
-                                }
-                            }
-                            if (!nombreEnActual) row[indiceInglesBase] = parsed.nombre_en;
-                            if (!infoEsActual) row[indiceInfoEs] = JSON.stringify(parsed.es);
-                            if (!infoEnActual) row[indiceInfoIngles] = JSON.stringify(parsed.en);
-                            satisfechoPiloto = true;
-                        } else throw new Error(`Estructura JSON inválida en piloto ${esVino ? 'Vino' : 'ES/EN'}.`);
-                    } catch (err) {
-                        UI.log(`[Error Piloto ${esVino ? 'Vino' : 'ES/EN'}] Fila ${i + 2}: ${err.message}`);
-                        await new Promise(r => setTimeout(r, 3000));
-                        currentKeyIndex = (currentKeyIndex + 1) % listaClavesAPI.length;
+                        respuestaJsonData = JSON.parse(textResponse);
+                    } catch (e) {
+                        throw new Error("La API devolvió HTML o texto plano (Posible 403 o error de cuota).");
                     }
+
+                    if (respuestaJsonData.error?.code === 429) {
+                        currentKeyIndex = (currentKeyIndex + 1) % listaClavesAPI.length;
+                        UI.log(`[Aviso] Límite superado en el lote (filas ${items.map(it => it.fila + 2).join(', ')}). Rotando Key...`);
+                        await new Promise(r => setTimeout(r, 4000));
+                        intentosLote++;
+                        continue;
+                    }
+
+                    const textoLimpioIA = respuestaJsonData.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (!textoLimpioIA) throw new Error("La API no devolvió contenido.");
+
+                    const jsonSanitizado = textoLimpioIA.replace(/```json/g, '').replace(/```/g, '').trim();
+                    const resultadoLote = JSON.parse(jsonSanitizado);
+
+                    items.forEach((it, idx) => {
+                        const parsed = resultadoLote[String(idx)] || resultadoLote[idx];
+                        if (!parsed || !parsed.es || !parsed.en) return;
+
+                        const row = it.row;
+                        const nombreEnActual = row[indiceInglesBase] || "";
+                        const infoEsActual = row[indiceInfoEs] || "";
+                        const infoEnActual = row[indiceInfoIngles] || "";
+
+                        if (!esVino && it.tieneAlergenos) {
+                            if (!parsed.es.q3 || !parsed.es.r3 || !parsed.es.r3.trim()) {
+                                parsed.es.q3 = parsed.es.q3 || "¿Contiene este plato algún alérgeno?";
+                                parsed.es.r3 = `Este plato contiene: ${it.alergenosValor}.`;
+                            }
+                            if (!parsed.en.q3 || !parsed.en.r3 || !parsed.en.r3.trim()) {
+                                parsed.en.q3 = parsed.en.q3 || "Does this dish contain any allergens?";
+                                parsed.en.r3 = `This dish contains: ${it.alergenosValor}.`;
+                            }
+                        }
+
+                        if (!nombreEnActual && parsed.nombre_en) row[indiceInglesBase] = parsed.nombre_en;
+                        if (!infoEsActual) row[indiceInfoEs] = JSON.stringify(parsed.es);
+                        if (!infoEnActual) row[indiceInfoIngles] = JSON.stringify(parsed.en);
+                    });
+                    satisfecho = true;
+                } catch (err) {
+                    UI.log(`[Error ${esVino ? 'Vino' : 'Piloto'} Lote] Filas ${items.map(it => it.fila + 2).join(', ')}: ${err.message}`);
+                    await new Promise(r => setTimeout(r, 3000));
+                    currentKeyIndex = (currentKeyIndex + 1) % listaClavesAPI.length;
+                    intentosLote++;
                 }
-                await new Promise(r => setTimeout(r, 1000));
-                if (typeof UI.renderTable === 'function') UI.renderTable();
             }
+        };
+
+        // ---------- Fase 1a: platos ----------
+        for (let lote = 0; lote < pendientesPlatos.length; lote += TAMANO_LOTE_INFO) {
+            if (procesoDetenido) break;
+            while (procesoPausado) await new Promise(resolve => setTimeout(resolve, 500));
+
+            const indicesLote = pendientesPlatos.slice(lote, lote + TAMANO_LOTE_INFO);
+            UI.log(`[Piloto ES/EN - Lote ${Math.floor(lote / TAMANO_LOTE_INFO) + 1}/${Math.ceil(pendientesPlatos.length / TAMANO_LOTE_INFO)}] Procesando filas ${indicesLote.map(i => i + 2).join(', ')}...`);
+            await procesarLoteInfo(indicesLote, false);
+
+            if (typeof UI.renderTable === 'function') UI.renderTable();
+            await new Promise(r => setTimeout(r, 1000));
+        }
+
+        // ---------- Fase 1b: vinos ----------
+        for (let lote = 0; lote < pendientesVinos.length; lote += TAMANO_LOTE_INFO) {
+            if (procesoDetenido) break;
+            while (procesoPausado) await new Promise(resolve => setTimeout(resolve, 500));
+
+            const indicesLote = pendientesVinos.slice(lote, lote + TAMANO_LOTE_INFO);
+            UI.log(`[Vino - Lote ${Math.floor(lote / TAMANO_LOTE_INFO) + 1}/${Math.ceil(pendientesVinos.length / TAMANO_LOTE_INFO)}] Procesando filas ${indicesLote.map(i => i + 2).join(', ')}...`);
+            await procesarLoteInfo(indicesLote, true);
+
+            if (typeof UI.renderTable === 'function') UI.renderTable();
+            await new Promise(r => setTimeout(r, 1000));
         }
 
         UI.log("[FIN] Proceso finalizado. Contenido generado con éxito sin referencias a vinos.");
