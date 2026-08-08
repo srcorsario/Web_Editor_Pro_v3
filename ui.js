@@ -151,6 +151,147 @@ export const UI = {
             const rowNum = inicio + index + 2; 
             return `<tr><td style="width: 60px; text-align: center;">${rowNum}</td><td style="width: 70px; text-align: center;">${row[idIdx] || ''}</td><td style="width: calc(50% - 65px);">${row[esIdx] || ''}</td><td style="width: calc(50% - 65px);">${langIdx !== -1 ? (row[langIdx] || '') : 'N/A'}</td></tr>`;
         }).join('');
+
+        if (typeof UI.renderQA === 'function') UI.renderQA();
+    },
+
+    // ==========================================
+    // EDICIÓN DE PREGUNTAS Y RESPUESTAS (ES / EN)
+    // Usa la misma lista cargada (stateContainer) que la pestaña "Traductor Pro".
+    // Lee/edita las columnas INFO_ES e INFO_EN (JSON: desc, q1, r1, q2, r2, q3, r3).
+    // ==========================================
+    renderQA: () => {
+        const cont = document.getElementById('qa-lista');
+        if (!cont) return; // La pestaña QA no está presente en esta página.
+
+        if (!stateContainer.headers || stateContainer.headers.length === 0 || !stateContainer.csvData || stateContainer.csvData.length === 0) {
+            cont.innerHTML = '<p class="text-center py-8 text-slate-500 italic">No hay ninguna lista cargada. Ve a la pestaña "3. Traductor Pro" y carga un CSV o una Google Sheet primero.</p>';
+            return;
+        }
+
+        const esIdx = stateContainer.headers.findIndex(h => h && h.toUpperCase() === 'NOMBRE_ES');
+        const infoEsIdx = stateContainer.headers.findIndex(h => h && h.toUpperCase() === 'INFO_ES');
+        const infoEnIdx = stateContainer.headers.findIndex(h => h && h.toUpperCase() === 'INFO_EN');
+
+        if (esIdx === -1 || infoEsIdx === -1 || infoEnIdx === -1) {
+            cont.innerHTML = '<p class="text-center py-8 text-slate-500 italic">Faltan columnas NOMBRE_ES, INFO_ES o INFO_EN en la lista cargada.</p>';
+            return;
+        }
+
+        const rangoInicioEl = document.getElementById('rangoInicio');
+        const rangoFinEl = document.getElementById('rangoFin');
+        const inicio = rangoInicioEl ? Math.max(0, parseInt(rangoInicioEl.value) - 2) : 0;
+        const fin = rangoFinEl ? Math.min(stateContainer.csvData.length, parseInt(rangoFinEl.value) - 1) : stateContainer.csvData.length;
+
+        const filtroEl = document.getElementById('qa-filtro');
+        const soloConDatosEl = document.getElementById('qa-solo-con-datos');
+        const filtroTexto = filtroEl ? filtroEl.value.trim().toLowerCase() : '';
+        const mostrarSoloConDatos = soloConDatosEl ? soloConDatosEl.checked : false;
+
+        const parseInfo = (raw) => {
+            if (!raw || !raw.trim()) return {};
+            try { return JSON.parse(raw); } catch (e) { return { _errorParse: true, _raw: raw }; }
+        };
+
+        const filas = stateContainer.csvData
+            .map((row, index) => ({ row, index }))
+            .slice(inicio, fin)
+            .filter(({ row }) => {
+                const nombre = (row[esIdx] || '').toLowerCase();
+                if (filtroTexto && !nombre.includes(filtroTexto)) return false;
+                if (mostrarSoloConDatos) {
+                    const tieneEs = row[infoEsIdx] && row[infoEsIdx].trim();
+                    const tieneEn = row[infoEnIdx] && row[infoEnIdx].trim();
+                    if (!tieneEs && !tieneEn) return false;
+                }
+                return true;
+            });
+
+        if (filas.length === 0) {
+            cont.innerHTML = '<p class="text-center py-8 text-slate-500 italic">Ningún plato coincide con el filtro actual.</p>';
+            return;
+        }
+
+        const CAMPOS = [
+            { key: 'desc', label: 'Descripción', filas: 2 },
+            { key: 'q1', label: 'Pregunta 1', filas: 1 },
+            { key: 'r1', label: 'Respuesta 1', filas: 1 },
+            { key: 'q2', label: 'Pregunta 2', filas: 1 },
+            { key: 'r2', label: 'Respuesta 2', filas: 1 },
+            { key: 'q3', label: 'Pregunta 3 (alérgenos)', filas: 1 },
+            { key: 'r3', label: 'Respuesta 3 (alérgenos)', filas: 2 },
+        ];
+
+        cont.innerHTML = '';
+
+        filas.forEach(({ row, index }) => {
+            const nombreEs = row[esIdx] || `(Fila ${index + 2} sin nombre)`;
+            const infoEs = parseInfo(row[infoEsIdx]);
+            const infoEn = parseInfo(row[infoEnIdx]);
+
+            const guardarEs = () => { row[infoEsIdx] = infoEs._errorParse ? infoEs._raw : (Object.keys(infoEs).length ? JSON.stringify(infoEs) : ''); };
+            const guardarEn = () => { row[infoEnIdx] = infoEn._errorParse ? infoEn._raw : (Object.keys(infoEn).length ? JSON.stringify(infoEn) : ''); };
+
+            const buildCol = (obj, guardar, titulo) => {
+                const colDiv = document.createElement('div');
+                const h4 = document.createElement('h4');
+                h4.className = 'text-xs font-bold uppercase text-slate-400 mb-2';
+                h4.innerText = titulo;
+                colDiv.appendChild(h4);
+
+                if (obj._errorParse) {
+                    const warn = document.createElement('p');
+                    warn.className = 'text-xs mb-1';
+                    warn.style.color = '#f87171';
+                    warn.innerText = '⚠️ Contenido guardado no es un JSON válido. Edítalo con cuidado:';
+                    colDiv.appendChild(warn);
+                    const raw = document.createElement('textarea');
+                    raw.className = 'input-estandar text-xs w-full';
+                    raw.rows = 5;
+                    raw.value = obj._raw;
+                    raw.addEventListener('input', () => { obj._raw = raw.value; guardar(); });
+                    colDiv.appendChild(raw);
+                    return colDiv;
+                }
+
+                CAMPOS.forEach(campo => {
+                    // q3/r3 solo se muestran si el plato ya los tiene (no todos llevan alérgenos)
+                    if ((campo.key === 'q3' || campo.key === 'r3') && obj[campo.key] === undefined) return;
+                    const wrap = document.createElement('div');
+                    wrap.className = 'mb-2';
+                    const lbl = document.createElement('label');
+                    lbl.className = 'text-[10px] font-semibold text-slate-400 block mb-0.5';
+                    lbl.innerText = campo.label;
+                    const txt = document.createElement('textarea');
+                    txt.className = 'input-estandar text-xs w-full';
+                    txt.rows = campo.filas;
+                    txt.value = obj[campo.key] || '';
+                    txt.addEventListener('input', () => { obj[campo.key] = txt.value; guardar(); });
+                    wrap.appendChild(lbl);
+                    wrap.appendChild(txt);
+                    colDiv.appendChild(wrap);
+                });
+                return colDiv;
+            };
+
+            const card = document.createElement('div');
+            card.className = 'card mb-4';
+
+            const header = document.createElement('div');
+            header.className = 'mb-3';
+            header.style.borderBottom = '1px solid #334155';
+            header.style.paddingBottom = '8px';
+            header.innerHTML = `<span class="font-semibold text-sm">Fila ${index + 2} — ${nombreEs}</span>`;
+
+            const grid = document.createElement('div');
+            grid.className = 'grid grid-cols-1 md:grid-cols-2 gap-6';
+            grid.appendChild(buildCol(infoEs, guardarEs, '🇪🇸 Español'));
+            grid.appendChild(buildCol(infoEn, guardarEn, '🇬🇧 Inglés'));
+
+            card.appendChild(header);
+            card.appendChild(grid);
+            cont.appendChild(card);
+        });
     },
 
     cargarGoogleSheets: async (targetUrl, retryCount = 0) => {
@@ -317,6 +458,13 @@ export const UI = {
         if (btnPausa) btnPausa.onclick = () => { procesoPausado = !procesoPausado; btnPausa.innerText = procesoPausado ? "REANUDAR" : "PAUSAR"; UI.log(procesoPausado ? "[Info] Pausado." : "[Info] Reanudando..."); };
         const btnCancelar = document.getElementById('btnCancelar');
         if (btnCancelar) btnCancelar.onclick = () => { procesoDetenido = true; UI.log("[Info] Deteniendo bucle..."); };
+
+        const btnQaRefrescar = document.getElementById('qa-refrescar');
+        if (btnQaRefrescar) btnQaRefrescar.onclick = () => UI.renderQA();
+        const inputQaFiltro = document.getElementById('qa-filtro');
+        if (inputQaFiltro) inputQaFiltro.oninput = () => UI.renderQA();
+        const checkQaSoloConDatos = document.getElementById('qa-solo-con-datos');
+        if (checkQaSoloConDatos) checkQaSoloConDatos.onchange = () => UI.renderQA();
     },
 
     confirmarImportacion: (mode) => {
@@ -478,6 +626,10 @@ export const UI = {
         UI.log("[FIN] Proceso finalizado. Contenido generado con éxito sin referencias a vinos.");
     }
 };
+
+// Exponer UI globalmente: necesario porque los onclick="UI...." del HTML (script clásico)
+// y switchTab() no pueden acceder a las exportaciones de un <script type="module">.
+window.UI = UI;
 
 document.addEventListener("DOMContentLoaded", () => {
     setTimeout(() => {

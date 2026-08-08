@@ -49,6 +49,7 @@
             <button id="tab-btn-rg" class="tab-btn active" onclick="switchTab('editor', this)">1. Editor Carta RG</button>
             <button id="tab-btn-sug-rg" class="tab-btn" onclick="switchTab('sugerencias', this)">2. Sugerencias RG</button>
             <button class="tab-btn" onclick="switchTab('pro', this)" style="margin-left: auto; margin-right: auto;">3. Traductor Pro</button>
+            <button id="tab-btn-qa" class="tab-btn" onclick="switchTab('qa', this)">Preguntas y Respuestas</button>
             <button id="tab-btn-usopen" class="tab-btn" onclick="switchTab('editor-usopen', this)">4. Editor Carta USOpen</button>
             <button id="tab-btn-sug-usopen" class="tab-btn" onclick="switchTab('sugerencias-usopen', this)">5. Sugerencias USOpen</button>
         </div>
@@ -117,6 +118,21 @@
                     </table>
                 </div>
             </div>
+        </div>
+
+        <div id="tab-qa" class="tab-content pro-panel" style="display: none;">
+            <div class="card mb-4">
+                <h3 class="text-sm font-semibold uppercase tracking-wider mb-3">Edición de Preguntas y Respuestas (ES / EN)</h3>
+                <p class="text-xs text-slate-400 mb-3">Usa la misma lista cargada en la pestaña "3. Traductor Pro" (Google Sheet o CSV local). Los cambios se aplican en memoria al instante; para guardarlos de verdad, vuelve a esa pestaña y usa "Descargar CSV" o "☁️ Sincronizar con Google Sheet".</p>
+                <div class="flex flex-col md:flex-row gap-2 md:items-center">
+                    <input type="text" id="qa-filtro" placeholder="Buscar plato por nombre..." class="flex-1 text-xs py-1.5 px-2 input-estandar" style="margin-bottom:0;">
+                    <label class="text-xs flex items-center gap-1.5 whitespace-nowrap">
+                        <input type="checkbox" id="qa-solo-con-datos" checked> Solo platos con datos generados
+                    </label>
+                    <button id="qa-refrescar" class="btn btn-secondary text-xs py-1.5 px-3 whitespace-nowrap">🔄 Refrescar</button>
+                </div>
+            </div>
+            <div id="qa-lista"></div>
         </div>
 
         <div id="tab-sugerencias" class="tab-content" style="display: none;">
@@ -358,6 +374,8 @@
                     if (typeof window.renderCarta === 'function') window.renderCarta('restaurante001');
                 } else if (tabId === 'sugerencias-usopen') {
                     if (typeof window.renderCarta === 'function') window.renderCarta('restaurante002');
+                } else if (tabId === 'qa') {
+                    if (window.UI && typeof window.UI.renderQA === 'function') window.UI.renderQA();
                 }
                 
                 actualizarTextoBotonGuardar();
