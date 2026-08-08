@@ -406,14 +406,8 @@ async function generarTraduccionEN() {
     btn.disabled = true; 
 
     const textoCompletoEs = (nombreEs + (uvasEs ? ' // ' + uvasEs : '')).replace(/"/g, "'");
-    const instruccion = `Actúa como un translator profesional de menús de restaurantes. Te paso un elemento en español: "${textoCompletoEs}".
-    ${esVino ? 'Es un vino. El separador "//" distingue el nombre del vino de la variedad de uva o detalles. Debes traducir ambas partes y mantener el separador "//" en el resultado. El nombre del vino debe ir en MAYÚSCULAS, pero el contenido entre paréntesis (como la D.O.) debe mantener su formato original.' : ''}
-    Necesito que me des EXACTAMENTE 3 opciones de traducción al inglés con diferentes enfoques para un menú:
-    1. Traducción directa/literal.
-    2. Traducción gastronómica/descriptiva (más elegante).
-    3. Traducción corta/concisa (estilo menú).
-    Responde EXCLUSIVAMENTE con un objeto JSON válido. No incluyas texto fuera del JSON. Las comillas dobles dentro de las traducciones deben estar escapadas con barra invertida (\"). 
-    Estructura exacta: {"directa": "...", "gastronomica": "...", "corta": "..."}`;
+    // Prompt centralizado en prompts.js (window.PROMPTS.opcionesEN)
+    const instruccion = window.PROMPTS.opcionesEN(textoCompletoEs, esVino);
     
     let exito = false; 
     let intentos = 0; 
@@ -535,11 +529,8 @@ async function ejecutarTraduccionAutomatica() {
     const textoCompletoEn = (nombreEn + (uvasEn ? ' // ' + uvasEn : '')).replace(/"/g, "'");
     const idiomasObjetivo = window.IDIOMAS_ORDEN ? window.IDIOMAS_ORDEN.filter(l => l !== 'es' && l !== 'en').map(l => l.toUpperCase()) : [];
     
-    const instruccion = `Actúa como un traductor experto de menús de restaurantes. Traduce el siguiente elemento en español: "${textoCompletoEs}" ${textoCompletoEn ? `y su texto en Inglés como referencia: "${textoCompletoEn}"` : ""}.
-    ${esVino ? 'Es un vino. El separador "//" distingue el nombre del vino de la variedad de uva o detalles. Debes traducir ambas partes y mantener el separador "//" en el resultado. El nombre del vino debe ir en MAYÚSCULAS, pero el contenido entre paréntesis (ej: EL COTO (D.O. Rioja)) debe mantener su formato original en todos los idiomas.' : ''}
-    Traduce a los siguientes idiomas (usa los códigos ISO proporcionados): ${idiomasObjetivo.join(', ')}.
-    Responde EXCLUSIVAMENTE con un objeto JSON válido. No incluyas texto fuera del JSON. 
-    Usa los códigos ISO como claves. Ejemplo de formato de respuesta esperado: {"de": "Nombre // Uva", "fr": "Nom Français"}`;
+    // Prompt centralizado en prompts.js (window.PROMPTS.autoTraduccionResto)
+    const instruccion = window.PROMPTS.autoTraduccionResto(textoCompletoEs, textoCompletoEn, esVino, idiomasObjetivo);
     
     let exito = false; 
     let intentos = 0; 

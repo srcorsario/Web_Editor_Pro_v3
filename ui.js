@@ -421,48 +421,8 @@ export const UI = {
 
                 while (!satisfechoPiloto && !procesoDetenido) {
                     try {
-                        // PROMPT BLINDADO SIN MARIDAJE DE VINOS
-                        const promptPiloto = `Actúa como un responsable de carta de restaurante de alta gama. Define el siguiente plato de forma clara, natural, concisa y profesional, basándote ÚNICAMENTE en el nombre del plato proporcionado. 
-
-REGLAS DE ESTILO OBLIGATORIAS:
-- CERO saludos informales o muletillas. Ve directo al grano.
-- Evita lenguaje gourmet pomposo y adjetivos vacíos ("exquisito", "delicioso", "auténtico", "delicado").
-
-REGLA DE PRECISIÓN OBLIGATORIA (LA MÁS IMPORTANTE):
-- Usa EXCLUSIVAMENTE la información que aparece en el nombre del plato. NO inventes ni asumas datos que no estén ahí escritos: nada de variedad o raza concreta de un ingrediente (ej. "atún de aleta amarilla", "ternera de pasto", "gamba de Huelva"), origen o procedencia, temperatura de servicio (frío/caliente/templado), grado de cocción, tiempos, tamaño de ración, ni acompañamientos no mencionados.
-- Si el nombre ya incluye una técnica culinaria (ej. "tataki", "a la brasa", "al horno Josper", "frito", "carpaccio"), puedes explicar en qué consiste esa técnica EN GENERAL, pero sin afirmar detalles concretos de cómo se ha aplicado a este plato en particular si no están en el nombre.
-- Si no puedes responder una pregunta con datos verificables del propio nombre del plato, cambia la pregunta por otra que sí puedas responder con seguridad (p. ej. qué significa un término del nombre, o una pregunta orientada a alérgenos).
-
-PREGUNTAS LÓGICAS: q1 y q2 deben tratar exclusivamente sobre el significado de términos culinarios ya presentes en el nombre del plato, la técnica de cocinado (explicada de forma genérica) o los ingredientes ya mencionados — nunca sobre datos no verificables como origen, raza, o temperatura de servicio.
-- PROHIBICIÓN ABSOLUTA: NUNCA sugieras maridajes de vino ni menciones bebidas (cerveza, vino, sake, etc.). No incluyas preguntas sobre maridaje.
-
-REGLA ESTRICTA DE ALÉRGENOS (q3 y r3):
-${tieneAlergenos ? `- q3 debe ser una pregunta relacionada con alérgenos o necesidades alimentarias, pero NO uses siempre la misma frase literal: varía la redacción de un plato a otro (ej. "¿Contiene este plato algún alérgeno?", "¿Es apto si tengo alguna alergia alimentaria?", "¿Puedo saber si este plato es seguro para mí?", "¿Qué debo tener en cuenta si tengo restricciones alimentarias?", u otra formulación natural equivalente).
-- r3 debe ser una frase natural y breve (no una lista de códigos en mayúsculas) que mencione TODOS y CADA UNO de los siguientes alérgenos, ni uno más ni uno menos, traducidos a su nombre común en el idioma correspondiente: ${alergenosValor}. 
-- PROHIBIDO en r3: pegar el texto en bruto tal cual viene ("${alergenosValor}"), inventar alérgenos que no estén en esa lista, u omitir alguno de los listados. Es información de seguridad alimentaria: la fidelidad total con la lista es obligatoria, solo cambia la forma de redactarlo (natural, en frase), nunca el contenido.` : `- Si no hay alérgenos registrados, formula q3/r3 sobre otro aspecto culinario verificable del plato (ver regla de precisión).`}
-
-Plato ES: "${nombreEs}"
-
-Genera un JSON estricto sin markdown con esta estructura exacta:
-{
-  "nombre_en": "...",
-  "es": { 
-    "desc": "...", 
-    "q1": "...", 
-    "r1": "...", 
-    "q2": "...", 
-    "r2": "..." 
-    ${tieneAlergenos ? `, "q3": "...", "r3": "..."` : ""} 
-  },
-  "en": { 
-    "desc": "...", 
-    "q1": "...", 
-    "r1": "...", 
-    "q2": "...", 
-    "r2": "..." 
-    ${tieneAlergenos ? `, "q3": "...", "r3": "..."` : ""} 
-  }
-}`;
+                        // Prompt centralizado en prompts.js (window.PROMPTS.piloto)
+                        const promptPiloto = window.PROMPTS.piloto(nombreEs, tieneAlergenos, alergenosValor);
 
                         const callResponse = await fetch(`${window.GEMINI_ENDPOINT_URL || 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent'}?key=${listaClavesAPI[currentKeyIndex]}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: promptPiloto }] }] }) });
                         
