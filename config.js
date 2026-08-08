@@ -78,6 +78,7 @@ const INFO_EXTENDIDA_TAMANO_LOTE = 2; // Lote ultra reducido para descripciones 
 // NUEVO: Exposición explícita en window para que ui.js (script type="module", con su propio
 // scope) pueda leer esta constante de forma fiable, igual que ya se hace con RESTAURANTES_CONFIG.
 window.TRADUCCION_TAMANO_LOTE = TRADUCCION_TAMANO_LOTE;
+window.INFO_EXTENDIDA_TAMANO_LOTE = INFO_EXTENDIDA_TAMANO_LOTE;
 
 
 // =====================================================================
