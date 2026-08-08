@@ -437,8 +437,9 @@ PREGUNTAS LÓGICAS: q1 y q2 deben tratar exclusivamente sobre el significado de 
 - PROHIBICIÓN ABSOLUTA: NUNCA sugieras maridajes de vino ni menciones bebidas (cerveza, vino, sake, etc.). No incluyas preguntas sobre maridaje.
 
 REGLA ESTRICTA DE ALÉRGENOS (q3 y r3):
-${tieneAlergenos ? `- q3 debe preguntar por adaptaciones o necesidades alimentarias (ej: "¿Es posible adaptar este plato a mis necesidades alimentarias?").
-- r3 DEBE contener EXACTAMENTE esta cadena de texto sin resumir, editar ni filtrar: "${alergenosValor}".` : `- Si no hay alérgenos, omite o enfoca q3/r3 a otro aspecto culinario del plato.`}
+${tieneAlergenos ? `- q3 debe ser una pregunta relacionada con alérgenos o necesidades alimentarias, pero NO uses siempre la misma frase literal: varía la redacción de un plato a otro (ej. "¿Contiene este plato algún alérgeno?", "¿Es apto si tengo alguna alergia alimentaria?", "¿Puedo saber si este plato es seguro para mí?", "¿Qué debo tener en cuenta si tengo restricciones alimentarias?", u otra formulación natural equivalente).
+- r3 debe ser una frase natural y breve (no una lista de códigos en mayúsculas) que mencione TODOS y CADA UNO de los siguientes alérgenos, ni uno más ni uno menos, traducidos a su nombre común en el idioma correspondiente: ${alergenosValor}. 
+- PROHIBIDO en r3: pegar el texto en bruto tal cual viene ("${alergenosValor}"), inventar alérgenos que no estén en esa lista, u omitir alguno de los listados. Es información de seguridad alimentaria: la fidelidad total con la lista es obligatoria, solo cambia la forma de redactarlo (natural, en frase), nunca el contenido.` : `- Si no hay alérgenos registrados, formula q3/r3 sobre otro aspecto culinario verificable del plato (ver regla de precisión).`}
 
 Plato ES: "${nombreEs}"
 
@@ -451,7 +452,7 @@ Genera un JSON estricto sin markdown con esta estructura exacta:
     "r1": "...", 
     "q2": "...", 
     "r2": "..." 
-    ${tieneAlergenos ? `, "q3": "¿Es posible adaptar este plato a mis necesidades alimentarias?", "r3": "${alergenosValor}"` : ""} 
+    ${tieneAlergenos ? `, "q3": "...", "r3": "..."` : ""} 
   },
   "en": { 
     "desc": "...", 
@@ -459,7 +460,7 @@ Genera un JSON estricto sin markdown con esta estructura exacta:
     "r1": "...", 
     "q2": "...", 
     "r2": "..." 
-    ${tieneAlergenos ? `, "q3": "Can this dish be adapted to my dietary needs?", "r3": "${alergenosValor}"` : ""} 
+    ${tieneAlergenos ? `, "q3": "...", "r3": "..."` : ""} 
   }
 }`;
 
@@ -487,6 +488,17 @@ Genera un JSON estricto sin markdown con esta estructura exacta:
                         const parsed = JSON.parse(jsonSanitizado);
 
                         if (parsed.nombre_en && parsed.es && parsed.en) {
+                            // Red de seguridad: si hay alérgenos pero el modelo no rellenó q3/r3, no lo dejamos vacío.
+                            if (tieneAlergenos) {
+                                if (!parsed.es.q3 || !parsed.es.r3 || !parsed.es.r3.trim()) {
+                                    parsed.es.q3 = parsed.es.q3 || "¿Contiene este plato algún alérgeno?";
+                                    parsed.es.r3 = `Este plato contiene: ${alergenosValor}.`;
+                                }
+                                if (!parsed.en.q3 || !parsed.en.r3 || !parsed.en.r3.trim()) {
+                                    parsed.en.q3 = parsed.en.q3 || "Does this dish contain any allergens?";
+                                    parsed.en.r3 = `This dish contains: ${alergenosValor}.`;
+                                }
+                            }
                             if (!nombreEnActual) row[indiceInglesBase] = parsed.nombre_en;
                             if (!infoEsActual) row[indiceInfoEs] = JSON.stringify(parsed.es);
                             if (!infoEnActual) row[indiceInfoIngles] = JSON.stringify(parsed.en);
