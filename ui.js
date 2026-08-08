@@ -644,7 +644,12 @@ export const UI = {
 
         UI.log(`[Info] Pendientes: ${pendientesPlatos.length} platos, ${pendientesVinos.length} vinos. Lotes de ${TAMANO_LOTE_INFO}.`);
 
+        let platosCompletados = 0, vinosCompletados = 0, cuotaAgotada = false;
+
         // ---------- Función interna reutilizada para procesar un lote (platos o vinos) ----------
+        // Devuelve 'ok', 'cuota_agotada' (se han probado TODAS las keys disponibles y todas han
+        // dado 429 sin ni un solo éxito de por medio -> seguir insistiendo es inútil, hay que
+        // parar el proceso entero en vez de machacar el resto de lotes contra la misma pared) o 'error'.
         const procesarLoteInfo = async (indicesLote, esVino) => {
             const items = indicesLote.map(i => {
                 const row = activeStateContainer.csvData[i];
@@ -658,6 +663,7 @@ export const UI = {
 
             let satisfecho = false;
             let intentosLote = 0;
+            let limitesConsecutivos = 0; // contador de 429 seguidos SIN ningún éxito entre medio
             const maxIntentosLote = Math.max(3, listaClavesAPI.length * 2);
 
             while (!satisfecho && !procesoDetenido && intentosLote < maxIntentosLote) {
@@ -674,7 +680,12 @@ export const UI = {
 
                     if (respuestaJsonData.error?.code === 429) {
                         currentKeyIndex = (currentKeyIndex + 1) % listaClavesAPI.length;
-                        UI.log(`[Aviso] Límite superado en el lote (filas ${items.map(it => it.fila + 2).join(', ')}). Rotando Key...`);
+                        limitesConsecutivos++;
+                        if (limitesConsecutivos >= listaClavesAPI.length) {
+                            UI.log(`[Error Crítico] Cuota de Gemini agotada en TODAS las keys disponibles (${listaClavesAPI.length}). Deteniendo el proceso para no malgastar más peticiones.`);
+                            return 'cuota_agotada';
+                        }
+                        UI.log(`[Aviso] Límite superado en el lote (filas ${items.map(it => it.fila + 2).join(', ')}). Rotando Key (${limitesConsecutivos}/${listaClavesAPI.length})...`);
                         await new Promise(r => setTimeout(r, 4000));
                         intentosLote++;
                         continue;
@@ -686,6 +697,7 @@ export const UI = {
                     const jsonSanitizado = textoLimpioIA.replace(/```json/g, '').replace(/```/g, '').trim();
                     const resultadoLote = JSON.parse(jsonSanitizado);
 
+                    let algunoAplicado = false;
                     items.forEach((it, idx) => {
                         const parsed = resultadoLote[String(idx)] || resultadoLote[idx];
                         if (!parsed || !parsed.es || !parsed.en) return;
@@ -709,44 +721,58 @@ export const UI = {
                         if (!nombreEnActual && parsed.nombre_en) row[indiceInglesBase] = parsed.nombre_en;
                         if (!infoEsActual) row[indiceInfoEs] = JSON.stringify(parsed.es);
                         if (!infoEnActual) row[indiceInfoIngles] = JSON.stringify(parsed.en);
+                        algunoAplicado = true;
+                        if (esVino) vinosCompletados++; else platosCompletados++;
                     });
                     satisfecho = true;
+                    return algunoAplicado ? 'ok' : 'error';
                 } catch (err) {
+                    limitesConsecutivos = 0; // un error que no es 429 rompe la racha de "cuota agotada"
                     UI.log(`[Error ${esVino ? 'Vino' : 'Piloto'} Lote] Filas ${items.map(it => it.fila + 2).join(', ')}: ${err.message}`);
                     await new Promise(r => setTimeout(r, 3000));
                     currentKeyIndex = (currentKeyIndex + 1) % listaClavesAPI.length;
                     intentosLote++;
                 }
             }
+            return satisfecho ? 'ok' : 'error';
         };
 
         // ---------- Fase 1a: platos ----------
-        for (let lote = 0; lote < pendientesPlatos.length; lote += TAMANO_LOTE_INFO) {
+        for (let lote = 0; lote < pendientesPlatos.length && !cuotaAgotada; lote += TAMANO_LOTE_INFO) {
             if (procesoDetenido) break;
             while (procesoPausado) await new Promise(resolve => setTimeout(resolve, 500));
 
             const indicesLote = pendientesPlatos.slice(lote, lote + TAMANO_LOTE_INFO);
             UI.log(`[Piloto ES/EN - Lote ${Math.floor(lote / TAMANO_LOTE_INFO) + 1}/${Math.ceil(pendientesPlatos.length / TAMANO_LOTE_INFO)}] Procesando filas ${indicesLote.map(i => i + 2).join(', ')}...`);
-            await procesarLoteInfo(indicesLote, false);
+            const resultado = await procesarLoteInfo(indicesLote, false);
+            if (resultado === 'cuota_agotada') { cuotaAgotada = true; break; }
 
             if (typeof UI.renderTable === 'function') UI.renderTable();
             await new Promise(r => setTimeout(r, 1000));
         }
 
         // ---------- Fase 1b: vinos ----------
-        for (let lote = 0; lote < pendientesVinos.length; lote += TAMANO_LOTE_INFO) {
+        for (let lote = 0; lote < pendientesVinos.length && !cuotaAgotada; lote += TAMANO_LOTE_INFO) {
             if (procesoDetenido) break;
             while (procesoPausado) await new Promise(resolve => setTimeout(resolve, 500));
 
             const indicesLote = pendientesVinos.slice(lote, lote + TAMANO_LOTE_INFO);
             UI.log(`[Vino - Lote ${Math.floor(lote / TAMANO_LOTE_INFO) + 1}/${Math.ceil(pendientesVinos.length / TAMANO_LOTE_INFO)}] Procesando filas ${indicesLote.map(i => i + 2).join(', ')}...`);
-            await procesarLoteInfo(indicesLote, true);
+            const resultado = await procesarLoteInfo(indicesLote, true);
+            if (resultado === 'cuota_agotada') { cuotaAgotada = true; break; }
 
             if (typeof UI.renderTable === 'function') UI.renderTable();
             await new Promise(r => setTimeout(r, 1000));
         }
 
-        UI.log("[FIN] Proceso finalizado. Contenido generado con éxito sin referencias a vinos.");
+        const totalPendiente = (pendientesPlatos.length - platosCompletados) + (pendientesVinos.length - vinosCompletados);
+        if (cuotaAgotada) {
+            UI.log(`[FIN - CUOTA AGOTADA] Se detuvo el proceso por falta de cuota en la API. Completados: ${platosCompletados} platos y ${vinosCompletados} vinos. Pendientes: ${totalPendiente}. Vuelve a pulsar "Iniciar Traducción" más tarde para continuar solo con lo que falta.`);
+        } else if (totalPendiente > 0) {
+            UI.log(`[FIN - INCOMPLETO] Completados: ${platosCompletados} platos y ${vinosCompletados} vinos. Pendientes: ${totalPendiente} (revisa los errores anteriores). Puedes volver a pulsar "Iniciar Traducción" para reintentar solo lo pendiente.`);
+        } else {
+            UI.log(`[FIN] Proceso finalizado con éxito. Completados: ${platosCompletados} platos y ${vinosCompletados} vinos.`);
+        }
     },
 
     // ==========================================
@@ -814,8 +840,10 @@ export const UI = {
 
         UI.log(`[Paso 2] Traduciendo nombres al resto de idiomas (${idiomasObjetivo.length} idiomas) en bloques de ${TAMANO_LOTE}. Platos pendientes: ${filasPendientes.length}.`);
 
+        let platosCompletados = 0, cuotaAgotada = false;
+
         for (let lote = 0; lote < filasPendientes.length; lote += TAMANO_LOTE) {
-            if (procesoDetenido) break;
+            if (procesoDetenido || cuotaAgotada) break;
             while (procesoPausado) await new Promise(resolve => setTimeout(resolve, 500));
 
             const indicesLote = filasPendientes.slice(lote, lote + TAMANO_LOTE);
@@ -846,6 +874,7 @@ export const UI = {
 
             let satisfecho = false;
             let intentosLote = 0;
+            let limitesConsecutivos = 0; // contador de 429 seguidos SIN ningún éxito entre medio
             const maxIntentosLote = Math.max(3, listaClavesAPI.length * 2);
 
             while (!satisfecho && !procesoDetenido && intentosLote < maxIntentosLote) {
@@ -862,7 +891,13 @@ export const UI = {
 
                     if (respuestaJsonData.error?.code === 429) {
                         currentKeyIndex = (currentKeyIndex + 1) % listaClavesAPI.length;
-                        UI.log(`[Aviso] Límite superado en el lote (filas ${itemsLote.map(it => it.fila + 2).join(', ')}). Rotando Key...`);
+                        limitesConsecutivos++;
+                        if (limitesConsecutivos >= listaClavesAPI.length) {
+                            UI.log(`[Error Crítico] Cuota de Gemini agotada en TODAS las keys disponibles (${listaClavesAPI.length}). Deteniendo el proceso para no malgastar más peticiones.`);
+                            cuotaAgotada = true;
+                            break;
+                        }
+                        UI.log(`[Aviso] Límite superado en el lote (filas ${itemsLote.map(it => it.fila + 2).join(', ')}). Rotando Key (${limitesConsecutivos}/${listaClavesAPI.length})...`);
                         await new Promise(r => setTimeout(r, 4000));
                         intentosLote++;
                         continue;
@@ -878,6 +913,7 @@ export const UI = {
                     itemsLote.forEach((it, idx) => {
                         const traducciones = traduccionesLote[String(idx)] || traduccionesLote[idx];
                         if (!traducciones) return;
+                        let algunoAplicado = false;
                         idiomasObjetivo.forEach(l => {
                             if (indicesObjetivo[l] === -1) return;
                             if ((it.row[indicesObjetivo[l]] || "").trim()) return; // ya tenía valor: no lo tocamos
@@ -888,10 +924,13 @@ export const UI = {
                             let nombreFinal = desglosadoTraduccion.nombre;
                             if (it.esVino && typeof window.formatWineName === 'function') nombreFinal = window.formatWineName(nombreFinal);
                             it.row[indicesObjetivo[l]] = desglosadoTraduccion.uvas ? `${nombreFinal} // ${desglosadoTraduccion.uvas}` : nombreFinal;
+                            algunoAplicado = true;
                         });
+                        if (algunoAplicado) platosCompletados++;
                     });
                     satisfecho = true;
                 } catch (err) {
+                    limitesConsecutivos = 0; // un error que no es 429 rompe la racha de "cuota agotada"
                     UI.log(`[Error Traducción Nombres] Lote (filas ${itemsLote.map(it => it.fila + 2).join(', ')}): ${err.message}`);
                     await new Promise(r => setTimeout(r, 3000));
                     currentKeyIndex = (currentKeyIndex + 1) % listaClavesAPI.length;
@@ -899,11 +938,19 @@ export const UI = {
                 }
             }
 
+            if (cuotaAgotada) break;
             if (typeof UI.renderTable === 'function') UI.renderTable();
             await new Promise(r => setTimeout(r, 1000));
         }
 
-        UI.log("[FIN] Traducción de nombres al resto de idiomas finalizada.");
+        const totalPendiente = filasPendientes.length - platosCompletados;
+        if (cuotaAgotada) {
+            UI.log(`[FIN - CUOTA AGOTADA] Se detuvo el proceso por falta de cuota en la API. Completados: ${platosCompletados} platos. Pendientes: ${totalPendiente}. Vuelve a pulsar el botón más tarde para continuar solo con lo que falta.`);
+        } else if (totalPendiente > 0) {
+            UI.log(`[FIN - INCOMPLETO] Completados: ${platosCompletados} platos. Pendientes: ${totalPendiente} (revisa los errores anteriores). Puedes volver a pulsar el botón para reintentar solo lo pendiente.`);
+        } else {
+            UI.log(`[FIN] Traducción de nombres finalizada con éxito. Completados: ${platosCompletados} platos.`);
+        }
     }
 };
 
