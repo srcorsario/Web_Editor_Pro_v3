@@ -40,6 +40,21 @@ window.PROMPTS = {
     Usa los códigos ISO como claves. Ejemplo de formato de respuesta esperado: {"de": "Nombre // Uva", "fr": "Nom Français"}`,
 
     // ---------------------------------------------------------
+    // Usado en ui.js > iniciarTraduccionNombresPorLotes() [Fase 2: traducción de nombres en bloque]
+    // Traduce varios platos/vinos EN UNA SOLA LLAMADA a la IA (ahorra tokens de instrucciones
+    // repetidas y reduce el número de peticiones frente a la cuota de la API).
+    // ---------------------------------------------------------
+    autoTraduccionRestoLote: (itemsArray, idiomasObjetivo) => `Actúa como un traductor experto de menús de restaurantes. Te paso una lista de ${itemsArray.length} elementos en español (con su texto en inglés de referencia cuando esté disponible). Traduce CADA UNO de ellos a los siguientes idiomas (usa los códigos ISO proporcionados): ${idiomasObjetivo.join(', ')}.
+
+Para los elementos marcados como [VINO]: el separador "//" distingue el nombre del vino de la variedad de uva o detalles. Debes traducir ambas partes y mantener el separador "//" en el resultado. El nombre del vino debe ir en MAYÚSCULAS, pero el contenido entre paréntesis (ej: EL COTO (D.O. Rioja)) debe mantener su formato original en todos los idiomas.
+
+Elementos a traducir (el número al inicio de cada línea es su índice, empezando en 0):
+${itemsArray.map((it, idx) => `${idx}. ${it.esVino ? '[VINO] ' : ''}ES: "${it.textoCompletoEs}"${it.textoCompletoEn ? ` | EN: "${it.textoCompletoEn}"` : ''}`).join('\n')}
+
+Responde EXCLUSIVAMENTE con un objeto JSON válido, sin texto fuera del JSON ni markdown. La clave de primer nivel debe ser el índice numérico del elemento tal cual aparece arriba (como string), y dentro de cada uno, usa los códigos ISO en MAYÚSCULAS como claves.
+Estructura exacta esperada (ejemplo con 2 elementos y 2 idiomas): {"0": {"DE": "Nombre // Uva", "FR": "Nom // Cépage"}, "1": {"DE": "...", "FR": "..."}}`,
+
+    // ---------------------------------------------------------
     // Usado en ui.js > iniciarTraduccionPorLotes() [Flujo Piloto ES/EN]
     // Genera: nombre en inglés (si falta) + descripción y 3 preguntas/
     // respuestas en ES y EN. Sin maridajes de vino. Alérgenos blindados
