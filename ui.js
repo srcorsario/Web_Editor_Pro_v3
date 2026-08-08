@@ -422,12 +422,18 @@ export const UI = {
                 while (!satisfechoPiloto && !procesoDetenido) {
                     try {
                         // PROMPT BLINDADO SIN MARIDAJE DE VINOS
-                        const promptPiloto = `Actúa como un responsable de carta de restaurante de alta gama. Define el siguiente plato de forma clara, natural, concisa y profesional. 
+                        const promptPiloto = `Actúa como un responsable de carta de restaurante de alta gama. Define el siguiente plato de forma clara, natural, concisa y profesional, basándote ÚNICAMENTE en el nombre del plato proporcionado. 
 
 REGLAS DE ESTILO OBLIGATORIAS:
 - CERO saludos informales o muletillas. Ve directo al grano.
-- Evita lenguaje gourmet pomposo.
-- PREGUNTAS LÓGICAS: q1 y q2 deben tratar exclusivamente sobre métodos de cocinado, texturas, origen de los ingredientes o temperaturas de servicio.
+- Evita lenguaje gourmet pomposo y adjetivos vacíos ("exquisito", "delicioso", "auténtico", "delicado").
+
+REGLA DE PRECISIÓN OBLIGATORIA (LA MÁS IMPORTANTE):
+- Usa EXCLUSIVAMENTE la información que aparece en el nombre del plato. NO inventes ni asumas datos que no estén ahí escritos: nada de variedad o raza concreta de un ingrediente (ej. "atún de aleta amarilla", "ternera de pasto", "gamba de Huelva"), origen o procedencia, temperatura de servicio (frío/caliente/templado), grado de cocción, tiempos, tamaño de ración, ni acompañamientos no mencionados.
+- Si el nombre ya incluye una técnica culinaria (ej. "tataki", "a la brasa", "al horno Josper", "frito", "carpaccio"), puedes explicar en qué consiste esa técnica EN GENERAL, pero sin afirmar detalles concretos de cómo se ha aplicado a este plato en particular si no están en el nombre.
+- Si no puedes responder una pregunta con datos verificables del propio nombre del plato, cambia la pregunta por otra que sí puedas responder con seguridad (p. ej. qué significa un término del nombre, o una pregunta orientada a alérgenos).
+
+PREGUNTAS LÓGICAS: q1 y q2 deben tratar exclusivamente sobre el significado de términos culinarios ya presentes en el nombre del plato, la técnica de cocinado (explicada de forma genérica) o los ingredientes ya mencionados — nunca sobre datos no verificables como origen, raza, o temperatura de servicio.
 - PROHIBICIÓN ABSOLUTA: NUNCA sugieras maridajes de vino ni menciones bebidas (cerveza, vino, sake, etc.). No incluyas preguntas sobre maridaje.
 
 REGLA ESTRICTA DE ALÉRGENOS (q3 y r3):
