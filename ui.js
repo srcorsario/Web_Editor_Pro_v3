@@ -512,6 +512,8 @@ export const UI = {
 
         const btnIniciar = document.getElementById('btnIniciar');
         if (btnIniciar) btnIniciar.onclick = () => UI.iniciarTraduccionPorLotes(stateContainer);
+        const btnIniciarNombres = document.getElementById('btnIniciarNombres');
+        if (btnIniciarNombres) btnIniciarNombres.onclick = () => UI.iniciarTraduccionNombresPorLotes(stateContainer);
         const btnPausa = document.getElementById('btnPausa');
         if (btnPausa) btnPausa.onclick = () => { procesoPausado = !procesoPausado; btnPausa.innerText = procesoPausado ? "REANUDAR" : "PAUSAR"; UI.log(procesoPausado ? "[Info] Pausado." : "[Info] Reanudando..."); };
         const btnCancelar = document.getElementById('btnCancelar');
@@ -698,6 +700,154 @@ export const UI = {
         }
 
         UI.log("[FIN] Proceso finalizado. Contenido generado con éxito sin referencias a vinos.");
+    },
+
+    // ==========================================
+    // NUEVO: FASE 2 - TRADUCCIÓN AUTOMÁTICA DE NOMBRES AL RESTO DE IDIOMAS
+    // Reutiliza el mismo prompt (window.PROMPTS.autoTraduccionResto) y la misma
+    // lógica que ya usaba el botón manual de un solo plato (ejecutarTraduccionAutomatica
+    // en app.js), pero recorriendo TODOS los platos pendientes en bloques
+    // (tamaño configurable vía TRADUCCION_TAMANO_LOTE en config.js).
+    // ==========================================
+    iniciarTraduccionNombresPorLotes: async (stateContainerParam) => {
+        procesoDetenido = false; procesoPausado = false;
+        const listaClavesAPI = (typeof getKeys === 'function') ? getKeys() : [];
+        if (listaClavesAPI.length === 0) return UI.log("[Error] Introduzca al menos una API Key.");
+        const activeStateContainer = stateContainerParam || stateContainer;
+        if (!activeStateContainer || !activeStateContainer.headers || !activeStateContainer.csvData) return UI.log("[Error] Estructura de datos vacía.");
+
+        UI.log("[Info] Asegurando estructura de columnas en memoria...");
+        asegurarColumnasEstructura(activeStateContainer);
+
+        const selectorInicio = document.getElementById('rangoInicio');
+        const selectorFin = document.getElementById('rangoFin');
+        const rangoInicio = selectorInicio ? (parseInt(selectorInicio.value) - 2 || 0) : 0;
+        const rangoFin = selectorFin ? (parseInt(selectorFin.value) - 1 || activeStateContainer.csvData.length) : activeStateContainer.csvData.length;
+
+        const idiomasBase = (window.IDIOMAS_ORDEN && window.IDIOMAS_ORDEN.length) ? window.IDIOMAS_ORDEN : Object.keys(window.IDIOMAS_CONFIG || {}).map(l => l.toLowerCase());
+        const idiomasObjetivo = idiomasBase.filter(l => l !== 'es' && l !== 'en');
+
+        const indiceCastellanoBase = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === 'NOMBRE_ES');
+        const indiceInglesBase = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === 'NOMBRE_EN');
+        const indiceId = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === 'ID');
+        const indiceCarpeta = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === 'CARPETA');
+
+        if (indiceCastellanoBase === -1 || indiceInglesBase === -1) {
+            return UI.log("[Error Crítico] Faltan columnas base obligatorias (NOMBRE_ES o NOMBRE_EN).");
+        }
+
+        // Índice de la columna NOMBRE_<idioma> de cada idioma objetivo.
+        const indicesObjetivo = {};
+        idiomasObjetivo.forEach(l => {
+            indicesObjetivo[l] = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === `NOMBRE_${l.toUpperCase()}`);
+        });
+
+        const techoLimiteEvaluacion = Math.min(rangoFin, activeStateContainer.csvData.length);
+        const CARPETAS_SIN_IA = ['cafe', 'refrescos', 'cerveza'];
+        const TAMANO_LOTE = (typeof window.TRADUCCION_TAMANO_LOTE === 'number' && window.TRADUCCION_TAMANO_LOTE > 0) ? window.TRADUCCION_TAMANO_LOTE : 3;
+
+        // Construir la lista de filas a las que les falta la traducción de al menos un idioma objetivo.
+        const filasPendientes = [];
+        for (let i = Math.max(0, rangoInicio); i < techoLimiteEvaluacion; i++) {
+            const row = activeStateContainer.csvData[i];
+            while (row.length < activeStateContainer.headers.length) row.push("");
+
+            const idValor = indiceId !== -1 ? parseInt(row[indiceId]) : NaN;
+            const carpetaValor = indiceCarpeta !== -1 ? (row[indiceCarpeta] || "").trim().toLowerCase() : "";
+            const esCabeceraCategoria = !isNaN(idValor) && idValor >= 1 && idValor <= 12;
+            const esBebidaSimple = CARPETAS_SIN_IA.includes(carpetaValor);
+            if (esCabeceraCategoria || esBebidaSimple) continue;
+
+            const nombreEs = row[indiceCastellanoBase] || "";
+            if (!nombreEs) continue;
+
+            const faltaAlgunIdioma = idiomasObjetivo.some(l => indicesObjetivo[l] !== -1 && !(row[indicesObjetivo[l]] || "").trim());
+            if (faltaAlgunIdioma) filasPendientes.push(i);
+        }
+
+        UI.log(`[Paso 2] Traduciendo nombres al resto de idiomas (${idiomasObjetivo.length} idiomas) en bloques de ${TAMANO_LOTE}. Platos pendientes: ${filasPendientes.length}.`);
+
+        for (let lote = 0; lote < filasPendientes.length; lote += TAMANO_LOTE) {
+            if (procesoDetenido) break;
+            while (procesoPausado) await new Promise(resolve => setTimeout(resolve, 500));
+
+            const indicesLote = filasPendientes.slice(lote, lote + TAMANO_LOTE);
+            UI.log(`[Lote ${Math.floor(lote / TAMANO_LOTE) + 1}/${Math.ceil(filasPendientes.length / TAMANO_LOTE)}] Procesando filas ${indicesLote.map(i => i + 2).join(', ')}...`);
+
+            await Promise.all(indicesLote.map(async (i) => {
+                if (procesoDetenido) return;
+                const row = activeStateContainer.csvData[i];
+                const nombreEs = row[indiceCastellanoBase] || "";
+                const nombreEn = row[indiceInglesBase] || "";
+                const carpetaValor = indiceCarpeta !== -1 ? (row[indiceCarpeta] || "").trim().toLowerCase() : "";
+                const esVino = carpetaValor === 'vinos';
+
+                const desglosadoEs = (typeof window.desglosarNombre === 'function') ? window.desglosarNombre(nombreEs) : { nombre: nombreEs, uvas: "" };
+                const desglosadoEn = (typeof window.desglosarNombre === 'function') ? window.desglosarNombre(nombreEn) : { nombre: nombreEn, uvas: "" };
+                const textoCompletoEs = (desglosadoEs.nombre + (desglosadoEs.uvas ? ' // ' + desglosadoEs.uvas : '')).replace(/"/g, "'");
+                const textoCompletoEn = (desglosadoEn.nombre + (desglosadoEn.uvas ? ' // ' + desglosadoEn.uvas : '')).replace(/"/g, "'");
+
+                const idiomasFaltantes = idiomasObjetivo.filter(l => indicesObjetivo[l] !== -1 && !(row[indicesObjetivo[l]] || "").trim()).map(l => l.toUpperCase());
+                if (idiomasFaltantes.length === 0) return;
+
+                // Prompt centralizado en prompts.js (window.PROMPTS.autoTraduccionResto) - el mismo que usa el botón manual de un solo plato.
+                const promptTraduccion = window.PROMPTS.autoTraduccionResto(textoCompletoEs, textoCompletoEn, esVino, idiomasFaltantes);
+
+                let satisfecho = false;
+                let intentosFila = 0;
+                const maxIntentosFila = Math.max(3, listaClavesAPI.length * 2);
+
+                while (!satisfecho && !procesoDetenido && intentosFila < maxIntentosFila) {
+                    try {
+                        const callResponse = await fetch(`${window.GEMINI_ENDPOINT_URL || 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent'}?key=${listaClavesAPI[currentKeyIndex]}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: promptTraduccion }] }] }) });
+
+                        const textResponse = await callResponse.text();
+                        let respuestaJsonData;
+                        try {
+                            respuestaJsonData = JSON.parse(textResponse);
+                        } catch (e) {
+                            throw new Error("La API devolvió HTML o texto plano (Posible 403 o error de cuota).");
+                        }
+
+                        if (respuestaJsonData.error?.code === 429) {
+                            currentKeyIndex = (currentKeyIndex + 1) % listaClavesAPI.length;
+                            UI.log(`[Aviso] Límite superado en fila ${i + 2}. Rotando Key...`);
+                            await new Promise(r => setTimeout(r, 4000));
+                            intentosFila++;
+                            continue;
+                        }
+
+                        const textoLimpioIA = respuestaJsonData.candidates?.[0]?.content?.parts?.[0]?.text;
+                        if (!textoLimpioIA) throw new Error("La API no devolvió contenido.");
+
+                        const traducciones = (typeof window.extraerJSON === 'function')
+                            ? window.extraerJSON(textoLimpioIA)
+                            : JSON.parse(textoLimpioIA.replace(/```json/g, '').replace(/```/g, '').trim());
+
+                        idiomasFaltantes.forEach(lUpper => {
+                            const l = lUpper.toLowerCase();
+                            if (traducciones[lUpper] && indicesObjetivo[l] !== -1) {
+                                const desglosadoTraduccion = (typeof window.desglosarNombre === 'function') ? window.desglosarNombre(traducciones[lUpper]) : { nombre: traducciones[lUpper], uvas: "" };
+                                let nombreFinal = desglosadoTraduccion.nombre;
+                                if (esVino && typeof window.formatWineName === 'function') nombreFinal = window.formatWineName(nombreFinal);
+                                row[indicesObjetivo[l]] = desglosadoTraduccion.uvas ? `${nombreFinal} // ${desglosadoTraduccion.uvas}` : nombreFinal;
+                            }
+                        });
+                        satisfecho = true;
+                    } catch (err) {
+                        UI.log(`[Error Traducción Nombres] Fila ${i + 2}: ${err.message}`);
+                        await new Promise(r => setTimeout(r, 3000));
+                        currentKeyIndex = (currentKeyIndex + 1) % listaClavesAPI.length;
+                        intentosFila++;
+                    }
+                }
+            }));
+
+            if (typeof UI.renderTable === 'function') UI.renderTable();
+            await new Promise(r => setTimeout(r, 1000));
+        }
+
+        UI.log("[FIN] Traducción de nombres al resto de idiomas finalizada.");
     }
 };
 
