@@ -30,6 +30,39 @@ let esNuevoPlato = false;
 let datosTempNuevo = null; 
 let opcionesENActuales = [];
 
+// CORREGIDO: esta constante faltaba por completo (no estaba definida en ningún
+// archivo), lo que hacía que abrirEditor() lanzara "ALERGENOS_LISTA is not
+// defined" y se detuviera a mitad de camino — por eso el modal nunca llegaba
+// a mostrarse ni con la rueda ⚙️ ni al crear un plato nuevo. Los nombres
+// coinciden exactamente con los que ya usas en la columna Alergenos_Cod y con
+// los 16 iconos que ya tienes en imagenes/alergenos/.
+const ALERGENOS_LISTA = [
+    "🌾 GLUTEN",
+    "🦐 CRUSTACEO",
+    "🥚 HUEVO",
+    "🐟 PESCADO",
+    "🥜 CACAHUETE",
+    "🫘 SOJA",
+    "🥛 LACTOSA",
+    "🌰 FRUTOSCASCARA",
+    "🥬 APIO",
+    "🟡 MOSTAZA",
+    "◽ SESAMO",
+    "🧪 SULFITOS",
+    "🫛 ALTRAMUCES",
+    "🐚 MOLUSCO",
+    "🥦 VEGETARIANO",
+    "🌱 VEGANO"
+];
+
+// CORREGIDO: esta constante también faltaba por completo (no estaba definida
+// en ningún archivo), lo que rompía abrirEditor() igual que ALERGENOS_LISTA
+// en cuanto se abría un plato de croquetas (ID 12100-12299).
+const CROQUETAS_CONFIG = {
+    carne: ["Gambas al ajillo", "Cecina de vaca", "Rabo de toro", "Pollo", "Jamón serrano"],
+    vegetariana: ["Setas", "Coliflor con curry"]
+};
+
 function getWebAppUrlSafe() {
     const modoActual = window.currentMode || 'restaurante001';
     if (typeof window.getWebAppUrl === 'function') return window.getWebAppUrl(modoActual);
