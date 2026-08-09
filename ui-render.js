@@ -14,11 +14,14 @@ export const UIRender = {
         if (!container) return;
         let idiomas = window.IDIOMAS_CONFIG || { "EN": "🇬🇧 English", "KO": "🇰🇷 한국어" };
         if (!idiomas.hasOwnProperty("KO")) idiomas["KO"] = "🇰🇷 한국어";
-        let html = '<div class="flex flex-wrap gap-1.5">';
+        // CORREGIDO: rejilla de 2 columnas de ancho igual en vez de flex-wrap — con
+        // flex-wrap cada botón medía lo que ocupaba su texto, así que las filas
+        // quedaban descuadradas entre sí; con grid todos miden lo mismo y alinean.
+        let html = '<div class="grid grid-cols-2 gap-1.5">';
         for (const [code, name] of Object.entries(idiomas)) {
             if (code === 'ES') continue;
             const isActive = code === langState.activeLang ? 'bg-amber-600 text-white shadow-md' : 'bg-slate-700 text-slate-300 hover:bg-slate-600';
-            html += `<button class="lang-btn text-xs py-1.5 px-2.5 rounded font-semibold transition-all ${isActive}" data-lang="${code}">${name}</button>`;
+            html += `<button class="lang-btn text-xs py-1.5 px-2.5 rounded font-semibold transition-all text-left truncate ${isActive}" data-lang="${code}">${name}</button>`;
         }
         html += '</div>';
         container.innerHTML = html;
