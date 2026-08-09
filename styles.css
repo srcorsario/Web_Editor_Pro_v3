@@ -15,7 +15,7 @@ body {
     color: var(--texto); 
 }
 
-.container { width: 100%; max-width: 1200px; margin: 0 auto; }
+.container { width: 100%; max-width: 1800px; margin: 0 auto; }
 
 /* MODIFICADO: Header adaptado para logos laterales (Tamaño duplicado) */
 .header-admin { 
