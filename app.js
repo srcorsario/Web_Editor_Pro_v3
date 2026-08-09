@@ -357,6 +357,12 @@ function abrirEditor(id, esNuevo = false) {
     
     // NUEVO: Llamada independiente a la función de requisitos
     comprobarRequisitosTraduccion();
+
+    // CORREGIDO: faltaba mostrar el modal — antes se rellenaban los campos
+    // pero el editor se quedaba oculto (display:none por CSS), así que tanto
+    // la rueda de un plato existente como "Añadir Nuevo Plato" no hacían nada visible.
+    const modalEditor = document.getElementById('modal-editor');
+    if (modalEditor) modalEditor.style.display = 'block';
 }
 
 function actualizarNombreCroquetas() { 
