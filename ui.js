@@ -767,9 +767,9 @@ export const UI = {
 
         const totalPendiente = (pendientesPlatos.length - platosCompletados) + (pendientesVinos.length - vinosCompletados);
         if (cuotaAgotada) {
-            UI.log(`[FIN - CUOTA AGOTADA] Se detuvo el proceso por falta de cuota en la API. Completados: ${platosCompletados} platos y ${vinosCompletados} vinos. Pendientes: ${totalPendiente}. Vuelve a pulsar "Iniciar Traducción" más tarde para continuar solo con lo que falta.`);
+            UI.log(`[FIN - CUOTA AGOTADA] Se detuvo el proceso por falta de cuota en la API. Completados: ${platosCompletados} platos y ${vinosCompletados} vinos. Pendientes: ${totalPendiente}. Vuelve a pulsar "Generar Info Platos ES/EN" más tarde para continuar solo con lo que falta.`);
         } else if (totalPendiente > 0) {
-            UI.log(`[FIN - INCOMPLETO] Completados: ${platosCompletados} platos y ${vinosCompletados} vinos. Pendientes: ${totalPendiente} (revisa los errores anteriores). Puedes volver a pulsar "Iniciar Traducción" para reintentar solo lo pendiente.`);
+            UI.log(`[FIN - INCOMPLETO] Completados: ${platosCompletados} platos y ${vinosCompletados} vinos. Pendientes: ${totalPendiente} (revisa los errores anteriores). Puedes volver a pulsar "Generar Info Platos ES/EN" para reintentar solo lo pendiente.`);
         } else {
             UI.log(`[FIN] Proceso finalizado con éxito. Completados: ${platosCompletados} platos y ${vinosCompletados} vinos.`);
         }
