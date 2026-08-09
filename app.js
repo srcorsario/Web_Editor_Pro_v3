@@ -304,7 +304,7 @@ function abrirEditor(id, esNuevo = false) {
     }
 
     const dataEn = desglosarNombre(p['en'] || "");
-    const editEn = document.getElementById('en');
+    const editEn = document.getElementById('edit-en');
     if (editEn) editEn.value = esVino ? formatWineName(dataEn.nombre) : dataEn.nombre;
     
     const inputEnUvas = document.getElementById('edit-en-uvas');
@@ -421,7 +421,7 @@ function actualizarNombreCroquetas() {
 
 function comprobarRequisitosTraduccion() { 
     const editEs = document.getElementById('edit-es'); 
-    const editEn = document.getElementById('en'); 
+    const editEn = document.getElementById('edit-en'); 
     const btnAuto = document.getElementById('btn-autotraducir'); 
 
     const esValido = editEs && editEn && editEs.value.trim() !== "" && editEn.value.trim() !== ""; 
@@ -555,7 +555,7 @@ async function ejecutarTraduccionAutomatica() {
     btn.disabled = true; 
     
     const nombreEs = document.getElementById('edit-es').value.trim(); 
-    const nombreEn = document.getElementById('en').value.trim(); 
+    const nombreEn = document.getElementById('edit-en').value.trim(); 
     const esVino = (platoEditandoId >= 13000); 
     const uvasEs = esVino ? document.getElementById('edit-es-uvas').value.trim() : ""; 
     const uvasEn = esVino ? document.getElementById('edit-en-uvas').value.trim() : ""; 
