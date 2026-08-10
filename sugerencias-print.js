@@ -255,7 +255,61 @@
         if (!contenedor) return;
         const styleContent = document.getElementById('sugerencias-print-styles').innerHTML;
         const pWin = window.open('', '_blank', 'width=800,height=1000');
-        pWin.document.write(`<html><head><title>Sugerencias ${getModoAlias(modo)}</title><style>${styleContent}</style></head><body><div class="sugerencias-panel">${contenedor.innerHTML}</div><script>setTimeout(() => { window.print(); window.close(); }, 500);<\/script></body></html>`);
+
+        // NUEVO: script de ajuste automático a una sola hoja A4. Se ejecuta en la ventana de
+        // impresión (que ya tiene el tamaño real de página, 190mm x 277mm) justo antes de
+        // imprimir. Orden de recortes, cada uno solo si el anterior no ha bastado:
+        //   1) Quitar la imagen del vino (ID 12990)
+        //   2) Quitar el QR
+        //   3) Reducir tipografía e interlineado, en pasos pequeños, hasta un mínimo razonable
+        const scriptAjuste = `
+            function ajustarAUnaPagina() {
+                var panel = document.querySelector('.sugerencias-panel');
+                if (!panel) return;
+
+                var probe = document.createElement('div');
+                probe.style.cssText = 'position:absolute; visibility:hidden; height:277mm; width:0;';
+                document.body.appendChild(probe);
+                var maxAlturaPx = probe.getBoundingClientRect().height;
+                document.body.removeChild(probe);
+
+                function cabe() { return panel.scrollHeight <= (maxAlturaPx + 2); }
+                if (cabe()) return;
+
+                // Paso 1: quitar imagen del vino
+                var vinoImg = panel.querySelector('.sugerencias-vino-imagen-wrapper');
+                if (vinoImg) vinoImg.style.setProperty('display', 'none', 'important');
+                if (cabe()) return;
+
+                // Paso 2: quitar el QR (bloque completo, código + selectores ya ocultos en impresión)
+                var qrCont = panel.querySelector('.sugerencias-qr-container');
+                if (qrCont) qrCont.style.setProperty('display', 'none', 'important');
+                if (cabe()) return;
+
+                // Paso 3: reducir tipografía (afecta a todo lo medido en rem) e interlineado/
+                // separaciones entre platos y secciones, en pasos pequeños y solo lo necesario.
+                var factor = 1;
+                var pasos = 0;
+                var MAX_PASOS = 12; // tope de seguridad (factor mínimo ~ 1 - 12*0.03 = 0.64)
+                while (!cabe() && pasos < MAX_PASOS) {
+                    factor -= 0.03;
+                    pasos++;
+                    document.documentElement.style.setProperty('font-size', (factor * 100) + '%', 'important');
+                    panel.querySelectorAll('.sugerencias-plato').forEach(function(el) {
+                        el.style.setProperty('margin-bottom', (5 * factor) + 'px', 'important');
+                    });
+                    panel.querySelectorAll('.sugerencias-seccion').forEach(function(el) {
+                        el.style.setProperty('margin-bottom', (12 * factor) + 'px', 'important');
+                    });
+                    panel.querySelectorAll('.sugerencias-seccion-titulo').forEach(function(el) {
+                        el.style.setProperty('margin-bottom', (8 * factor) + 'px', 'important');
+                    });
+                }
+            }
+            ajustarAUnaPagina();
+        `;
+
+        pWin.document.write(`<html><head><title>Sugerencias ${getModoAlias(modo)}</title><style>${styleContent}</style></head><body><div class="sugerencias-panel">${contenedor.innerHTML}</div><script>setTimeout(() => { ${scriptAjuste} setTimeout(() => { window.print(); window.close(); }, 150); }, 500);<\/script></body></html>`);
         pWin.document.close();
     };
 })();
