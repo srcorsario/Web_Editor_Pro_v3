@@ -232,8 +232,19 @@
         <script src="config.js"></script>
         <script>
         // MODIFICADO: Inyección dinámica desde config.js Abstract Keys
-        if (typeof CSV_URL_RESTAURANTE001 !== 'undefined') document.getElementById('sheetsUrlRG').value = CSV_URL_RESTAURANTE001;
-        if (typeof CSV_URL_RESTAURANTE002 !== 'undefined') document.getElementById('sheetsUrlUSOpen').value = CSV_URL_RESTAURANTE002;
+        // CORREGIDO: antes se precargaba con CSV_URL_RESTAURANTE00X (la URL de "publicar en
+        // la web" de Google Sheets, cacheada varios minutos por Google). Ahora se usa el
+        // endpoint ?accion=csv de Código.gs, que lee la hoja en vivo con SpreadsheetApp — así
+        // "Sincronizar con Google Sheet" ya no puede pisar INFO_* real con datos desactualizados.
+        if (typeof getWebAppUrl === 'function') {
+            const urlRG = getWebAppUrl('restaurante001');
+            const urlUSOpen = getWebAppUrl('restaurante002');
+            if (urlRG) document.getElementById('sheetsUrlRG').value = urlRG + '?accion=csv';
+            if (urlUSOpen) document.getElementById('sheetsUrlUSOpen').value = urlUSOpen + '?accion=csv';
+        } else {
+            if (typeof CSV_URL_RESTAURANTE001 !== 'undefined') document.getElementById('sheetsUrlRG').value = CSV_URL_RESTAURANTE001;
+            if (typeof CSV_URL_RESTAURANTE002 !== 'undefined') document.getElementById('sheetsUrlUSOpen').value = CSV_URL_RESTAURANTE002;
+        }
         
         const logoRGEl = document.getElementById('header-logo-rg');
         const logoUSOPENEl = document.getElementById('header-logo-usopen');
