@@ -276,7 +276,7 @@
             function mmDesdePx(px, maxAlturaPx) { return (px * 277 / maxAlturaPx).toFixed(1); }
 
             function ajustarAUnaPagina() {
-                var resultado = { imagenVinoQuitada: false, qrQuitado: false, textoReducido: false, medidas: [] };
+                var resultado = { espacioCategoriasReducido: false, imagenVinoQuitada: false, qrQuitado: false, textoReducido: false, medidas: [] };
                 var panel = document.querySelector('.sugerencias-panel');
                 if (!panel) return resultado;
 
@@ -304,6 +304,25 @@
                 }
 
                 if (medir('Original')) return resultado;
+
+                // NUEVO: Paso 0 — antes de quitar nada visual (imagen del vino, QR), se prueba
+                // un apretón pequeño SOLO en el espacio entre categorías (Entrantes/Principales/
+                // Postres/Bodega) y bajo cada título de sección, sin tocar el tamaño de letra ni
+                // el espacio entre platos. Muchas veces con esto de sobra basta (diferencias de
+                // 1-2mm), y así no se sacrifica la imagen del vino por un desajuste mínimo.
+                var pasosGap = 0, MAX_PASOS_GAP = 4;
+                while (!medir('Apretando espacio entre categorías, paso ' + pasosGap) && pasosGap < MAX_PASOS_GAP) {
+                    pasosGap++;
+                    var factorGap = 1 - (pasosGap * 0.15); // 12px -> ~10.2 -> 8.4 -> 6.6 -> 4.8
+                    panel.querySelectorAll('.sugerencias-seccion').forEach(function(el) {
+                        el.style.setProperty('margin-bottom', (12 * factorGap) + 'px', 'important');
+                    });
+                    panel.querySelectorAll('.sugerencias-seccion-titulo').forEach(function(el) {
+                        el.style.setProperty('margin-bottom', (8 * factorGap) + 'px', 'important');
+                    });
+                }
+                if (pasosGap > 0) resultado.espacioCategoriasReducido = true;
+                if (medir('Tras apretar categorías')) return resultado;
 
                 var vinoImg = panel.querySelector('.sugerencias-vino-imagen-wrapper');
                 if (vinoImg && vinoImg.style.display !== 'none') {
@@ -341,8 +360,9 @@
             }
 
             function mostrarAviso(resultado) {
-                if (!resultado.imagenVinoQuitada && !resultado.qrQuitado && !resultado.textoReducido) return;
+                if (!resultado.espacioCategoriasReducido && !resultado.imagenVinoQuitada && !resultado.qrQuitado && !resultado.textoReducido) return;
                 var mensajes = [];
+                if (resultado.espacioCategoriasReducido) mensajes.push('Se ha reducido un poco el espacio entre categorías.');
                 if (resultado.imagenVinoQuitada) mensajes.push('No se ha usado la imagen del vino, para que quepa todo en una hoja A4.');
                 if (resultado.qrQuitado) mensajes.push('No se ha incluido el código QR, para que quepa todo en una hoja A4.');
                 if (resultado.textoReducido) mensajes.push('Se ha reducido ligeramente el tamaño de letra y el espaciado.');
