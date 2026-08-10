@@ -85,8 +85,8 @@
             .sugerencias-qr-toggle { font-size: 0.7rem !important; color: #64748b !important; cursor: pointer !important; display: flex !important; user-select: none !important; gap: 5px !important; }
             .sugerencias-qr-toggle input:checked + span { font-weight: bold; }
             .sugerencias-qr-img { transition: opacity 0.3s; }
-            .sugerencias-vino-imagen-wrapper { flex: 1 1 auto !important; min-height: 0 !important; display: flex !important; align-items: center !important; justify-content: center !important; padding: 6px 0 !important; }
-            .sugerencias-vino-imagen { max-width: 65% !important; max-height: 100% !important; object-fit: contain !important; }
+            .sugerencias-vino-imagen-wrapper { display: flex !important; align-items: center !important; justify-content: center !important; padding: 8px 0 !important; }
+            .sugerencias-vino-imagen { max-width: 45% !important; max-height: 110px !important; object-fit: contain !important; }
             .vino-imagen-selector-wrapper { font-size: 0.75rem !important; color: #64748b !important; }
             .btn-imprimir-a4 { display: block; width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 0.9rem; cursor: pointer; margin-bottom: 20px; text-align: center; }
             @media print { body { -webkit-print-color-adjust: exact !important; } .btn-imprimir-a4, .sugerencias-qr-toggle, .qr-selector-wrapper, .vino-imagen-selector-wrapper { display: none !important; } }
