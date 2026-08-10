@@ -286,6 +286,16 @@
                 var maxAlturaPx = probe.getBoundingClientRect().height;
                 document.body.removeChild(probe);
 
+                // CORREGIDO: las filas de selectores (Tipo de QR, Imagen Vino, Tamaño) solo
+                // existen para la pantalla — en el papel se ocultan vía @media print. Si se
+                // miden con ellas visibles, la altura sale más alta de lo que de verdad ocupa
+                // la hoja impresa, y el script cree que hace falta quitar más de lo necesario
+                // (incluido un QR que ya estuviera desactivado). Se ocultan ANTES de la primera
+                // medición para que coincida con el resultado real en papel desde el principio.
+                document.querySelectorAll('.qr-selector-wrapper').forEach(function(el) {
+                    el.style.setProperty('display', 'none', 'important');
+                });
+
                 function medir(etiqueta) {
                     void panel.offsetHeight;
                     var alturaMm = mmDesdePx(panel.scrollHeight, maxAlturaPx);
@@ -303,9 +313,11 @@
                 if (medir('Sin imagen vino')) return resultado;
 
                 var qrCont = panel.querySelector('.sugerencias-qr-container');
+                var qrImg = panel.querySelector('.sugerencias-qr-img');
+                var qrYaEstabaVisible = qrImg && qrImg.style.display !== 'none' && qrImg.offsetHeight > 0;
                 if (qrCont) {
                     qrCont.style.setProperty('display', 'none', 'important');
-                    resultado.qrQuitado = true;
+                    if (qrYaEstabaVisible) resultado.qrQuitado = true;
                 }
                 if (medir('Sin QR')) return resultado;
 
