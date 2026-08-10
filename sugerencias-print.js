@@ -86,7 +86,7 @@
             .sugerencias-qr-toggle input:checked + span { font-weight: bold; }
             .sugerencias-qr-img { transition: opacity 0.3s; }
             .sugerencias-vino-imagen-wrapper { display: flex; align-items: center !important; justify-content: center !important; padding: 8px 0 !important; }
-            .sugerencias-vino-imagen { max-width: 45% !important; max-height: 110px !important; object-fit: contain !important; }
+            .sugerencias-vino-imagen { max-width: 55% !important; max-height: 140px !important; object-fit: contain !important; transition: max-height 0.15s ease, max-width 0.15s ease !important; }
             .vino-imagen-selector-wrapper { font-size: 0.75rem !important; color: #64748b !important; }
             .btn-imprimir-a4 { display: block; width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 0.9rem; cursor: pointer; margin-bottom: 20px; text-align: center; }
             @media print { body { -webkit-print-color-adjust: exact !important; } .btn-imprimir-a4, .sugerencias-qr-toggle, .qr-selector-wrapper, .vino-imagen-selector-wrapper { display: none !important; } }
@@ -105,6 +105,12 @@
         img.src = (tipo === 'default') ? config.qrDefault : config.qrMod;
     };
 
+    // NUEVO: tamaño base de la imagen del vino (debe coincidir con el CSS .sugerencias-vino-imagen)
+    // y multiplicadores disponibles para agrandarla desde la pantalla.
+    const VINO_IMAGEN_BASE_MAX_HEIGHT = 140; // px
+    const VINO_IMAGEN_BASE_MAX_WIDTH = 55;   // %
+    const VINO_IMAGEN_ESCALAS = [1, 1.2, 1.4, 1.6];
+
     // NUEVO: muestra/oculta la imagen del vino "El Tenista" (ID 12990) en la hoja de Sugerencias
     window.toggleVinoImagen = function(tipo, modo) {
         const config = SUGERENCIAS_CONFIG[modo];
@@ -112,6 +118,20 @@
         const wrapper = document.getElementById(config.vinoImagenWrapperId);
         if (!wrapper) return;
         wrapper.style.display = (tipo === 'con') ? 'flex' : 'none';
+    };
+
+    // NUEVO: ajusta el tamaño de la imagen del vino aplicando un multiplicador sobre el tamaño
+    // base (p.ej. 1.2 = un 20% más grande). Reajusta max-height y max-width a la vez para que
+    // crezca de forma proporcionada.
+    window.setVinoImagenEscala = function(escala, modo) {
+        const config = SUGERENCIAS_CONFIG[modo];
+        if (!config) return;
+        const wrapper = document.getElementById(config.vinoImagenWrapperId);
+        if (!wrapper) return;
+        const img = wrapper.querySelector('.sugerencias-vino-imagen');
+        if (!img) return;
+        img.style.maxHeight = (VINO_IMAGEN_BASE_MAX_HEIGHT * escala) + 'px';
+        img.style.maxWidth = (VINO_IMAGEN_BASE_MAX_WIDTH * escala) + '%';
     };
 
     window.renderCarta = function(modo) {
@@ -200,21 +220,28 @@
             qrButtonsHtml += `<label style="${style}"><input type="radio" name="${config.qrRadioName}" value="${opt.value}" ${isActive ? 'checked' : ''} onchange="window.toggleQR('${opt.value}', '${modoSeguro}')"> ${opt.label}</label>`;
         });
 
-        // NUEVO: botones del toggle "Con/Sin imagen Vino", solo se muestran si el vino especial
-        // (ID 12990) está activo en esta hoja de Sugerencias.
+        // NUEVO: botones del toggle "Con/Sin imagen Vino" + selector de tamaño, solo se muestran
+        // si el vino especial (ID 12990) está activo en esta hoja de Sugerencias.
         let vinoImagenButtonsHtml = '';
+        let vinoImagenEscalaHtml = '';
         if (tieneVinoEspecial) {
             config.vinoImagenOptions.forEach(opt => {
                 const isActive = opt.isDefault;
                 const style = `cursor: pointer; color: ${isActive ? '#0d5c63' : '#64748b'}; font-weight: ${isActive ? 'bold' : 'normal'};`;
                 vinoImagenButtonsHtml += `<label style="${style}"><input type="radio" name="${config.vinoImagenRadioName}" value="${opt.value}" ${isActive ? 'checked' : ''} onchange="window.toggleVinoImagen('${opt.value}', '${modoSeguro}')"> ${opt.label}</label>`;
             });
+            VINO_IMAGEN_ESCALAS.forEach((escala, idx) => {
+                const isActive = idx === 0; // 1x por defecto
+                const style = `cursor: pointer; color: ${isActive ? '#0d5c63' : '#64748b'}; font-weight: ${isActive ? 'bold' : 'normal'};`;
+                const etiqueta = escala === 1 ? '1x' : `${escala}x`;
+                vinoImagenEscalaHtml += `<label style="${style}"><input type="radio" name="vino-imagen-escala-${modoSeguro}" value="${escala}" ${isActive ? 'checked' : ''} onchange="window.setVinoImagenEscala(${escala}, '${modoSeguro}')"> ${etiqueta}</label>`;
+            });
         }
         
         html += `</div><div class="sugerencias-footer">
                 <div class="sugerencias-advertencia-alergenos">Si usted tiene algún tipo de alergia alimentaria, por favor comuníquelo a nuestro personal.<br>If you have any food allergies, please inform our staff.</div>
                 <div class="sugerencias-qr-container">
-                    <div class="qr-selector-wrapper" style="font-size: 0.75rem; color: #64748b; text-align: center; margin-bottom: 5px; user-select:none; display: flex; flex-direction: row; align-items: center; justify-content: center; flex-wrap: nowrap; gap: 8px; white-space: nowrap;">${vinoImagenButtonsHtml ? `<span class="vino-imagen-selector-wrapper" style="display:flex; align-items:center; gap:8px; padding-right:10px; border-right:1px solid #cbd5e1;">Imagen Vino: ${vinoImagenButtonsHtml}</span>` : ''}Tipo de QR: ${qrButtonsHtml}</div>
+                    <div class="qr-selector-wrapper" style="font-size: 0.75rem; color: #64748b; text-align: center; margin-bottom: 5px; user-select:none; display: flex; flex-direction: row; align-items: center; justify-content: center; flex-wrap: nowrap; gap: 8px; white-space: nowrap;">${vinoImagenButtonsHtml ? `<span class="vino-imagen-selector-wrapper" style="display:flex; align-items:center; gap:8px; padding-right:10px; border-right:1px solid #cbd5e1;">Imagen Vino: ${vinoImagenButtonsHtml}</span>` : ''}${vinoImagenEscalaHtml ? `<span class="vino-imagen-selector-wrapper" style="display:flex; align-items:center; gap:6px; padding-right:10px; border-right:1px solid #cbd5e1;">Tamaño: ${vinoImagenEscalaHtml}</span>` : ''}Tipo de QR: ${qrButtonsHtml}</div>
                     <img src="${initialImgSrc}" class="sugerencias-qr-img" id="${config.qrImgId}">
                 </div></div>`;
         contenedor.innerHTML = html;
