@@ -99,6 +99,13 @@ const QR_RESTAURANTE001_MOD = PATH_IMAGENES + 'qr-web01-01.png';
 const QR_RESTAURANTE002_DEFAULT = PATH_IMAGENES + 'qr-web02-01.png'; 
 const QR_RESTAURANTE002_MOD = PATH_IMAGENES + 'qr-web02-02.png';   
 
+// =====================================================================
+// NUEVO: IMAGEN DEL VINO "EL TENISTA" (ID 12990) EN LA HOJA DE SUGERENCIAS
+// =====================================================================
+const VINO_IMAGEN_TENISTA = 'imagenes/vinos/tenista_pegado.webp';
+const VINO_IMAGEN_DEFAULT_RESTAURANTE001 = true;  // true = "Con imagen Vino" marcado por defecto
+const VINO_IMAGEN_DEFAULT_RESTAURANTE002 = true;
+
 
 // =====================================================================
 // NUEVO: CONFIGURACIÓN DE TIEMPOS DEL SISTEMA
