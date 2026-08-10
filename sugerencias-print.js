@@ -256,12 +256,11 @@
         const styleContent = document.getElementById('sugerencias-print-styles').innerHTML;
         const pWin = window.open('', '_blank', 'width=800,height=1000');
 
-        // MODIFICADO: antes se medía tras un setTimeout fijo de 500ms, sin garantía de que la
-        // imagen del vino, el QR o el logo hubieran terminado de cargar — si alguna aún no tenía
-        // tamaño real, la medida inicial salía más baja de lo real y podía arrastrar un recorte
-        // de más (p.ej. quitar el QR sin hacer falta). Ahora se espera explícitamente a que TODAS
-        // las imágenes carguen (o fallen) antes de medir nada, y se fuerza un reflow antes de
-        // cada comprobación de altura.
+        // MODIFICADO: el aviso ya no depende de window.opener (poco fiable: bloqueadores de
+        // popups, o que el admin corra embebido en un iframe de Apps Script pueden romper esa
+        // comunicación en silencio, sin error visible). Ahora el aviso se muestra DENTRO de esta
+        // misma ventana de impresión, antes de imprimir, con las medidas reales en mm para poder
+        // depurar si algo se quita sin hacer falta.
         const scriptAjuste = `
             function esperarImagenes(root) {
                 var imgs = Array.prototype.slice.call(root.querySelectorAll('img'));
@@ -274,8 +273,10 @@
                 }));
             }
 
+            function mmDesdePx(px, maxAlturaPx) { return (px * 277 / maxAlturaPx).toFixed(1); }
+
             function ajustarAUnaPagina() {
-                var resultado = { imagenVinoQuitada: false, qrQuitado: false, textoReducido: false };
+                var resultado = { imagenVinoQuitada: false, qrQuitado: false, textoReducido: false, medidas: [] };
                 var panel = document.querySelector('.sugerencias-panel');
                 if (!panel) return resultado;
 
@@ -285,28 +286,31 @@
                 var maxAlturaPx = probe.getBoundingClientRect().height;
                 document.body.removeChild(probe);
 
-                function cabe() { void panel.offsetHeight; return panel.scrollHeight <= (maxAlturaPx + 2); }
-                if (cabe()) return resultado;
+                function medir(etiqueta) {
+                    void panel.offsetHeight;
+                    var alturaMm = mmDesdePx(panel.scrollHeight, maxAlturaPx);
+                    resultado.medidas.push(etiqueta + ': ' + alturaMm + 'mm de 277mm');
+                    return panel.scrollHeight <= (maxAlturaPx + 2);
+                }
 
-                // Paso 1: quitar imagen del vino
+                if (medir('Original')) return resultado;
+
                 var vinoImg = panel.querySelector('.sugerencias-vino-imagen-wrapper');
                 if (vinoImg && vinoImg.style.display !== 'none') {
                     vinoImg.style.setProperty('display', 'none', 'important');
                     resultado.imagenVinoQuitada = true;
                 }
-                if (cabe()) return resultado;
+                if (medir('Sin imagen vino')) return resultado;
 
-                // Paso 2: quitar el QR (bloque completo)
                 var qrCont = panel.querySelector('.sugerencias-qr-container');
                 if (qrCont) {
                     qrCont.style.setProperty('display', 'none', 'important');
                     resultado.qrQuitado = true;
                 }
-                if (cabe()) return resultado;
+                if (medir('Sin QR')) return resultado;
 
-                // Paso 3: reducir tipografía e interlineado, en pasos pequeños, lo mínimo necesario
                 var factor = 1, pasos = 0, MAX_PASOS = 12;
-                while (!cabe() && pasos < MAX_PASOS) {
+                while (!medir('Reduciendo texto, paso ' + pasos) && pasos < MAX_PASOS) {
                     factor -= 0.03;
                     pasos++;
                     document.documentElement.style.setProperty('font-size', (factor * 100) + '%', 'important');
@@ -324,37 +328,38 @@
                 return resultado;
             }
 
+            function mostrarAviso(resultado) {
+                if (!resultado.imagenVinoQuitada && !resultado.qrQuitado && !resultado.textoReducido) return;
+                var mensajes = [];
+                if (resultado.imagenVinoQuitada) mensajes.push('No se ha usado la imagen del vino, para que quepa todo en una hoja A4.');
+                if (resultado.qrQuitado) mensajes.push('No se ha incluido el código QR, para que quepa todo en una hoja A4.');
+                if (resultado.textoReducido) mensajes.push('Se ha reducido ligeramente el tamaño de letra y el espaciado.');
+                var caja = document.createElement('div');
+                caja.id = 'sugerencias-aviso-ajuste';
+                caja.style.cssText = 'position:fixed; top:16px; right:16px; z-index:9999; background:#fff7ed; border:1px solid #f59e0b; color:#92400e; padding:12px 16px; border-radius:8px; font-size:13px; max-width:340px; box-shadow:0 4px 12px rgba(0,0,0,0.15); font-family:sans-serif;';
+                caja.innerHTML = '<b>⚠️ Ajuste automático a una página</b>' +
+                    '<ul style="margin:6px 0 0 18px; padding:0;">' + mensajes.map(function(m){ return '<li>' + m + '</li>'; }).join('') + '</ul>' +
+                    '<details style="margin-top:8px; font-size:11px; color:#78716c;"><summary style="cursor:pointer;">Ver medidas</summary>' + resultado.medidas.join('<br>') + '</details>' +
+                    '<div style="text-align:right; margin-top:8px;"><button id="btn-continuar-impresion" style="cursor:pointer; background:#f59e0b; color:#fff; border:none; padding:5px 12px; border-radius:5px; font-size:12px;">Imprimir ahora</button></div>';
+                document.body.appendChild(caja);
+                return caja;
+            }
+
             esperarImagenes(document.body).then(function() {
                 var resultado = ajustarAUnaPagina();
-                if (window.opener && window.opener.mostrarAvisoAjusteSugerencias) {
-                    window.opener.mostrarAvisoAjusteSugerencias(resultado);
+                var caja = mostrarAviso(resultado);
+                if (!caja) {
+                    // Nada que avisar: todo cabía de partida, seguimos con el flujo rápido de siempre
+                    setTimeout(function() { window.print(); window.close(); }, 150);
+                } else {
+                    // Hay algo que avisar: se espera a que la persona pulse "Imprimir ahora" para
+                    // dar tiempo real a leer el aviso (no se cierra sola la ventana esta vez).
+                    document.getElementById('btn-continuar-impresion').onclick = function() { window.print(); };
                 }
-                setTimeout(function() { window.print(); window.close(); }, 150);
             });
         `;
 
-        pWin.document.write(`<html><head><title>Sugerencias ${getModoAlias(modo)}</title><style>${styleContent}</style></head><body><div class="sugerencias-panel">${contenedor.innerHTML}</div><script>${scriptAjuste}<\/script></body></html>`);
+        pWin.document.write(`<html><head><title>Sugerencias ${getModoAlias(modo)}</title><style>${styleContent}@media print { #sugerencias-aviso-ajuste { display: none !important; } }</style></head><body><div class="sugerencias-panel">${contenedor.innerHTML}</div><script>${scriptAjuste}<\/script></body></html>`);
         pWin.document.close();
-    };
-
-    // NUEVO: aviso en la ventana principal (no en la de impresión, que se cierra sola) de qué
-    // se ha tenido que quitar/reducir para que la hoja de Sugerencias quepa en una sola A4.
-    window.mostrarAvisoAjusteSugerencias = function(resultado) {
-        if (!resultado || (!resultado.imagenVinoQuitada && !resultado.qrQuitado && !resultado.textoReducido)) return;
-        const mensajes = [];
-        if (resultado.imagenVinoQuitada) mensajes.push('No se ha usado la imagen del vino, para que quepa todo en una hoja A4.');
-        if (resultado.qrQuitado) mensajes.push('No se ha incluido el código QR, para que quepa todo en una hoja A4.');
-        if (resultado.textoReducido) mensajes.push('Se ha reducido ligeramente el tamaño de letra y el espaciado, para que quepa todo en una hoja A4.');
-
-        let caja = document.getElementById('sugerencias-aviso-ajuste');
-        if (!caja) {
-            caja = document.createElement('div');
-            caja.id = 'sugerencias-aviso-ajuste';
-            caja.style.cssText = 'position:fixed; top:16px; right:16px; z-index:9999; background:#fff7ed; border:1px solid #f59e0b; color:#92400e; padding:12px 16px; border-radius:8px; font-size:0.85rem; max-width:320px; box-shadow:0 4px 12px rgba(0,0,0,0.15); font-family:sans-serif;';
-            document.body.appendChild(caja);
-        }
-        caja.innerHTML = '<b>⚠️ Ajuste automático a una página</b><ul style="margin:6px 0 0 18px; padding:0;">' +
-            mensajes.map(m => `<li>${m}</li>`).join('') +
-            '</ul><div style="text-align:right; margin-top:8px;"><button onclick="document.getElementById(\'sugerencias-aviso-ajuste\').remove()" style="cursor:pointer; background:none; border:none; color:#92400e; text-decoration:underline; font-size:0.8rem; padding:0;">Cerrar</button></div>';
     };
 })();
