@@ -85,8 +85,9 @@
             .sugerencias-qr-toggle { font-size: 0.7rem !important; color: #64748b !important; cursor: pointer !important; display: flex !important; user-select: none !important; gap: 5px !important; }
             .sugerencias-qr-toggle input:checked + span { font-weight: bold; }
             .sugerencias-qr-img { transition: opacity 0.3s; }
-            .sugerencias-vino-imagen-wrapper { display: flex; align-items: center !important; justify-content: center !important; padding: 8px 0 !important; }
-            .sugerencias-vino-imagen { max-width: 55%; max-height: 140px; object-fit: contain !important; transition: max-height 0.15s ease, max-width 0.15s ease !important; }
+            .sugerencias-vino-imagen-wrapper { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center !important; padding: 8px 0 !important; column-gap: 10px !important; }
+            .sugerencias-vino-imagen { justify-self: center !important; max-width: 55%; max-height: 140px; object-fit: contain !important; transition: max-height 0.15s ease, max-width 0.15s ease !important; }
+            .sugerencias-vino-imagen-wrapper .sugerencias-qr-img { justify-self: end !important; }
             .vino-imagen-selector-wrapper { font-size: 0.75rem !important; color: #64748b !important; }
             .btn-imprimir-a4 { display: block; width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 0.9rem; cursor: pointer; margin-bottom: 20px; text-align: center; }
             @media print { body { -webkit-print-color-adjust: exact !important; } .btn-imprimir-a4, .sugerencias-qr-toggle, .qr-selector-wrapper, .vino-imagen-selector-wrapper { display: none !important; } }
@@ -117,7 +118,7 @@
         if (!config) return;
         const wrapper = document.getElementById(config.vinoImagenWrapperId);
         if (!wrapper) return;
-        wrapper.style.display = (tipo === 'con') ? 'flex' : 'none';
+        wrapper.style.display = (tipo === 'con') ? 'grid' : 'none';
     };
 
     // NUEVO: ajusta el tamaño de la imagen del vino aplicando un multiplicador sobre el tamaño
@@ -195,23 +196,28 @@
             return h + '</div>';
         };
 
-        // NUEVO: si el vino especial (ID 12990) está activo, se prepara el bloque de imagen que
-        // se centra debajo de su nombre, ocupando el espacio libre de la sección hasta el pie
-        // (footer/QR) — controlable con el toggle "Con/Sin imagen Vino".
+        let initialImgSrc = config.qrMod;
+        const defaultOpt = config.qrOptions.find(o => o.isDefault);
+        if (defaultOpt && defaultOpt.value === 'default') initialImgSrc = config.qrDefault;
+
+        // NUEVO: si el vino especial (ID 12990) está activo, el QR se mueve a la MISMA fila que
+        // la imagen del vino — imagen del vino centrada (columna central de un grid de 3), QR
+        // pegado a la derecha (columna derecha) — en vez de vivir abajo del todo junto al aviso
+        // de alérgenos.
         const tieneVinoEspecial = vinos.some(p => parseInt(p.id, 10) === 12990);
         const vinoImagenDefaultCon = config.vinoImagenOptions.find(o => o.isDefault)?.value === 'con';
         const vinoImagenHtml = tieneVinoEspecial
-            ? `<div class="sugerencias-vino-imagen-wrapper" id="${config.vinoImagenWrapperId}" style="display:${vinoImagenDefaultCon ? 'flex' : 'none'};"><img src="${config.vinoImagenSrc}" class="sugerencias-vino-imagen" onerror="this.parentElement.style.display='none';"></div>`
+            ? `<div class="sugerencias-vino-imagen-wrapper" id="${config.vinoImagenWrapperId}" style="display:${vinoImagenDefaultCon ? 'grid' : 'none'};">
+                <span></span>
+                <img src="${config.vinoImagenSrc}" class="sugerencias-vino-imagen" onerror="this.style.display='none';">
+                <img src="${initialImgSrc}" class="sugerencias-qr-img" id="${config.qrImgId}">
+               </div>`
             : '';
 
         html += renderCat("ENTRANTES / STARTERS", entrantes);
         html += renderCat("PRINCIPALES / MAIN COURSES", principales);
         html += renderCat("POSTRES / DESSERTS", postres);
         html += renderCat("BODEGA / WINE CELLAR", vinos, vinoImagenHtml);
-
-        let initialImgSrc = config.qrMod;
-        const defaultOpt = config.qrOptions.find(o => o.isDefault);
-        if (defaultOpt && defaultOpt.value === 'default') initialImgSrc = config.qrDefault;
 
         let qrButtonsHtml = '';
         config.qrOptions.forEach(opt => {
@@ -243,7 +249,7 @@
                 <div class="sugerencias-qr-container">
                     ${(vinoImagenButtonsHtml || vinoImagenEscalaHtml) ? `<div class="qr-selector-wrapper" style="font-size: 0.75rem; color: #64748b; text-align: center; margin-bottom: 3px; user-select:none; display: flex; flex-direction: row; align-items: center; justify-content: center; flex-wrap: nowrap; gap: 8px; white-space: nowrap;">${vinoImagenButtonsHtml ? `<span class="vino-imagen-selector-wrapper" style="display:flex; align-items:center; gap:8px; padding-right:10px; border-right:1px solid #cbd5e1;">Imagen Vino: ${vinoImagenButtonsHtml}</span>` : ''}${vinoImagenEscalaHtml ? `<span class="vino-imagen-selector-wrapper" style="display:flex; align-items:center; gap:6px;">Tamaño: ${vinoImagenEscalaHtml}</span>` : ''}</div>` : ''}
                     <div class="qr-selector-wrapper" style="font-size: 0.75rem; color: #64748b; text-align: center; margin-bottom: 5px; user-select:none; display: flex; flex-direction: row; align-items: center; justify-content: center; flex-wrap: nowrap; gap: 8px; white-space: nowrap;">Tipo de QR: ${qrButtonsHtml}</div>
-                    <img src="${initialImgSrc}" class="sugerencias-qr-img" id="${config.qrImgId}">
+                    ${tieneVinoEspecial ? '' : `<img src="${initialImgSrc}" class="sugerencias-qr-img" id="${config.qrImgId}">`}
                 </div></div>`;
         contenedor.innerHTML = html;
     }
@@ -331,11 +337,10 @@
                 }
                 if (medir('Sin imagen vino')) return resultado;
 
-                var qrCont = panel.querySelector('.sugerencias-qr-container');
                 var qrImg = panel.querySelector('.sugerencias-qr-img');
                 var qrYaEstabaVisible = qrImg && qrImg.style.display !== 'none' && qrImg.offsetHeight > 0;
-                if (qrCont) {
-                    qrCont.style.setProperty('display', 'none', 'important');
+                if (qrImg) {
+                    qrImg.style.setProperty('display', 'none', 'important');
                     if (qrYaEstabaVisible) resultado.qrQuitado = true;
                 }
                 if (medir('Sin QR')) return resultado;
