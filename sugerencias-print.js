@@ -256,16 +256,28 @@
         const styleContent = document.getElementById('sugerencias-print-styles').innerHTML;
         const pWin = window.open('', '_blank', 'width=800,height=1000');
 
-        // NUEVO: script de ajuste automático a una sola hoja A4. Se ejecuta en la ventana de
-        // impresión (que ya tiene el tamaño real de página, 190mm x 277mm) justo antes de
-        // imprimir. Orden de recortes, cada uno solo si el anterior no ha bastado:
-        //   1) Quitar la imagen del vino (ID 12990)
-        //   2) Quitar el QR
-        //   3) Reducir tipografía e interlineado, en pasos pequeños, hasta un mínimo razonable
+        // MODIFICADO: antes se medía tras un setTimeout fijo de 500ms, sin garantía de que la
+        // imagen del vino, el QR o el logo hubieran terminado de cargar — si alguna aún no tenía
+        // tamaño real, la medida inicial salía más baja de lo real y podía arrastrar un recorte
+        // de más (p.ej. quitar el QR sin hacer falta). Ahora se espera explícitamente a que TODAS
+        // las imágenes carguen (o fallen) antes de medir nada, y se fuerza un reflow antes de
+        // cada comprobación de altura.
         const scriptAjuste = `
+            function esperarImagenes(root) {
+                var imgs = Array.prototype.slice.call(root.querySelectorAll('img'));
+                return Promise.all(imgs.map(function(img) {
+                    if (img.complete) return Promise.resolve();
+                    return new Promise(function(resolve) {
+                        img.addEventListener('load', resolve);
+                        img.addEventListener('error', resolve);
+                    });
+                }));
+            }
+
             function ajustarAUnaPagina() {
+                var resultado = { imagenVinoQuitada: false, qrQuitado: false, textoReducido: false };
                 var panel = document.querySelector('.sugerencias-panel');
-                if (!panel) return;
+                if (!panel) return resultado;
 
                 var probe = document.createElement('div');
                 probe.style.cssText = 'position:absolute; visibility:hidden; height:277mm; width:0;';
@@ -273,24 +285,27 @@
                 var maxAlturaPx = probe.getBoundingClientRect().height;
                 document.body.removeChild(probe);
 
-                function cabe() { return panel.scrollHeight <= (maxAlturaPx + 2); }
-                if (cabe()) return;
+                function cabe() { void panel.offsetHeight; return panel.scrollHeight <= (maxAlturaPx + 2); }
+                if (cabe()) return resultado;
 
                 // Paso 1: quitar imagen del vino
                 var vinoImg = panel.querySelector('.sugerencias-vino-imagen-wrapper');
-                if (vinoImg) vinoImg.style.setProperty('display', 'none', 'important');
-                if (cabe()) return;
+                if (vinoImg && vinoImg.style.display !== 'none') {
+                    vinoImg.style.setProperty('display', 'none', 'important');
+                    resultado.imagenVinoQuitada = true;
+                }
+                if (cabe()) return resultado;
 
-                // Paso 2: quitar el QR (bloque completo, código + selectores ya ocultos en impresión)
+                // Paso 2: quitar el QR (bloque completo)
                 var qrCont = panel.querySelector('.sugerencias-qr-container');
-                if (qrCont) qrCont.style.setProperty('display', 'none', 'important');
-                if (cabe()) return;
+                if (qrCont) {
+                    qrCont.style.setProperty('display', 'none', 'important');
+                    resultado.qrQuitado = true;
+                }
+                if (cabe()) return resultado;
 
-                // Paso 3: reducir tipografía (afecta a todo lo medido en rem) e interlineado/
-                // separaciones entre platos y secciones, en pasos pequeños y solo lo necesario.
-                var factor = 1;
-                var pasos = 0;
-                var MAX_PASOS = 12; // tope de seguridad (factor mínimo ~ 1 - 12*0.03 = 0.64)
+                // Paso 3: reducir tipografía e interlineado, en pasos pequeños, lo mínimo necesario
+                var factor = 1, pasos = 0, MAX_PASOS = 12;
                 while (!cabe() && pasos < MAX_PASOS) {
                     factor -= 0.03;
                     pasos++;
@@ -305,11 +320,41 @@
                         el.style.setProperty('margin-bottom', (8 * factor) + 'px', 'important');
                     });
                 }
+                if (pasos > 0) resultado.textoReducido = true;
+                return resultado;
             }
-            ajustarAUnaPagina();
+
+            esperarImagenes(document.body).then(function() {
+                var resultado = ajustarAUnaPagina();
+                if (window.opener && window.opener.mostrarAvisoAjusteSugerencias) {
+                    window.opener.mostrarAvisoAjusteSugerencias(resultado);
+                }
+                setTimeout(function() { window.print(); window.close(); }, 150);
+            });
         `;
 
-        pWin.document.write(`<html><head><title>Sugerencias ${getModoAlias(modo)}</title><style>${styleContent}</style></head><body><div class="sugerencias-panel">${contenedor.innerHTML}</div><script>setTimeout(() => { ${scriptAjuste} setTimeout(() => { window.print(); window.close(); }, 150); }, 500);<\/script></body></html>`);
+        pWin.document.write(`<html><head><title>Sugerencias ${getModoAlias(modo)}</title><style>${styleContent}</style></head><body><div class="sugerencias-panel">${contenedor.innerHTML}</div><script>${scriptAjuste}<\/script></body></html>`);
         pWin.document.close();
+    };
+
+    // NUEVO: aviso en la ventana principal (no en la de impresión, que se cierra sola) de qué
+    // se ha tenido que quitar/reducir para que la hoja de Sugerencias quepa en una sola A4.
+    window.mostrarAvisoAjusteSugerencias = function(resultado) {
+        if (!resultado || (!resultado.imagenVinoQuitada && !resultado.qrQuitado && !resultado.textoReducido)) return;
+        const mensajes = [];
+        if (resultado.imagenVinoQuitada) mensajes.push('No se ha usado la imagen del vino, para que quepa todo en una hoja A4.');
+        if (resultado.qrQuitado) mensajes.push('No se ha incluido el código QR, para que quepa todo en una hoja A4.');
+        if (resultado.textoReducido) mensajes.push('Se ha reducido ligeramente el tamaño de letra y el espaciado, para que quepa todo en una hoja A4.');
+
+        let caja = document.getElementById('sugerencias-aviso-ajuste');
+        if (!caja) {
+            caja = document.createElement('div');
+            caja.id = 'sugerencias-aviso-ajuste';
+            caja.style.cssText = 'position:fixed; top:16px; right:16px; z-index:9999; background:#fff7ed; border:1px solid #f59e0b; color:#92400e; padding:12px 16px; border-radius:8px; font-size:0.85rem; max-width:320px; box-shadow:0 4px 12px rgba(0,0,0,0.15); font-family:sans-serif;';
+            document.body.appendChild(caja);
+        }
+        caja.innerHTML = '<b>⚠️ Ajuste automático a una página</b><ul style="margin:6px 0 0 18px; padding:0;">' +
+            mensajes.map(m => `<li>${m}</li>`).join('') +
+            '</ul><div style="text-align:right; margin-top:8px;"><button onclick="document.getElementById(\'sugerencias-aviso-ajuste\').remove()" style="cursor:pointer; background:none; border:none; color:#92400e; text-decoration:underline; font-size:0.8rem; padding:0;">Cerrar</button></div>';
     };
 })();
