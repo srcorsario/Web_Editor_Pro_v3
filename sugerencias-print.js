@@ -18,6 +18,13 @@
                 { value: 'none', label: 'Sin QR', isDefault: false },
                 { value: 'default', label: 'Oficial', isDefault: false },
                 { value: 'mod', label: 'Alternativo', isDefault: true }
+            ],
+            vinoImagenSrc: VINO_IMAGEN_TENISTA,
+            vinoImagenWrapperId: 'vino-imagen-rg',
+            vinoImagenRadioName: 'vino-imagen-mode-rg-footer',
+            vinoImagenOptions: [
+                { value: 'con', label: 'Con imagen Vino', isDefault: VINO_IMAGEN_DEFAULT_RESTAURANTE001 },
+                { value: 'sin', label: 'Sin imagen Vino', isDefault: !VINO_IMAGEN_DEFAULT_RESTAURANTE001 }
             ]
         },
         restaurante002: {
@@ -35,6 +42,13 @@
                 { value: 'none', label: 'Sin QR', isDefault: false },
                 { value: 'default', label: 'Oficial', isDefault: true },
                 { value: 'mod', label: 'Alternativo', isDefault: false }
+            ],
+            vinoImagenSrc: VINO_IMAGEN_TENISTA,
+            vinoImagenWrapperId: 'vino-imagen-usopen',
+            vinoImagenRadioName: 'vino-imagen-mode-usopen-footer',
+            vinoImagenOptions: [
+                { value: 'con', label: 'Con imagen Vino', isDefault: VINO_IMAGEN_DEFAULT_RESTAURANTE002 },
+                { value: 'sin', label: 'Sin imagen Vino', isDefault: !VINO_IMAGEN_DEFAULT_RESTAURANTE002 }
             ]
         }
     };
@@ -71,8 +85,11 @@
             .sugerencias-qr-toggle { font-size: 0.7rem !important; color: #64748b !important; cursor: pointer !important; display: flex !important; user-select: none !important; gap: 5px !important; }
             .sugerencias-qr-toggle input:checked + span { font-weight: bold; }
             .sugerencias-qr-img { transition: opacity 0.3s; }
+            .sugerencias-vino-imagen-wrapper { flex: 1 1 auto !important; min-height: 0 !important; display: flex !important; align-items: center !important; justify-content: center !important; padding: 6px 0 !important; }
+            .sugerencias-vino-imagen { max-width: 65% !important; max-height: 100% !important; object-fit: contain !important; }
+            .vino-imagen-selector-wrapper { font-size: 0.75rem !important; color: #64748b !important; }
             .btn-imprimir-a4 { display: block; width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 0.9rem; cursor: pointer; margin-bottom: 20px; text-align: center; }
-            @media print { body { -webkit-print-color-adjust: exact !important; } .btn-imprimir-a4, .sugerencias-qr-toggle, .qr-selector-wrapper { display: none !important; } }
+            @media print { body { -webkit-print-color-adjust: exact !important; } .btn-imprimir-a4, .sugerencias-qr-toggle, .qr-selector-wrapper, .vino-imagen-selector-wrapper { display: none !important; } }
         `;
         document.head.appendChild(stylePrint);
     }
@@ -86,6 +103,15 @@
         if (tipo === 'none') { img.style.display = 'none'; return; }
         img.style.display = 'block';
         img.src = (tipo === 'default') ? config.qrDefault : config.qrMod;
+    };
+
+    // NUEVO: muestra/oculta la imagen del vino "El Tenista" (ID 12990) en la hoja de Sugerencias
+    window.toggleVinoImagen = function(tipo, modo) {
+        const config = SUGERENCIAS_CONFIG[modo];
+        if (!config) return;
+        const wrapper = document.getElementById(config.vinoImagenWrapperId);
+        if (!wrapper) return;
+        wrapper.style.display = (tipo === 'con') ? 'flex' : 'none';
     };
 
     window.renderCarta = function(modo) {
@@ -131,7 +157,7 @@
                 <img src="${config.logoSrc}" class="sugerencias-logo-img" onerror="this.src='${config.logoFallback}';">
             </div><div class="sugerencias-body">`;
 
-        const renderCat = (titulo, lista) => {
+        const renderCat = (titulo, lista, extraHtml = '') => {
             if (lista.length === 0) return '';
             let h = `<div class="sugerencias-seccion"><div class="sugerencias-seccion-titulo">${titulo}</div>`;
             lista.forEach(p => {
@@ -145,13 +171,23 @@
                 const precioFormateado = p.precio ? parseFloat(p.precio).toFixed(2) + '€' : '0.00€';
                 h += `<div class="sugerencias-plato"><div class="sugerencias-plato-nombres">${htmlNombreEs}${htmlNombreEn}${iconsHtml}</div><div class="sugerencias-puntos"></div><div class="sugerencias-precio">${precioFormateado}</div></div>`;
             });
+            if (extraHtml) h += extraHtml;
             return h + '</div>';
         };
+
+        // NUEVO: si el vino especial (ID 12990) está activo, se prepara el bloque de imagen que
+        // se centra debajo de su nombre, ocupando el espacio libre de la sección hasta el pie
+        // (footer/QR) — controlable con el toggle "Con/Sin imagen Vino".
+        const tieneVinoEspecial = vinos.some(p => parseInt(p.id, 10) === 12990);
+        const vinoImagenDefaultCon = config.vinoImagenOptions.find(o => o.isDefault)?.value === 'con';
+        const vinoImagenHtml = tieneVinoEspecial
+            ? `<div class="sugerencias-vino-imagen-wrapper" id="${config.vinoImagenWrapperId}" style="display:${vinoImagenDefaultCon ? 'flex' : 'none'};"><img src="${config.vinoImagenSrc}" class="sugerencias-vino-imagen" onerror="this.parentElement.style.display='none';"></div>`
+            : '';
 
         html += renderCat("ENTRANTES / STARTERS", entrantes);
         html += renderCat("PRINCIPALES / MAIN COURSES", principales);
         html += renderCat("POSTRES / DESSERTS", postres);
-        html += renderCat("BODEGA / WINE CELLAR", vinos);
+        html += renderCat("BODEGA / WINE CELLAR", vinos, vinoImagenHtml);
 
         let initialImgSrc = config.qrMod;
         const defaultOpt = config.qrOptions.find(o => o.isDefault);
@@ -163,11 +199,22 @@
             const style = `cursor: pointer; color: ${isActive ? '#0d5c63' : '#64748b'}; font-weight: ${isActive ? 'bold' : 'normal'};`;
             qrButtonsHtml += `<label style="${style}"><input type="radio" name="${config.qrRadioName}" value="${opt.value}" ${isActive ? 'checked' : ''} onchange="window.toggleQR('${opt.value}', '${modoSeguro}')"> ${opt.label}</label>`;
         });
+
+        // NUEVO: botones del toggle "Con/Sin imagen Vino", solo se muestran si el vino especial
+        // (ID 12990) está activo en esta hoja de Sugerencias.
+        let vinoImagenButtonsHtml = '';
+        if (tieneVinoEspecial) {
+            config.vinoImagenOptions.forEach(opt => {
+                const isActive = opt.isDefault;
+                const style = `cursor: pointer; color: ${isActive ? '#0d5c63' : '#64748b'}; font-weight: ${isActive ? 'bold' : 'normal'};`;
+                vinoImagenButtonsHtml += `<label style="${style}"><input type="radio" name="${config.vinoImagenRadioName}" value="${opt.value}" ${isActive ? 'checked' : ''} onchange="window.toggleVinoImagen('${opt.value}', '${modoSeguro}')"> ${opt.label}</label>`;
+            });
+        }
         
         html += `</div><div class="sugerencias-footer">
                 <div class="sugerencias-advertencia-alergenos">Si usted tiene algún tipo de alergia alimentaria, por favor comuníquelo a nuestro personal.<br>If you have any food allergies, please inform our staff.</div>
                 <div class="sugerencias-qr-container">
-                    <div class="qr-selector-wrapper" style="font-size: 0.75rem; color: #64748b; text-align: center; margin-bottom: 5px; user-select:none; display: flex; flex-direction: row; align-items: center; justify-content: center; flex-wrap: nowrap; gap: 8px; white-space: nowrap;">Tipo de QR: ${qrButtonsHtml}</div>
+                    <div class="qr-selector-wrapper" style="font-size: 0.75rem; color: #64748b; text-align: center; margin-bottom: 5px; user-select:none; display: flex; flex-direction: row; align-items: center; justify-content: center; flex-wrap: nowrap; gap: 8px; white-space: nowrap;">${vinoImagenButtonsHtml ? `<span class="vino-imagen-selector-wrapper" style="display:flex; align-items:center; gap:8px; padding-right:10px; border-right:1px solid #cbd5e1;">Imagen Vino: ${vinoImagenButtonsHtml}</span>` : ''}Tipo de QR: ${qrButtonsHtml}</div>
                     <img src="${initialImgSrc}" class="sugerencias-qr-img" id="${config.qrImgId}">
                 </div></div>`;
         contenedor.innerHTML = html;
