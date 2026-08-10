@@ -112,13 +112,15 @@
     const VINO_IMAGEN_BASE_MAX_WIDTH = 55;   // %
     const VINO_IMAGEN_ESCALAS = [1, 1.2, 1.4, 1.6];
 
-    // NUEVO: muestra/oculta la imagen del vino "El Tenista" (ID 12990) en la hoja de Sugerencias
+    // MODIFICADO: solo oculta/muestra la imagen del vino en sí, NUNCA el wrapper entero — desde
+    // que el QR vive en la misma fila, ocultar el wrapper apagaba el QR también.
     window.toggleVinoImagen = function(tipo, modo) {
         const config = SUGERENCIAS_CONFIG[modo];
         if (!config) return;
         const wrapper = document.getElementById(config.vinoImagenWrapperId);
         if (!wrapper) return;
-        wrapper.style.display = (tipo === 'con') ? 'grid' : 'none';
+        const img = wrapper.querySelector('.sugerencias-vino-imagen');
+        if (img) img.style.display = (tipo === 'con') ? '' : 'none';
     };
 
     // NUEVO: ajusta el tamaño de la imagen del vino aplicando un multiplicador sobre el tamaño
@@ -207,9 +209,9 @@
         const tieneVinoEspecial = vinos.some(p => parseInt(p.id, 10) === 12990);
         const vinoImagenDefaultCon = config.vinoImagenOptions.find(o => o.isDefault)?.value === 'con';
         const vinoImagenHtml = tieneVinoEspecial
-            ? `<div class="sugerencias-vino-imagen-wrapper" id="${config.vinoImagenWrapperId}" style="display:${vinoImagenDefaultCon ? 'grid' : 'none'};">
+            ? `<div class="sugerencias-vino-imagen-wrapper" id="${config.vinoImagenWrapperId}">
                 <span></span>
-                <img src="${config.vinoImagenSrc}" class="sugerencias-vino-imagen" onerror="this.style.display='none';">
+                <img src="${config.vinoImagenSrc}" class="sugerencias-vino-imagen" style="display:${vinoImagenDefaultCon ? '' : 'none'};" onerror="this.style.display='none';">
                 <img src="${initialImgSrc}" class="sugerencias-qr-img" id="${config.qrImgId}">
                </div>`
             : '';
@@ -330,7 +332,7 @@
                 if (pasosGap > 0) resultado.espacioCategoriasReducido = true;
                 if (medir('Tras apretar categorías')) return resultado;
 
-                var vinoImg = panel.querySelector('.sugerencias-vino-imagen-wrapper');
+                var vinoImg = panel.querySelector('.sugerencias-vino-imagen');
                 if (vinoImg && vinoImg.style.display !== 'none') {
                     vinoImg.style.setProperty('display', 'none', 'important');
                     resultado.imagenVinoQuitada = true;
