@@ -85,6 +85,8 @@ REGLA DE PRECISIÓN OBLIGATORIA (LA MÁS IMPORTANTE):
 - Si el nombre ya incluye una técnica culinaria (ej. "tataki", "a la brasa", "al horno Josper", "frito", "carpaccio"), puedes explicar en qué consiste esa técnica EN GENERAL, pero sin afirmar detalles concretos de cómo se ha aplicado a este plato en particular si no están en el nombre.
 - Si no puedes responder una pregunta con datos verificables del propio nombre del plato, cambia la pregunta por otra que sí puedas responder con seguridad (p. ej. qué significa un término del nombre, o una pregunta orientada a alérgenos).
 
+REGLA DE TERMINOLOGÍA CÁRNICA/ESPECIE EN EL NOMBRE EN INGLÉS (nombre_en) Y EN EL TEXTO "en": en esta carta, "ternera" se refiere siempre a carne roja de vacuno ADULTO (ni ternera lechal/muy joven, ni vaca vieja) — tradúcela SIEMPRE como "beef", NUNCA como "veal" (en inglés "veal" designa específicamente la ternera lechal muy joven, un producto distinto al que se sirve aquí). Aplica el mismo criterio de fidelidad a cualquier otra especie o variedad ambigua que aparezca en el nombre (ej. "atún rojo" no es atún blanco/bonito y debe traducirse como ese pescado concreto, no por una especie distinta aunque sea similar): nunca cambies la especie, corte o variedad al traducir al inglés.
+
 PREGUNTAS LÓGICAS: q1 y q2 deben tratar exclusivamente sobre el significado de términos culinarios ya presentes en el nombre del plato, la técnica de cocinado (explicada de forma genérica) o los ingredientes ya mencionados — nunca sobre datos no verificables como origen, raza, o temperatura de servicio.
 - PROHIBICIÓN ABSOLUTA: NUNCA sugieras maridajes de vino ni menciones bebidas (cerveza, vino, sake, etc.). No incluyas preguntas sobre maridaje.
 
@@ -153,6 +155,8 @@ REGLA DE PRECISIÓN OBLIGATORIA (LA MÁS IMPORTANTE):
 - Si el nombre ya incluye una técnica culinaria (ej. "tataki", "a la brasa", "al horno Josper", "frito", "carpaccio"), puedes explicar en qué consiste esa técnica EN GENERAL, pero sin afirmar detalles concretos de cómo se ha aplicado a ese plato en particular si no están en el nombre.
 - Si no puedes responder una pregunta con datos verificables del propio nombre del plato, cambia la pregunta por otra que sí puedas responder con seguridad (p. ej. qué significa un término del nombre, o una pregunta orientada a alérgenos).
 
+REGLA DE TERMINOLOGÍA CÁRNICA/ESPECIE EN EL NOMBRE EN INGLÉS (nombre_en) Y EN EL TEXTO "en" DE CADA PLATO: en esta carta, "ternera" se refiere siempre a carne roja de vacuno ADULTO (ni ternera lechal/muy joven, ni vaca vieja) — tradúcela SIEMPRE como "beef", NUNCA como "veal" (en inglés "veal" designa específicamente la ternera lechal muy joven, un producto distinto al que se sirve aquí). Aplica el mismo criterio de fidelidad a cualquier otra especie o variedad ambigua que aparezca en el nombre de un plato (ej. "atún rojo" no es atún blanco/bonito y debe traducirse como ese pescado concreto, no por una especie distinta aunque sea similar): nunca cambies la especie, corte o variedad al traducir al inglés, en ningún plato de la lista.
+
 PREGUNTAS LÓGICAS: q1 y q2 deben tratar exclusivamente sobre el significado de términos culinarios ya presentes en el nombre del plato, la técnica de cocinado (explicada de forma genérica) o los ingredientes ya mencionados — nunca sobre datos no verificables como origen, raza, o temperatura de servicio.
 - PROHIBICIÓN ABSOLUTA: NUNCA sugieras maridajes de vino ni menciones bebidas (cerveza, vino, sake, etc.). No incluyas preguntas sobre maridaje.
 
@@ -202,7 +206,7 @@ Estructura exacta esperada (ejemplo con 2 vinos):
     // generación nueva: no debe inventar ni cambiar el contenido, solo
     // traducirlo manteniendo exactamente las mismas claves JSON.
     // ---------------------------------------------------------
-    infoOtrosIdiomasLote: (itemsArray, idiomasObjetivo) => `Actúa como un traductor experto de menús de restaurantes. Te paso una lista de ${itemsArray.length} elementos, cada uno con su ficha en español ya redactada (descripción y, si las tiene, preguntas/respuestas). Tu única tarea es TRADUCIR fielmente cada ficha a los siguientes idiomas (usa los códigos ISO proporcionados): ${idiomasObjetivo.join(', ')}.
+    infoOtrosIdiomasLote: (itemsArray, idiomasObjetivo) => `Actúa como un traductor experto de menús de restaurantes. Te paso una lista de ${itemsArray.length} elementos, cada uno con su ficha en español ya redactada (descripción y, si las tiene, preguntas/respuestas) y, cuando esté disponible, su ficha en inglés como referencia. Tu única tarea es TRADUCIR fielmente cada ficha (basándote en la española) a los siguientes idiomas (usa los códigos ISO proporcionados): ${idiomasObjetivo.join(', ')}.
 
 REGLAS OBLIGATORIAS:
 - Es una traducción, no una redacción nueva: no añadas, quites ni inventes información que no esté ya en el texto en español. No cambies el sentido de ninguna pregunta o respuesta.
@@ -210,8 +214,13 @@ REGLAS OBLIGATORIAS:
 - Si la ficha incluye alérgenos en r3, tradúcelos a su nombre común habitual en cada idioma de destino, sin omitir ninguno ni añadir otros.
 - Estilo natural y profesional propio de una carta de restaurante en cada idioma, evitando traducciones literales torpes.
 
-Elementos a traducir (el número al inicio de cada línea es su índice, empezando en 0; la ficha en español de cada uno va en JSON tras "ES:"):
-${itemsArray.map((it, idx) => `${idx}. ${it.esVino ? '[VINO] ' : ''}ES: ${JSON.stringify(it.infoEs)}`).join('\n')}
+REGLA DE FIDELIDAD TERMINOLÓGICA (obligatoria): si el texto en español usa un término específico de especie, corte o variedad (ej. "atún rojo" frente a atún blanco/bonito, "ternera" frente a buey/vacuno adulto), tradúcelo SIEMPRE por el término equivalente exacto en cada idioma de destino — nunca lo sustituyas por una especie, corte o variedad distinta aunque sea similar o más habitual en ese idioma.
+
+REGLA DE CONSISTENCIA CON EL INGLÉS DE REFERENCIA (crítica): cuando la ficha en inglés de un elemento ya haya optado por un término distinto de la traducción literal del español (por ejemplo, "beef" en vez de "veal" para "ternera"), sigue ese MISMO criterio en todos los idiomas de destino para ese elemento, en vez de traducir literalmente desde el español. Esto es imprescindible porque el NOMBRE del plato en cada idioma (que no ves aquí, pero ya existe en la carta) se tradujo siguiendo ese mismo criterio del inglés — si esta ficha usa un término distinto al del nombre del plato en ese idioma, quedaría inconsistente dentro de la propia carta.
+- No mezcles la terminología de un elemento con la de otro: cada elemento de la lista es independiente.
+
+Elementos a traducir (el número al inicio de cada línea es su índice, empezando en 0; la ficha en español de cada uno va en JSON tras "ES:", y la de inglés (si existe) tras "EN (referencia):"):
+${itemsArray.map((it, idx) => `${idx}. ${it.esVino ? '[VINO] ' : ''}ES: ${JSON.stringify(it.infoEs)}${it.infoEn ? ` | EN (referencia): ${JSON.stringify(it.infoEn)}` : ''}`).join('\n')}
 
 Responde EXCLUSIVAMENTE con un objeto JSON válido, sin texto fuera del JSON ni markdown. La clave de primer nivel debe ser el índice numérico del elemento tal cual aparece arriba (como string), y dentro de cada uno, usa los códigos ISO en MAYÚSCULAS como claves de segundo nivel, cada una con el mismo objeto de claves que la ficha en español de ese elemento.
 Estructura exacta esperada (ejemplo con 1 elemento y 2 idiomas, ficha con desc+q1+r1+q2+r2):
