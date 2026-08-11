@@ -59,7 +59,7 @@
         stylePrint.innerHTML = `
             @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap');
             @page { size: A4; margin: 10mm; }
-            .sugerencias-panel { background: #ffffff !important; padding: 15px 25px !important; width: 190mm !important; min-height: 277mm !important; margin: 0 auto !important; font-family: 'Montserrat', sans-serif !important; box-sizing: border-box !important; display: flex !important; flex-direction: column !important; }
+            .sugerencias-panel { background: #ffffff !important; padding: 15px 25px !important; width: 100% !important; max-width: 190mm !important; min-height: 277mm !important; margin: 0 auto !important; font-family: 'Montserrat', sans-serif !important; box-sizing: border-box !important; display: flex !important; flex-direction: column !important; }
             .sugerencias-header-layout { display: flex !important; justify-content: space-between !important; align-items: center !important; margin-bottom: 15px !important; position: relative !important; }
             .sugerencias-brand-title-group { display: flex !important; flex-direction: column !important; gap: 2px !important; }
             .sugerencias-title-es { font-weight: 700 !important; font-size: 1.3rem !important; color: #e05a2b !important; text-transform: uppercase !important; margin:0 !important; } 
