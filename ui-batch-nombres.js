@@ -1,7 +1,8 @@
 // =========================================
 // REPOSITORIO: Web_Editor_Pro_v3 (PRINCIPAL)
 // ARCHIVO: ui-batch-nombres.js
-// FASE 2: Traducción por lotes de NOMBRE_ES al resto de idiomas, vía Gemini.
+// FASE 2: Traducción por lotes de NOMBRE_ES al resto de idiomas (incluido el
+// inglés si también falta), vía Gemini.
 // Botón: "Traducir Platos en ES a Todos los Idiomas Faltantes".
 // =========================================
 
@@ -14,6 +15,10 @@ export const UIBatchNombres = {
     // lógica que ya usaba el botón manual de un solo plato (ejecutarTraduccionAutomatica
     // en app.js), pero recorriendo TODOS los platos pendientes en bloques
     // (tamaño configurable vía TRADUCCION_TAMANO_LOTE en config.js).
+    // NUEVO: el inglés (NOMBRE_EN) ya no está excluido — "Todos los Idiomas
+    // Faltantes" incluye el inglés si también está vacío. Si NOMBRE_EN ya tiene
+    // valor, se sigue usando como referencia para el resto de idiomas (igual que
+    // antes); si está vacío, se traduce en la misma llamada que el resto.
     // ==========================================
     iniciarTraduccionNombresPorLotes: async (stateContainerParam) => {
         procesoState.detenido = false; procesoState.pausado = false;
@@ -31,7 +36,8 @@ export const UIBatchNombres = {
         const rangoFin = selectorFin ? (parseInt(selectorFin.value) - 1 || activeStateContainer.csvData.length) : activeStateContainer.csvData.length;
 
         const idiomasBase = (window.IDIOMAS_ORDEN && window.IDIOMAS_ORDEN.length) ? window.IDIOMAS_ORDEN : Object.keys(window.IDIOMAS_CONFIG || {}).map(l => l.toLowerCase());
-        const idiomasObjetivo = idiomasBase.filter(l => l !== 'es' && l !== 'en');
+        // NUEVO: solo se excluye ES (el idioma origen); EN ya se traduce como uno más si falta.
+        const idiomasObjetivo = idiomasBase.filter(l => l !== 'es');
 
         const indiceCastellanoBase = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === 'NOMBRE_ES');
         const indiceInglesBase = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === 'NOMBRE_EN');
