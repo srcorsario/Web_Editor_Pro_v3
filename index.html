@@ -19,6 +19,10 @@
                 <h1>Web Editor Pro <span id="app-version" style="font-size: 0.65rem; color: #95a5a6; font-weight: 400; margin-left: 10px; vertical-align: middle; display: inline-block;"></span></h1>
                 <div style="display: flex; align-items: center; gap: 10px; width: 100%; margin-bottom: 10px;">
                     <div id="status-carga" class="status-ok" style="flex: 1;">⏳ Conectando...</div>
+                    <div id="tabs-visibility-wrapper" style="position: relative;">
+                        <button id="btn-toggle-tabs-panel" type="button" style="font-size: 0.7rem; display: flex; align-items: center; gap: 4px; white-space: nowrap; background: #f8f9fa; padding: 4px 8px; border-radius: 4px; border: 1px solid #ddd; cursor: pointer; color: #555; font-weight: 600;">👁️ Pestañas</button>
+                        <div id="tabs-visibility-panel" style="display: none; position: absolute; top: calc(100% + 4px); right: 0; background: white; border: 1px solid #ddd; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); padding: 10px 12px; z-index: 50; min-width: 220px; text-align: left;"></div>
+                    </div>
                     <div style="font-size: 0.7rem; display: flex; align-items: center; gap: 4px; white-space: nowrap; background: #f8f9fa; padding: 4px 8px; border-radius: 4px; border: 1px solid #ddd;">
                         <input type="checkbox" id="toggle-debug-panel" style="cursor: pointer; margin: 0;">
                         <label for="toggle-debug-panel" style="cursor: pointer; color: #555; font-weight: 600; margin: 0;">DEBUG</label>
@@ -28,30 +32,34 @@
                     🔒 Consistencia <span id="timer-mode" style="background:#c0392b; color:white; padding: 1px 4px; border-radius: 3px; font-size: 0.65rem;">RG</span>: <span id="timer-seconds">180</span>s
                     <button onclick="cancelarModoOptimista()" style="margin-left: 10px; background: transparent; border: 1px solid #c0392b; color: #c0392b; padding: 1px 5px; border-radius: 3px; cursor: pointer; font-size: 0.6rem; font-weight: bold;">✕ CANCELAR</button>
                 </div>
-                <div class="api-keys-manager">
-                    <label class="label-seccion">Gestión de API Keys Gemini</label>
-                    <div class="api-keys-inputs">
-                        <input type="text" id="nuevaKey" placeholder="Pega tu Gemini Key aquí..." class="input-estandar">
-                        <button id="addKeyBtn" class="btn-add-key">Añadir Key</button>
-                    </div>
-                    <div class="api-keys-list">
-                        <div id="contenedorSelectKeys" class="flex-1">
-                            <select id="selectKeys" class="select-keys"></select>
-                        </div>
-                        <button id="btnEliminarKeySeleccionada" class="btn-delete-key" title="Eliminar key">✕</button>
-                    </div>
-                </div>
             </div>
             <img id="header-logo-usopen" src="data:image/gif;base64,R0lGODlhAQABAAD/ACWAAAAAAQABAAACADs=" class="header-logo header-logo-right" alt="Logo USOPEN">
         </div>
 
-        <div class="tabs-container">
+        <div class="tabs-container" id="tabs-container">
+            <button id="tab-btn-apikeys" class="tab-btn" onclick="switchTab('apikeys', this)">0. Gestión de API Keys Gemini</button>
             <button id="tab-btn-rg" class="tab-btn active" onclick="switchTab('editor', this)">1. Editor Carta RG</button>
             <button id="tab-btn-sug-rg" class="tab-btn" onclick="switchTab('sugerencias', this)">2. Sugerencias RG</button>
-            <button class="tab-btn" onclick="switchTab('pro', this)" style="margin-left: auto; margin-right: auto;">3. Traductor Pro</button>
+            <button id="tab-btn-pro" class="tab-btn" onclick="switchTab('pro', this)" style="margin-left: auto; margin-right: auto;">3. Traductor Pro</button>
             <button id="tab-btn-qa" class="tab-btn" onclick="switchTab('qa', this)">3.1. Preguntas y respuestas</button>
             <button id="tab-btn-usopen" class="tab-btn" onclick="switchTab('editor-usopen', this)">4. Editor Carta USOpen</button>
             <button id="tab-btn-sug-usopen" class="tab-btn" onclick="switchTab('sugerencias-usopen', this)">5. Sugerencias USOpen</button>
+        </div>
+
+        <div id="tab-apikeys" class="tab-content" style="display: none;">
+            <div class="api-keys-manager" style="max-width: 500px; margin-top: 0;">
+                <label class="label-seccion">Gestión de API Keys Gemini</label>
+                <div class="api-keys-inputs">
+                    <input type="text" id="nuevaKey" placeholder="Pega tu Gemini Key aquí..." class="input-estandar">
+                    <button id="addKeyBtn" class="btn-add-key">Añadir Key</button>
+                </div>
+                <div class="api-keys-list">
+                    <div id="contenedorSelectKeys" class="flex-1">
+                        <select id="selectKeys" class="select-keys"></select>
+                    </div>
+                    <button id="btnEliminarKeySeleccionada" class="btn-delete-key" title="Eliminar key">✕</button>
+                </div>
+            </div>
         </div>
 
         <div id="tab-editor" class="tab-content active">
@@ -291,8 +299,91 @@
                 const t4 = document.getElementById('tab-btn-sug-usopen'); if(t4) t4.style.display = 'none';
             }
         }
+
+        // NUEVO: Panel de checks para mostrar/ocultar pestañas manualmente (persistente en
+        // localStorage). Independiente del Enable/Disable de restaurantes de arriba: una
+        // pestaña ya oculta por RESTAURANTES_CONFIG (restaurante desactivado) ni siquiera
+        // aparece en la lista de checks, porque no tiene sentido ofrecer mostrarla desde aquí.
+        const TABS_VISIBILITY_STORAGE_KEY = 'webEditorPro_tabsVisibility';
+
+        function leerPreferenciasVisibilidad() {
+            try {
+                return JSON.parse(localStorage.getItem(TABS_VISIBILITY_STORAGE_KEY)) || {};
+            } catch (e) { return {}; }
+        }
+
+        function guardarPreferenciasVisibilidad(prefs) {
+            try { localStorage.setItem(TABS_VISIBILITY_STORAGE_KEY, JSON.stringify(prefs)); } catch (e) {}
+        }
+
+        function initTabsVisibilityPanel() {
+            const panel = document.getElementById('tabs-visibility-panel');
+            const toggleBtn = document.getElementById('btn-toggle-tabs-panel');
+            if (!panel || !toggleBtn) return;
+
+            const todosLosBotones = Array.from(document.querySelectorAll('.tabs-container .tab-btn'));
+            // Solo entran en la lista de checks los botones que no estén ya ocultos por el
+            // sistema de Enable/Disable de restaurantes (display:none puesto arriba).
+            const botonesElegibles = todosLosBotones.filter(btn => btn.style.display !== 'none');
+
+            const prefs = leerPreferenciasVisibilidad();
+
+            // Construir el HTML del panel con un checkbox por pestaña elegible
+            panel.innerHTML = botonesElegibles.map(btn => {
+                const key = btn.id;
+                const visible = prefs[key] !== false; // por defecto, visible
+                const label = btn.innerText;
+                return `<label style="display:flex; align-items:center; gap:8px; font-size:0.8rem; color:#555; padding:4px 0; cursor:pointer; white-space:nowrap;">
+                    <input type="checkbox" data-tab-key="${key}" ${visible ? 'checked' : ''} style="cursor:pointer; margin:0;">
+                    ${label}
+                </label>`;
+            }).join('');
+
+            // Aplicar el estado guardado a cada botón elegible
+            botonesElegibles.forEach(btn => {
+                const visible = prefs[btn.id] !== false;
+                if (!visible) btn.style.display = 'none';
+            });
+
+            // Si la pestaña actualmente activa ha quedado oculta, cambiar a la primera visible
+            const activo = document.querySelector('.tabs-container .tab-btn.active');
+            if (activo && activo.style.display === 'none') {
+                const primeraVisible = botonesElegibles.find(btn => btn.style.display !== 'none');
+                if (primeraVisible) primeraVisible.click();
+            }
+
+            panel.querySelectorAll('input[type="checkbox"]').forEach(chk => {
+                chk.addEventListener('change', () => {
+                    const key = chk.getAttribute('data-tab-key');
+                    const btn = document.getElementById(key);
+                    if (!btn) return;
+                    const prefsActuales = leerPreferenciasVisibilidad();
+                    prefsActuales[key] = chk.checked;
+                    guardarPreferenciasVisibilidad(prefsActuales);
+                    btn.style.display = chk.checked ? '' : 'none';
+
+                    // Si se acaba de ocultar la pestaña activa, saltar a la primera visible
+                    if (!chk.checked && btn.classList.contains('active')) {
+                        const primeraVisible = botonesElegibles.find(b => b.style.display !== 'none');
+                        if (primeraVisible) primeraVisible.click();
+                    }
+                });
+            });
+
+            toggleBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+            });
+            document.addEventListener('click', (e) => {
+                if (panel.style.display !== 'none' && !panel.contains(e.target) && e.target !== toggleBtn) {
+                    panel.style.display = 'none';
+                }
+            });
+        }
+        initTabsVisibilityPanel();
     </script>
     <script src="languages.js"></script>
+
     <script src="data.js"></script>
     <script src="state.js"></script>
     <script src="utils.js"></script>
