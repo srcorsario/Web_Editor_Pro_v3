@@ -53,7 +53,13 @@ export const UICore = {
         }
         window.UI.log(`[Info] Descargando CSV...`);
         try {
-            const resp = await fetch(targetUrl + '&zx=' + Date.now(), { cache: "no-store", headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' } });
+            // OJO: no añadir cabeceras manuales aquí (Cache-Control/Pragma). No son cabeceras
+            // "simples" para CORS, así que el navegador lanza antes una petición OPTIONS
+            // (preflight); ni el Web App de Apps Script ni el CSV publicado de Google Sheets
+            // la responden correctamente, y el navegador bloquea la petición real por CORS.
+            // El "no-store" de abajo ya evita la caché del navegador, y "&zx=" ya rompe
+            // cualquier caché intermedia — no hace falta nada más para forzar datos frescos.
+            const resp = await fetch(targetUrl + '&zx=' + Date.now(), { cache: "no-store" });
             if (!resp.ok) throw new Error("Error HTTP " + resp.status);
             const text = await resp.text();
 

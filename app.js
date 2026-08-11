@@ -104,9 +104,11 @@ async function cargar(retryCount = 0) {
             UI.log(`[Editor] Conectando con Google Sheets remoto (${getModoAlias(modo)})...`);
         }
         
+        // OJO: no añadir cabeceras manuales aquí (Cache-Control/Pragma): fuerzan un preflight
+        // CORS (OPTIONS) que el CSV publicado de Google Sheets/Apps Script no responde bien,
+        // y el navegador bloquea la petición real. "no-store" ya evita la caché del navegador.
         const resp = await fetch(url + '&zx=' + Date.now(), { 
-            cache: "no-store",
-            headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' } 
+            cache: "no-store"
         });
         const text = await resp.text();
         
