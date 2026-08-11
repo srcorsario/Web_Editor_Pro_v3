@@ -117,7 +117,7 @@ export const UIBatchInfoOtros = {
 
             while (!satisfecho && !procesoState.detenido && intentosLote < maxIntentosLote) {
                 try {
-                    const callResponse = await fetch(`${window.GEMINI_ENDPOINT_URL || 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent'}?key=${listaClavesAPI[procesoState.currentKeyIndex]}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: promptTraduccion }] }], generationConfig: { maxOutputTokens: window.GEMINI_MAX_OUTPUT_TOKENS || 65536 } }) });
+                    const callResponse = await fetch(`${window.GEMINI_ENDPOINT_URL || 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent'}?key=${listaClavesAPI[procesoState.currentKeyIndex]}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: promptTraduccion }] }], generationConfig: { maxOutputTokens: window.GEMINI_MAX_OUTPUT_TOKENS || 65536, thinkingConfig: { thinkingBudget: 0 } } }) });
 
                     const textResponse = await callResponse.text();
                     let respuestaJsonData;
@@ -141,12 +141,24 @@ export const UIBatchInfoOtros = {
                         continue;
                     }
 
+                    const finishReason = respuestaJsonData.candidates?.[0]?.finishReason;
                     const textoLimpioIA = respuestaJsonData.candidates?.[0]?.content?.parts?.[0]?.text;
-                    if (!textoLimpioIA) throw new Error("La API no devolvió contenido.");
+                    if (!textoLimpioIA) throw new Error(`La API no devolvió contenido (finishReason: ${finishReason || 'desconocido'}).`);
 
-                    const traduccionesLote = (typeof window.extraerJSON === 'function')
-                        ? window.extraerJSON(textoLimpioIA)
-                        : JSON.parse(textoLimpioIA.replace(/```json/g, '').replace(/```/g, '').trim());
+                    let traduccionesLote;
+                    try {
+                        traduccionesLote = (typeof window.extraerJSON === 'function')
+                            ? window.extraerJSON(textoLimpioIA)
+                            : JSON.parse(textoLimpioIA.replace(/```json/g, '').replace(/```/g, '').trim());
+                    } catch (parseErr) {
+                        // NUEVO: si el JSON no se puede extraer, mostramos un fragmento real de lo que
+                        // devolvió Gemini (inicio y final) y el finishReason, para poder diagnosticar
+                        // a la primera si vuelve a pasar (truncado, bloqueado por seguridad, etc.)
+                        // en vez de solo saber que "no se encontró JSON válido".
+                        const inicio = textoLimpioIA.slice(0, 200);
+                        const final = textoLimpioIA.slice(-200);
+                        throw new Error(`${parseErr.message} | finishReason: ${finishReason || 'desconocido'} | longitud respuesta: ${textoLimpioIA.length} caracteres | inicio: "${inicio}" | final: "${final}"`);
+                    }
 
                     itemsLote.forEach((it, idx) => {
                         const traducciones = traduccionesLote[String(idx)] || traduccionesLote[idx];
