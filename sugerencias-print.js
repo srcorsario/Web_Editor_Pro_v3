@@ -122,6 +122,11 @@
     const VINO_IMAGEN_BASE_MAX_HEIGHT = 140; // px
     const VINO_IMAGEN_BASE_MAX_WIDTH = 55;   // %
     const VINO_IMAGEN_ESCALAS = [1, 1.2, 1.4, 1.6];
+    // MODIFICADO: tamaño por defecto ahora es 1.4x (antes 1x).
+    const VINO_IMAGEN_ESCALA_DEFAULT = 1.4;
+    // NUEVO: tamaño base del QR (debe coincidir con el CSS .sugerencias-qr-img: 90px !important),
+    // para poder escalarlo en la misma proporción que la imagen del vino cuando comparten fila.
+    const QR_IMAGEN_BASE_SIZE = 90; // px
 
     // MODIFICADO: solo oculta/muestra la imagen del vino en sí, NUNCA el wrapper entero — desde
     // que el QR vive en la misma fila, ocultar el wrapper apagaba el QR también.
@@ -137,15 +142,26 @@
     // NUEVO: ajusta el tamaño de la imagen del vino aplicando un multiplicador sobre el tamaño
     // base (p.ej. 1.2 = un 20% más grande). Reajusta max-height y max-width a la vez para que
     // crezca de forma proporcionada.
+    // MODIFICADO: ahora también reescala el QR en la misma proporción (antes se quedaba fijo
+    // en 90px mientras la botella crecía, descuadrando la fila); su CSS base tiene
+    // width/height con !important, así que el ajuste se fuerza con setProperty(..., 'important')
+    // para poder ganarle, en vez de una simple asignación de style que perdería frente a él.
     window.setVinoImagenEscala = function(escala, modo) {
         const config = SUGERENCIAS_CONFIG[modo];
         if (!config) return;
         const wrapper = document.getElementById(config.vinoImagenWrapperId);
         if (!wrapper) return;
         const img = wrapper.querySelector('.sugerencias-vino-imagen');
-        if (!img) return;
-        img.style.maxHeight = (VINO_IMAGEN_BASE_MAX_HEIGHT * escala) + 'px';
-        img.style.maxWidth = (VINO_IMAGEN_BASE_MAX_WIDTH * escala) + '%';
+        if (img) {
+            img.style.maxHeight = (VINO_IMAGEN_BASE_MAX_HEIGHT * escala) + 'px';
+            img.style.maxWidth = (VINO_IMAGEN_BASE_MAX_WIDTH * escala) + '%';
+        }
+        const qrImg = wrapper.querySelector('.sugerencias-qr-img');
+        if (qrImg) {
+            const qrTamano = (QR_IMAGEN_BASE_SIZE * escala) + 'px';
+            qrImg.style.setProperty('width', qrTamano, 'important');
+            qrImg.style.setProperty('height', qrTamano, 'important');
+        }
     };
 
     window.renderCarta = function(modo) {
@@ -219,11 +235,17 @@
         // de alérgenos.
         const tieneVinoEspecial = vinos.some(p => parseInt(p.id, 10) === 12990);
         const vinoImagenDefaultCon = config.vinoImagenOptions.find(o => o.isDefault)?.value === 'con';
+        // MODIFICADO: tamaño inicial ya a VINO_IMAGEN_ESCALA_DEFAULT (1.4x) en vez del 1x base,
+        // tanto para la botella como para el QR (proporcional, ver QR_IMAGEN_BASE_SIZE). El
+        // !important en el QR es necesario para ganarle al width/height !important de su CSS base.
+        const vinoImgMaxHeightInicial = VINO_IMAGEN_BASE_MAX_HEIGHT * VINO_IMAGEN_ESCALA_DEFAULT;
+        const vinoImgMaxWidthInicial = VINO_IMAGEN_BASE_MAX_WIDTH * VINO_IMAGEN_ESCALA_DEFAULT;
+        const qrTamanoInicial = QR_IMAGEN_BASE_SIZE * VINO_IMAGEN_ESCALA_DEFAULT;
         const vinoImagenHtml = tieneVinoEspecial
             ? `<div class="sugerencias-vino-imagen-wrapper" id="${config.vinoImagenWrapperId}">
                 <span></span>
-                <img src="${config.vinoImagenSrc}" class="sugerencias-vino-imagen" style="display:${vinoImagenDefaultCon ? '' : 'none'};" onerror="this.style.display='none';">
-                <img src="${initialImgSrc}" class="sugerencias-qr-img" id="${config.qrImgId}">
+                <img src="${config.vinoImagenSrc}" class="sugerencias-vino-imagen" style="display:${vinoImagenDefaultCon ? '' : 'none'}; max-height:${vinoImgMaxHeightInicial}px; max-width:${vinoImgMaxWidthInicial}%;" onerror="this.style.display='none';">
+                <img src="${initialImgSrc}" class="sugerencias-qr-img" id="${config.qrImgId}" style="width:${qrTamanoInicial}px !important; height:${qrTamanoInicial}px !important;">
                </div>`
             : '';
 
@@ -250,7 +272,7 @@
                 vinoImagenButtonsHtml += `<label style="${style}"><input type="radio" name="${config.vinoImagenRadioName}" value="${opt.value}" ${isActive ? 'checked' : ''} onchange="window.toggleVinoImagen('${opt.value}', '${modoSeguro}')"> ${opt.label}</label>`;
             });
             VINO_IMAGEN_ESCALAS.forEach((escala, idx) => {
-                const isActive = idx === 0; // 1x por defecto
+                const isActive = escala === VINO_IMAGEN_ESCALA_DEFAULT; // MODIFICADO: 1.4x por defecto (antes 1x)
                 const style = `cursor: pointer; color: ${isActive ? '#0d5c63' : '#64748b'}; font-weight: ${isActive ? 'bold' : 'normal'};`;
                 const etiqueta = escala === 1 ? '1x' : `${escala}x`;
                 vinoImagenEscalaHtml += `<label style="${style}"><input type="radio" name="vino-imagen-escala-${modoSeguro}" value="${escala}" ${isActive ? 'checked' : ''} onchange="window.setVinoImagenEscala(${escala}, '${modoSeguro}')"> ${etiqueta}</label>`;
