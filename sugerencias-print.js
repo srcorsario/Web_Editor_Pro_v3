@@ -67,7 +67,7 @@
                NO crezca si el contenido se desborda — así se ve a simple vista si algo se pasa de la
                línea roja. Solo en pantalla: oculto en la impresión real vía @media print más abajo.
             */
-            .sugerencias-debug-a4 { position: absolute !important; top: 0 !important; left: 0 !important; width: 100% !important; height: 267mm !important; border: 2px solid red !important; box-sizing: border-box !important; pointer-events: none !important; z-index: 9998 !important; }
+            .sugerencias-debug-a4 { position: absolute !important; top: 0; left: 0 !important; width: 100% !important; height: 267mm !important; border: 2px solid red !important; box-sizing: border-box !important; pointer-events: none !important; z-index: 9998 !important; }
             .sugerencias-header-layout { display: flex !important; justify-content: space-between !important; align-items: center !important; margin-bottom: 15px !important; position: relative !important; }
             .sugerencias-brand-title-group { display: flex !important; flex-direction: column !important; gap: 2px !important; }
             .sugerencias-title-es { font-weight: 700 !important; font-size: 1.7rem !important; color: #e05a2b !important; text-transform: uppercase !important; margin:0 !important; } 
