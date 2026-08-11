@@ -58,8 +58,8 @@
         stylePrint.id = 'sugerencias-print-styles';
         stylePrint.innerHTML = `
             @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap');
-            @page { size: A4; margin: 10mm; }
-            .sugerencias-panel { background: #ffffff !important; padding: 15px 25px !important; width: 100% !important; max-width: 190mm !important; min-height: 277mm !important; margin: 0 auto !important; font-family: 'Montserrat', sans-serif !important; box-sizing: border-box !important; display: flex !important; flex-direction: column !important; }
+            @page { size: A4; margin: 15mm 10mm; } /* Margen superior/inferior a 15mm (10mm original + 5mm más) */
+            .sugerencias-panel { background: #ffffff !important; padding: 15px 25px !important; width: 100% !important; max-width: 190mm !important; min-height: 267mm !important; margin: 0 auto !important; font-family: 'Montserrat', sans-serif !important; box-sizing: border-box !important; display: flex !important; flex-direction: column !important; }
             .sugerencias-header-layout { display: flex !important; justify-content: space-between !important; align-items: center !important; margin-bottom: 15px !important; position: relative !important; }
             .sugerencias-brand-title-group { display: flex !important; flex-direction: column !important; gap: 2px !important; }
             .sugerencias-title-es { font-weight: 700 !important; font-size: 1.7rem !important; color: #e05a2b !important; text-transform: uppercase !important; margin:0 !important; } 
@@ -314,7 +314,7 @@
                 }));
             }
 
-            function mmDesdePx(px, maxAlturaPx) { return (px * 277 / maxAlturaPx).toFixed(1); }
+            function mmDesdePx(px, maxAlturaPx) { return (px * 267 / maxAlturaPx).toFixed(1); }
 
             function ajustarAUnaPagina() {
                 var resultado = { espacioCategoriasReducido: false, imagenVinoQuitada: false, qrQuitado: false, textoReducido: false, medidas: [] };
@@ -322,7 +322,7 @@
                 if (!panel) return resultado;
 
                 var probe = document.createElement('div');
-                probe.style.cssText = 'position:absolute; visibility:hidden; height:277mm; width:0;';
+                probe.style.cssText = 'position:absolute; visibility:hidden; height:267mm; width:0;';
                 document.body.appendChild(probe);
                 var maxAlturaPx = probe.getBoundingClientRect().height;
                 document.body.removeChild(probe);
@@ -340,7 +340,7 @@
                 function medir(etiqueta) {
                     void panel.offsetHeight;
                     var alturaMm = mmDesdePx(panel.scrollHeight, maxAlturaPx);
-                    resultado.medidas.push(etiqueta + ': ' + alturaMm + 'mm de 277mm');
+                    resultado.medidas.push(etiqueta + ': ' + alturaMm + 'mm de 267mm');
                     return panel.scrollHeight <= (maxAlturaPx + 2);
                 }
 
