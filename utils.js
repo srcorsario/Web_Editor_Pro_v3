@@ -49,6 +49,11 @@ function formatWineName(texto) {
 /**
  * Busca y extrae el primer objeto JSON válido dentro de un string (incluso si tiene texto basura alrededor).
  * Ideal para respuestas de la IA que incluyen bloques de código markdown.
+ * NUEVO: el conteo de llaves es consciente de las cadenas de texto — ignora cualquier '{' o '}' que
+ * aparezca DENTRO de una cadena JSON (p.ej. si una traducción incluye una llave suelta en el texto),
+ * y respeta comillas escapadas (\"). Antes contaba las llaves de todo el texto sin distinción, lo que
+ * podía descuadrar el conteo y fallar con "No se encontró un JSON válido" aunque la respuesta de la
+ * IA estuviera completa y bien formada.
  * @param {String} texto 
  * @returns {Object} El JSON parseado.
  * @throws {Error} Si no encuentra un JSON válido.
@@ -57,12 +62,32 @@ function extraerJSON(texto) {
     let limpio = texto.replace(/```json/g, '').replace(/```/g, '').trim();
     let braceCount = 0;
     let startIndex = -1;
-    
+    let dentroDeString = false;
+    let escapado = false;
+
     for (let i = 0; i < limpio.length; i++) {
-        if (limpio[i] === '{') {
+        const ch = limpio[i];
+
+        if (dentroDeString) {
+            if (escapado) {
+                escapado = false;
+            } else if (ch === '\\') {
+                escapado = true;
+            } else if (ch === '"') {
+                dentroDeString = false;
+            }
+            continue; // dentro de una cadena: ignorar '{'/'}' hasta que cierre
+        }
+
+        if (ch === '"') {
+            dentroDeString = true;
+            continue;
+        }
+
+        if (ch === '{') {
             if (braceCount === 0) startIndex = i;
             braceCount++;
-        } else if (limpio[i] === '}') {
+        } else if (ch === '}') {
             braceCount--;
             if (braceCount === 0 && startIndex !== -1) {
                 const jsonString = limpio.substring(startIndex, i + 1);
