@@ -90,6 +90,17 @@
             .sugerencias-vino-imagen-wrapper .sugerencias-qr-img { justify-self: end !important; }
             .vino-imagen-selector-wrapper { font-size: 0.75rem !important; color: #64748b !important; }
             .btn-imprimir-a4 { display: block; width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 0.9rem; cursor: pointer; margin-bottom: 20px; text-align: center; }
+            /* NUEVO: en pantallas estrechas (móvil), las filas "Imagen Vino:" y "Tipo de QR:"
+               se generan con flex-wrap:nowrap y white-space:nowrap en línea (para que en
+               pantallas normales queden en una sola fila compacta), lo que en móvil las hacía
+               desbordarse por el borde derecho. Aquí se sobreescribe con !important (gana al
+               estilo en línea, que no lo es) permitiendo que cada grupo de opciones baje de
+               línea si no cabe, y se quita el borde/padding lateral que separaba "Imagen Vino"
+               de "Tamaño" (no tiene sentido ya en vertical). */
+            @media (max-width: 600px) {
+                .qr-selector-wrapper { flex-wrap: wrap !important; white-space: normal !important; }
+                .vino-imagen-selector-wrapper { border-right: none !important; padding-right: 0 !important; }
+            }
             @media print { body { -webkit-print-color-adjust: exact !important; } .btn-imprimir-a4, .sugerencias-qr-toggle, .qr-selector-wrapper, .vino-imagen-selector-wrapper { display: none !important; } }
         `;
         document.head.appendChild(stylePrint);
