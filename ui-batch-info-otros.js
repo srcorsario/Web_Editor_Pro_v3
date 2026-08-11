@@ -127,23 +127,43 @@ export const UIBatchInfoOtros = {
                         throw new Error("La API devolvió HTML o texto plano (Posible 403 o error de cuota).");
                     }
 
-                    if (respuestaJsonData.error?.code === 429) {
-                        procesoState.currentKeyIndex = (procesoState.currentKeyIndex + 1) % listaClavesAPI.length;
-                        limitesConsecutivos++;
-                        if (limitesConsecutivos >= listaClavesAPI.length) {
-                            window.UI.log(`[Error Crítico] Cuota de Gemini agotada en TODAS las keys disponibles (${listaClavesAPI.length}). Deteniendo el proceso para no malgastar más peticiones.`);
-                            cuotaAgotada = true;
-                            break;
+                    if (respuestaJsonData.error) {
+                        if (respuestaJsonData.error.code === 429) {
+                            procesoState.currentKeyIndex = (procesoState.currentKeyIndex + 1) % listaClavesAPI.length;
+                            limitesConsecutivos++;
+                            if (limitesConsecutivos >= listaClavesAPI.length) {
+                                window.UI.log(`[Error Crítico] Cuota de Gemini agotada en TODAS las keys disponibles (${listaClavesAPI.length}). Deteniendo el proceso para no malgastar más peticiones.`);
+                                cuotaAgotada = true;
+                                break;
+                            }
+                            window.UI.log(`[Aviso] Límite superado en el lote (filas ${itemsLote.map(it => it.fila + 2).join(', ')}). Rotando Key (${limitesConsecutivos}/${listaClavesAPI.length})...`);
+                            await new Promise(r => setTimeout(r, 4000));
+                            intentosLote++;
+                            continue;
                         }
-                        window.UI.log(`[Aviso] Límite superado en el lote (filas ${itemsLote.map(it => it.fila + 2).join(', ')}). Rotando Key (${limitesConsecutivos}/${listaClavesAPI.length})...`);
-                        await new Promise(r => setTimeout(r, 4000));
-                        intentosLote++;
-                        continue;
+                        // NUEVO: cualquier otro error explícito de la API (400/403/500...) se muestra
+                        // tal cual en vez de caer en el genérico "La API no devolvió contenido" — el
+                        // mensaje de error de Gemini suele decir exactamente qué está mal (payload
+                        // demasiado grande, clave inválida, modelo no encontrado, etc.).
+                        throw new Error(`Error de la API (código ${respuestaJsonData.error.code || '?'}): ${respuestaJsonData.error.message || 'sin mensaje'}`);
+                    }
+
+                    // NUEVO: si Gemini bloqueó la respuesta por su filtro de seguridad, esto viene en
+                    // promptFeedback (candidates puede venir vacío o ausente del todo en ese caso) —
+                    // lo detectamos explícitamente en vez de que caiga en el genérico "sin contenido".
+                    const blockReason = respuestaJsonData.promptFeedback?.blockReason;
+                    if (blockReason) {
+                        throw new Error(`Gemini bloqueó la respuesta por su filtro de seguridad (blockReason: ${blockReason}). Puede haber un término en este plato que lo dispare — revísalo o repórtalo si parece un falso positivo.`);
                     }
 
                     const finishReason = respuestaJsonData.candidates?.[0]?.finishReason;
+                    const safetyRatings = respuestaJsonData.candidates?.[0]?.safetyRatings;
                     const textoLimpioIA = respuestaJsonData.candidates?.[0]?.content?.parts?.[0]?.text;
-                    if (!textoLimpioIA) throw new Error(`La API no devolvió contenido (finishReason: ${finishReason || 'desconocido'}).`);
+                    if (!textoLimpioIA) {
+                        const detalleSeguridad = (safetyRatings && safetyRatings.length) ? ` | safetyRatings: ${JSON.stringify(safetyRatings)}` : '';
+                        const numCandidatos = Array.isArray(respuestaJsonData.candidates) ? respuestaJsonData.candidates.length : 0;
+                        throw new Error(`La API no devolvió contenido (finishReason: ${finishReason || 'desconocido'}, nº candidatos: ${numCandidatos})${detalleSeguridad}.`);
+                    }
 
                     let traduccionesLote;
                     try {
