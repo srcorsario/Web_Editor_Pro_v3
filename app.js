@@ -1,7 +1,7 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '2.3.0'; // MODIFICADO: acordeón en Editor Carta, DEBUG movido al panel de pestañas
+window.APP_VERSIONS.app = '2.3.1'; // MODIFICADO: fix ancho móvil en pestaña Sugerencias (panel ya no se desborda en pantallas <190mm)
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
