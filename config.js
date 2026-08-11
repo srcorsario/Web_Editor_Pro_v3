@@ -69,7 +69,14 @@ function getCsvUrl(modo) {
 // =====================================================================
 // NUEVO: CONFIGURACIÓN DE INTELIGENCIA ARTIFICIAL (Gemini)
 // =====================================================================
-const GEMINI_ENDPOINT_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent";
+const GEMINI_ENDPOINT_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent"; // v1 estable — el usado siempre por el resto de llamadas del proyecto
+// NUEVO: endpoint propio SOLO para "Generar Info Platos Otros Idiomas" (ui-batch-info-otros.js).
+// Es v1beta en vez de v1 porque esa llamada usa thinkingConfig (desactiva el "thinking" de Gemini
+// 2.5 para ir más rápido y no perder presupuesto de tokens en razonamiento invisible), parámetro
+// que la API v1 estable no soporta ("Thinking is not enabled for api version v1"). El resto de
+// llamadas del proyecto (Fase 1, Fase 2, y los 2 flujos manuales de app.js) se quedan en v1 tal
+// cual siempre han estado, sin thinkingConfig, para no tocar nada que ya funcionaba.
+const GEMINI_ENDPOINT_URL_INFO_OTROS = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
 
 // CONTROL DE LOTES INDEPENDIENTES PARA LA ARQUITECTURA DE DOS FASES
 const TRADUCCION_TAMANO_LOTE = 3;       // Lote para traducción masiva de nombres
@@ -82,10 +89,12 @@ const INFO_OTROS_IDIOMAS_TAMANO_LOTE = 1;
 // NUEVO: límite explícito de tokens de salida para las llamadas a Gemini que generan/traducen
 // fichas largas (antes no se fijaba y se usaba el valor por defecto de la API, insuficiente para
 // lotes con muchos idiomas — causaba respuestas truncadas y errores de "JSON inválido/no encontrado").
+// Esto SÍ es compatible con v1 y v1beta por igual, así que se mantiene en todas las llamadas.
 const GEMINI_MAX_OUTPUT_TOKENS = 65536;
 
 // NUEVO: Exposición explícita en window para que ui.js (script type="module", con su propio
 // scope) pueda leer esta constante de forma fiable, igual que ya se hace con RESTAURANTES_CONFIG.
+window.GEMINI_ENDPOINT_URL_INFO_OTROS = GEMINI_ENDPOINT_URL_INFO_OTROS;
 window.TRADUCCION_TAMANO_LOTE = TRADUCCION_TAMANO_LOTE;
 window.INFO_EXTENDIDA_TAMANO_LOTE = INFO_EXTENDIDA_TAMANO_LOTE;
 window.INFO_OTROS_IDIOMAS_TAMANO_LOTE = INFO_OTROS_IDIOMAS_TAMANO_LOTE;
