@@ -59,7 +59,15 @@
         stylePrint.innerHTML = `
             @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap');
             @page { size: A4; margin: 15mm 10mm; } /* Margen superior/inferior a 15mm (10mm original + 5mm más) */
-            .sugerencias-panel { background: #ffffff !important; padding: 15px 25px !important; width: 100% !important; max-width: 190mm !important; min-height: 267mm !important; margin: 0 auto !important; font-family: 'Montserrat', sans-serif !important; box-sizing: border-box !important; display: flex !important; flex-direction: column !important; }
+            .sugerencias-panel { background: #ffffff !important; padding: 15px 25px !important; width: 100% !important; max-width: 190mm !important; min-height: 267mm !important; margin: 0 auto !important; font-family: 'Montserrat', sans-serif !important; box-sizing: border-box !important; display: flex !important; flex-direction: column !important; position: relative !important; }
+            /* NUEVO: rectángulo de depuración visual — marca exactamente los 190mm x 267mm de zona
+               imprimible real (el resultado de A4 menos los márgenes de @page). Se ancla al propio
+               .sugerencias-panel (que ya tiene position:relative) para que top/left:0 coincida con
+               su esquina real sin depender de márgenes del body, y con height fija en mm para que
+               NO crezca si el contenido se desborda — así se ve a simple vista si algo se pasa de la
+               línea roja. Solo en pantalla: oculto en la impresión real vía @media print más abajo.
+            */
+            .sugerencias-debug-a4 { position: absolute !important; top: 0 !important; left: 0 !important; width: 100% !important; height: 267mm !important; border: 2px solid red !important; box-sizing: border-box !important; pointer-events: none !important; z-index: 9998 !important; }
             .sugerencias-header-layout { display: flex !important; justify-content: space-between !important; align-items: center !important; margin-bottom: 15px !important; position: relative !important; }
             .sugerencias-brand-title-group { display: flex !important; flex-direction: column !important; gap: 2px !important; }
             .sugerencias-title-es { font-weight: 700 !important; font-size: 1.7rem !important; color: #e05a2b !important; text-transform: uppercase !important; margin:0 !important; } 
@@ -101,7 +109,7 @@
                 .qr-selector-wrapper { flex-wrap: wrap !important; white-space: normal !important; }
                 .vino-imagen-selector-wrapper { border-right: none !important; padding-right: 0 !important; }
             }
-            @media print { body { -webkit-print-color-adjust: exact !important; } .btn-imprimir-a4, .sugerencias-qr-toggle, .qr-selector-wrapper, .vino-imagen-selector-wrapper { display: none !important; } }
+            @media print { body { -webkit-print-color-adjust: exact !important; } .btn-imprimir-a4, .sugerencias-qr-toggle, .qr-selector-wrapper, .vino-imagen-selector-wrapper, .sugerencias-debug-a4 { display: none !important; } }
         `;
         document.head.appendChild(stylePrint);
     }
@@ -496,7 +504,7 @@
             });
         `;
 
-        pWin.document.write(`<html><head><title>Sugerencias ${getModoAlias(modo)}</title><style>${styleContent}@media print { #sugerencias-aviso-ajuste { display: none !important; } }</style></head><body><div class="sugerencias-panel">${contenedor.innerHTML}</div><script>${scriptAjuste}<\/script></body></html>`);
+        pWin.document.write(`<html><head><title>Sugerencias ${getModoAlias(modo)}</title><style>${styleContent}@media print { #sugerencias-aviso-ajuste { display: none !important; } }</style></head><body><div class="sugerencias-panel"><div class="sugerencias-debug-a4"></div>${contenedor.innerHTML}</div><script>${scriptAjuste}<\/script></body></html>`);
         pWin.document.close();
     };
 })();
