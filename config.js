@@ -73,12 +73,23 @@ const GEMINI_ENDPOINT_URL = "https://generativelanguage.googleapis.com/v1/models
 
 // CONTROL DE LOTES INDEPENDIENTES PARA LA ARQUITECTURA DE DOS FASES
 const TRADUCCION_TAMANO_LOTE = 3;       // Lote para traducción masiva de nombres
-const INFO_EXTENDIDA_TAMANO_LOTE = 2; // Lote ultra reducido para descripciones y Q&A JSON
+const INFO_EXTENDIDA_TAMANO_LOTE = 2; // Lote ultra reducido para descripciones y Q&A JSON en ES/EN (2 idiomas)
+// NUEVO: lote propio para "Generar Info Platos Otros Idiomas" — NO reutiliza INFO_EXTENDIDA_TAMANO_LOTE
+// porque ahí cada plato genera 24 idiomas de golpe (no 2), así que con el mismo tamaño de lote la
+// respuesta de Gemini es mucho más larga y puede cortarse antes de completar el JSON. 1 plato por
+// llamada ya implica traducir su ficha a 24 idiomas, así que no hace falta agrupar más de uno.
+const INFO_OTROS_IDIOMAS_TAMANO_LOTE = 1;
+// NUEVO: límite explícito de tokens de salida para las llamadas a Gemini que generan/traducen
+// fichas largas (antes no se fijaba y se usaba el valor por defecto de la API, insuficiente para
+// lotes con muchos idiomas — causaba respuestas truncadas y errores de "JSON inválido/no encontrado").
+const GEMINI_MAX_OUTPUT_TOKENS = 65536;
 
 // NUEVO: Exposición explícita en window para que ui.js (script type="module", con su propio
 // scope) pueda leer esta constante de forma fiable, igual que ya se hace con RESTAURANTES_CONFIG.
 window.TRADUCCION_TAMANO_LOTE = TRADUCCION_TAMANO_LOTE;
 window.INFO_EXTENDIDA_TAMANO_LOTE = INFO_EXTENDIDA_TAMANO_LOTE;
+window.INFO_OTROS_IDIOMAS_TAMANO_LOTE = INFO_OTROS_IDIOMAS_TAMANO_LOTE;
+window.GEMINI_MAX_OUTPUT_TOKENS = GEMINI_MAX_OUTPUT_TOKENS;
 
 
 // =====================================================================
