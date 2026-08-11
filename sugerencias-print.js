@@ -316,6 +316,30 @@
 
             function mmDesdePx(px, maxAlturaPx) { return (px * 267 / maxAlturaPx).toFixed(1); }
 
+            // NUEVO: mide por separado el "bloque fijo" de abajo — el aviso de alérgenos (2 líneas)
+            // más la sección BODEGA / WINE CELLAR completa (título + nombre del vino + imagen del
+            // vino a su escala actual, p.ej. 1.4x, + QR) — porque su altura NO depende de cuántos
+            // entrantes/principales/postres haya. Conociendo esta altura fija (y la de la cabecera,
+            // que tampoco varía) se puede calcular de una vez cuánto sitio le queda de verdad a
+            // Entrantes/Principales/Postres, en vez de ir remidiendo el panel entero a ciegas en
+            // cada paso.
+            function medirBloqueFijo(panel) {
+                var header = panel.querySelector('.sugerencias-header-layout');
+                var alturaHeader = header ? header.getBoundingClientRect().height : 0;
+
+                var footer = panel.querySelector('.sugerencias-footer');
+                var alturaFooter = footer ? footer.getBoundingClientRect().height : 0;
+
+                var alturaBodega = 0;
+                panel.querySelectorAll('.sugerencias-seccion-titulo').forEach(function(titulo) {
+                    if (titulo.textContent.indexOf('BODEGA') !== -1 && titulo.parentElement) {
+                        alturaBodega = titulo.parentElement.getBoundingClientRect().height;
+                    }
+                });
+
+                return { alturaHeader: alturaHeader, alturaFooter: alturaFooter, alturaBodega: alturaBodega, alturaFija: alturaHeader + alturaFooter + alturaBodega };
+            }
+
             function ajustarAUnaPagina() {
                 var resultado = { espacioCategoriasReducido: false, imagenVinoQuitada: false, qrQuitado: false, textoReducido: false, medidas: [] };
                 var panel = document.querySelector('.sugerencias-panel');
@@ -339,8 +363,11 @@
 
                 function medir(etiqueta) {
                     void panel.offsetHeight;
+                    var bloqueFijo = medirBloqueFijo(panel);
                     var alturaMm = mmDesdePx(panel.scrollHeight, maxAlturaPx);
-                    resultado.medidas.push(etiqueta + ': ' + alturaMm + 'mm de 267mm');
+                    var pieFijoMm = mmDesdePx(bloqueFijo.alturaFija, maxAlturaPx);
+                    var disponibleCategoriasMm = mmDesdePx(maxAlturaPx - bloqueFijo.alturaFija, maxAlturaPx);
+                    resultado.medidas.push(etiqueta + ': ' + alturaMm + 'mm de 267mm (cabecera+alérgenos+BODEGA: ' + pieFijoMm + 'mm → tope máximo disponible para Entrantes/Principales/Postres: ' + disponibleCategoriasMm + 'mm)');
                     return panel.scrollHeight <= (maxAlturaPx + 2);
                 }
 
@@ -381,6 +408,44 @@
                 if (medir('Sin QR')) return resultado;
 
                 var factor = 1, pasos = 0, MAX_PASOS = 12;
+
+                // NUEVO: en vez de arrancar la reducción de texto en 100% e ir bajando de 3% en 3%
+                // a ciegas (hasta 12 remedidas del panel entero), se calcula primero un factor de
+                // arranque directamente a partir del tope máximo real ya conocido (cabecera +
+                // alérgenos + BODEGA a su escala actual) frente a lo que ocupan de verdad ahora
+                // mismo Entrantes/Principales/Postres. Así se salta en un solo paso cerca del punto
+                // necesario, y el bucle de abajo solo tiene que afinar (normalmente 0-1 pasos más)
+                // en vez de recorrer la escala entera paso a paso.
+                var bloqueFijoActual = medirBloqueFijo(panel);
+                var disponibleParaCategoriasPx = maxAlturaPx - bloqueFijoActual.alturaFija;
+                var alturaCategoriasActualPx = 0;
+                panel.querySelectorAll('.sugerencias-seccion').forEach(function(sec) {
+                    var titulo = sec.querySelector('.sugerencias-seccion-titulo');
+                    if (titulo && titulo.textContent.indexOf('BODEGA') !== -1) return; // Bodega ya cuenta como bloque fijo
+                    alturaCategoriasActualPx += sec.getBoundingClientRect().height;
+                });
+                if (alturaCategoriasActualPx > 0 && disponibleParaCategoriasPx > 0) {
+                    var factorEstimado = disponibleParaCategoriasPx / alturaCategoriasActualPx;
+                    // -0.03 de margen de seguridad extra (el texto no encoge 100% proporcional al alto
+                    // por el interlineado), y nunca se salta de golpe por debajo del 70%.
+                    var factorInicial = Math.max(0.7, Math.min(1, factorEstimado - 0.03));
+                    if (factorInicial < 1) {
+                        factor = factorInicial;
+                        pasos = Math.max(1, Math.round((1 - factor) / 0.03));
+                        document.documentElement.style.setProperty('font-size', (factor * 100) + '%', 'important');
+                        panel.querySelectorAll('.sugerencias-plato').forEach(function(el) {
+                            el.style.setProperty('margin-bottom', (5 * factor) + 'px', 'important');
+                        });
+                        panel.querySelectorAll('.sugerencias-seccion').forEach(function(el) {
+                            el.style.setProperty('margin-bottom', (12 * factor) + 'px', 'important');
+                        });
+                        panel.querySelectorAll('.sugerencias-seccion-titulo').forEach(function(el) {
+                            el.style.setProperty('margin-bottom', (8 * factor) + 'px', 'important');
+                        });
+                        resultado.medidas.push('Salto directo a factor ' + (factor * 100).toFixed(0) + '% (disponible categorías: ' + mmDesdePx(disponibleParaCategoriasPx, maxAlturaPx) + 'mm, necesario: ' + mmDesdePx(alturaCategoriasActualPx, maxAlturaPx) + 'mm)');
+                    }
+                }
+
                 while (!medir('Reduciendo texto, paso ' + pasos) && pasos < MAX_PASOS) {
                     factor -= 0.03;
                     pasos++;
