@@ -279,6 +279,23 @@ body {
     font-weight: 700; text-transform: uppercase; font-size: 0.8rem; 
 }
 
+.categoria-titulo-clicable {
+    display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none;
+}
+.categoria-flecha { font-size: 0.7rem; transition: transform 0.2s ease; display: inline-block; width: 10px; }
+.categoria-contador {
+    margin-left: auto; background: rgba(255,255,255,0.25); border-radius: 10px;
+    padding: 1px 8px; font-size: 0.7rem; font-weight: 600;
+}
+
+/* NUEVO: contenido colapsable de cada categoría (efecto acordeón). Colapsada por defecto
+   (max-height:0 + overflow hidden), se despliega al añadir la clase .expandida. El tope de
+   max-height es generoso a propósito para no cortar categorías largas al expandir. */
+.categoria-contenido {
+    max-height: 0; overflow: hidden; transition: max-height 0.25s ease;
+}
+.categoria-contenido.expandida { max-height: 6000px; }
+
 .plato-item { display: flex; padding: 12px; border-bottom: 1px solid #f1f2f6; gap: 10px; align-items: center; }
 .plato-info { flex: 1; min-width: 0; }
 .plato-nombre { 

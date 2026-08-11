@@ -23,10 +23,6 @@
                         <button id="btn-toggle-tabs-panel" type="button" style="font-size: 0.7rem; display: flex; align-items: center; gap: 4px; white-space: nowrap; background: #f8f9fa; padding: 4px 8px; border-radius: 4px; border: 1px solid #ddd; cursor: pointer; color: #555; font-weight: 600;">👁️ Pestañas</button>
                         <div id="tabs-visibility-panel" style="display: none; position: absolute; top: calc(100% + 4px); right: 0; background: white; border: 1px solid #ddd; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); padding: 10px 12px; z-index: 50; min-width: 220px; text-align: left;"></div>
                     </div>
-                    <div style="font-size: 0.7rem; display: flex; align-items: center; gap: 4px; white-space: nowrap; background: #f8f9fa; padding: 4px 8px; border-radius: 4px; border: 1px solid #ddd;">
-                        <input type="checkbox" id="toggle-debug-panel" style="cursor: pointer; margin: 0;">
-                        <label for="toggle-debug-panel" style="cursor: pointer; color: #555; font-weight: 600; margin: 0;">DEBUG</label>
-                    </div>
                 </div>
                 <div id="optimistic-timer" style="display:none; font-size: 0.7rem; color: #c0392b; font-weight: bold; margin-top: 5px; background: #fce4e4; padding: 4px 8px; border-radius: 4px; align-items: center; gap: 5px;">
                     🔒 Consistencia <span id="timer-mode" style="background:#c0392b; color:white; padding: 1px 4px; border-radius: 3px; font-size: 0.65rem;">RG</span>: <span id="timer-seconds">180</span>s
@@ -337,8 +333,16 @@
 
             const prefs = leerPreferenciasVisibilidad();
 
-            // Construir el HTML del panel con un checkbox por pestaña elegible
-            panel.innerHTML = botonesElegibles.map(btn => {
+            // Construir el HTML del panel: primero el checkbox de DEBUG (movido aquí desde
+            // la cabecera para dejarla más limpia), luego un separador, luego un checkbox
+            // por cada pestaña elegible.
+            const debugRowHtml = `<label style="display:flex; align-items:center; gap:8px; font-size:0.8rem; color:#555; padding:4px 0; cursor:pointer; white-space:nowrap;">
+                <input type="checkbox" id="toggle-debug-panel" style="cursor:pointer; margin:0;">
+                🐛 DEBUG
+            </label>
+            <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 6px 0;">`;
+
+            panel.innerHTML = debugRowHtml + botonesElegibles.map(btn => {
                 const key = btn.id;
                 const visible = prefs[key] !== false; // por defecto, visible
                 const label = btn.innerText;

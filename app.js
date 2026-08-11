@@ -1,7 +1,7 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '2.2.0'; // MODIFICADO: caché-busting automático, box de sincronizado eliminado, versión visible en título
+window.APP_VERSIONS.app = '2.3.0'; // MODIFICADO: acordeón en Editor Carta, DEBUG movido al panel de pestañas
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
@@ -234,8 +234,22 @@ function renderizar() {
     estructuraActual.forEach(cat => {
         const platos = datosLocales.filter(p => p.id >= cat.id && p.id <= (cat.id + cat.rango));
         if (platos.length === 0) return;
-        
-        h += `<div class="categoria-tarjeta"><div class="categoria-titulo">${cat.name}</div>`;
+
+        // NUEVO: efecto acordeón — cada categoría empieza compactada (colapsada) y se
+        // despliega al pulsar su título. El estado expandido/colapsado se guarda en
+        // categoriasExpandidas (memoria, por catId) para que sobreviva a los re-renders que
+        // disparan otras acciones (activar/desactivar plato, subir/bajar orden), y así no se
+        // vuelva a cerrar la categoría en la que se está trabajando.
+        const catKey = String(cat.id);
+        const expandida = categoriasExpandidas[catKey] === true;
+
+        h += `<div class="categoria-tarjeta">
+            <div class="categoria-titulo categoria-titulo-clicable" onclick="toggleCategoria('${catKey}')">
+                <span class="categoria-flecha" id="categoria-flecha-${catKey}">${expandida ? '▼' : '▶'}</span>
+                ${cat.name}
+                <span class="categoria-contador">${platos.length}</span>
+            </div>
+            <div class="categoria-contenido${expandida ? ' expandida' : ''}" id="categoria-contenido-${catKey}">`;
         platos.forEach((p) => {
             let htmlImagenPC = p.imagen ? `<span style="margin-right: 5px;">📷</span>` : "";
             let htmlCarpetaPC = p.carpeta ? `<span class="tag-carpeta">${p.carpeta}</span>` : "";
@@ -262,12 +276,25 @@ function renderizar() {
                 </div>
             </div>`;
         });
-        h += `</div>`;
+        h += `</div></div>`;
     });
     
     const editorDinamico = document.getElementById('editor-dinamico');
     if(editorDinamico) editorDinamico.innerHTML = h;
 }
+
+// NUEVO: estado en memoria de qué categorías están desplegadas, por catId. Vacío al cargar
+// la página = todas colapsadas de inicio, tal como se pidió.
+const categoriasExpandidas = {};
+
+function toggleCategoria(catKey) {
+    categoriasExpandidas[catKey] = !categoriasExpandidas[catKey];
+    const contenido = document.getElementById('categoria-contenido-' + catKey);
+    const flecha = document.getElementById('categoria-flecha-' + catKey);
+    if (contenido) contenido.classList.toggle('expandida', categoriasExpandidas[catKey]);
+    if (flecha) flecha.innerText = categoriasExpandidas[catKey] ? '▼' : '▶';
+}
+window.toggleCategoria = toggleCategoria;
 
 function moverPlato(id, direccion) {
     const idx = datosLocales.findIndex(x => x.id === id);
