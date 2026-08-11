@@ -679,18 +679,36 @@ input:checked + .slider-switch:before { transform: translateX(18px); }
     
     /* --- Header Mobile --- */
     .header-admin {
-        flex-direction: column;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: space-between;
         align-items: center;
         gap: 10px;
         padding: 10px;
+    }
+
+    /* NUEVO: en móvil, los dos logos van lado a lado en la fila de arriba (RG a la
+       izquierda, US Open a la derecha) usando "order", sin tocar el DOM ni la versión de
+       escritorio; el bloque central (título + panel de pestañas) baja a su propia fila
+       completa debajo, centrado. */
+    .header-logo-left { order: 1; }
+    .header-logo-right { order: 2; }
+
+    .header-center-wrapper {
+        order: 3;
+        width: 100%;
+        flex-basis: 100%;
     }
 
     .header-logo {
         height: 100px; /* MODIFICADO: Aumentado a 100px (el doble del móvil anterior) */
     }
 
-    .header-center-wrapper {
-        width: 100%;
+    /* NUEVO: centra el panel de "👁️ Pestañas" (y el status-carga si llegara a mostrarse)
+       bajo el título, en vez de quedar pegado a la izquierda por el justify-content por
+       defecto del flex row. */
+    .header-status-row {
+        justify-content: center;
     }
 
     .api-keys-inputs, .api-keys-list { flex-direction: column; }
