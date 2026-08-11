@@ -1,7 +1,7 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '2.1.0'; // MODIFICADO: Salto de versión por limpieza extrema de código corrupto
+window.APP_VERSIONS.app = '2.2.0'; // MODIFICADO: caché-busting automático, box de sincronizado eliminado, versión visible en título
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
@@ -86,6 +86,7 @@ async function cargar(retryCount = 0) {
         if (statusCarga) {
             statusCarga.innerText = `⛔ El restaurante "${alias}" está deshabilitado en la configuración.`;
             statusCarga.className = "status-error";
+            statusCarga.style.display = "";
         }
         return;
     }
@@ -161,8 +162,10 @@ async function cargar(retryCount = 0) {
 
         const statusCarga = document.getElementById('status-carga');
         if (statusCarga) {
-            statusCarga.innerText = `✅ Datos Sincronizados ${getModoAlias(modo)} (${window.IDIOMAS_ORDEN ? window.IDIOMAS_ORDEN.length : 0} Idiomas)`;
-            statusCarga.className = "status-ok";
+            // NUEVO: ya no se muestra el aviso verde "✅ Datos Sincronizados..." tras una
+            // carga correcta; el box se oculta directamente. Se mantiene visible para errores
+            // (ver el catch de abajo) y para otros mensajes de estado (conectando, deshabilitado).
+            statusCarga.style.display = "none";
         }
         
         window.hayCambiosSinGuardar = false;
@@ -174,6 +177,7 @@ async function cargar(retryCount = 0) {
         if (statusCarga) {
             statusCarga.innerText = "❌ Error al cargar base multidireccional"; 
             statusCarga.className = "status-error";
+            statusCarga.style.display = "";
         }
     }
 }

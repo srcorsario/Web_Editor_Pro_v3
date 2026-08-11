@@ -8,7 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+    <script>document.write('<link rel="stylesheet" href="styles.css?v=' + Date.now() + '">');</script>
 </head>
 <body>
 
@@ -16,7 +16,7 @@
         <div class="header-admin">
             <img id="header-logo-rg" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" class="header-logo header-logo-left" alt="Logo RG">
             <div class="header-center-wrapper">
-                <h1>Web Editor Pro <span id="app-version" style="font-size: 0.65rem; color: #95a5a6; font-weight: 400; margin-left: 10px; vertical-align: middle; display: inline-block;"></span></h1>
+                <h1 style="font-size: 1.9rem; font-weight: 800; color: var(--texto); letter-spacing: -0.02em; margin: 0 0 8px 0;">Web Editor Pro <span id="app-version" style="font-size: 0.85rem; color: var(--primario); font-weight: 700; margin-left: 8px; vertical-align: middle; display: inline-block;"></span></h1>
                 <div style="display: flex; align-items: center; gap: 10px; width: 100%; margin-bottom: 10px;">
                     <div id="status-carga" class="status-ok" style="flex: 1;">⏳ Conectando...</div>
                     <div id="tabs-visibility-wrapper" style="position: relative;">
@@ -237,7 +237,16 @@
             </div>
         </div>
 
-        <script src="config.js"></script>
+        <script>
+        // NUEVO: sello de caché compartido para todos los archivos propios del proyecto
+        // (no los de CDN externos, que no cambian). Al añadir esta query string, cada
+        // carga de página pide la versión más reciente de cada .js/.css directamente al
+        // servidor en vez de arriesgarse a que el navegador sirva una copia cacheada
+        // desactualizada — así basta con subir el archivo modificado a GitHub, sin tener
+        // que tocar index.html para "forzar" la actualización.
+        window.__CACHE_BUST__ = Date.now();
+        document.write('<scr' + 'ipt src="config.js?v=' + window.__CACHE_BUST__ + '"></scr' + 'ipt>');
+        </script>
         <script>
         // MODIFICADO: Inyección dinámica desde config.js Abstract Keys
         // CORREGIDO: antes se precargaba con CSV_URL_RESTAURANTE00X (la URL de "publicar en
@@ -382,16 +391,18 @@
         }
         initTabsVisibilityPanel();
     </script>
-    <script src="languages.js"></script>
-
-    <script src="data.js"></script>
-    <script src="state.js"></script>
-    <script src="utils.js"></script>
-    <script src="estructuras.js"></script>
-    <script src="prompts.js"></script>
-    <script src="app.js"></script>
-    <script type="module" src="ui.js"></script>
-    <script src="sugerencias-print.js"></script>
+    <script>
+        var __v = window.__CACHE_BUST__ || Date.now();
+        document.write('<scr' + 'ipt src="languages.js?v=' + __v + '"></scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="data.js?v=' + __v + '"></scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="state.js?v=' + __v + '"></scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="utils.js?v=' + __v + '"></scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="estructuras.js?v=' + __v + '"></scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="prompts.js?v=' + __v + '"></scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="app.js?v=' + __v + '"></scr' + 'ipt>');
+        document.write('<scr' + 'ipt type="module" src="ui.js?v=' + __v + '"></scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="sugerencias-print.js?v=' + __v + '"></scr' + 'ipt>');
+    </script>
 
     <div id="loading-overlay" class="loading-overlay">
         <div class="spinner"></div>
@@ -490,6 +501,16 @@
 
         if (!window.currentMode) window.currentMode = 'restaurante001';
         actualizarTextoBotonGuardar();
+
+        // NUEVO: muestra la versión general de la app (window.APP_VERSIONS.app, la que se
+        // incrementa en app.js con cada cambio significativo) junto al título, como
+        // "v.X.xx", para saber de un vistazo si el navegador tiene cargada la última versión.
+        // Se hace aquí (no antes) porque app.js — quien fija APP_VERSIONS.app — se carga
+        // después del bloque de cabecera.
+        const appVersionEl = document.getElementById('app-version');
+        if (appVersionEl && window.APP_VERSIONS && window.APP_VERSIONS.app) {
+            appVersionEl.innerText = `v.${window.APP_VERSIONS.app}`;
+        }
 
         function updateDebugPanel() {
             const vDiv = document.getElementById('debug-versions');
