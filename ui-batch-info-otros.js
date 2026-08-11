@@ -33,6 +33,10 @@ export const UIBatchInfoOtros = {
 
         const indiceCastellanoBase = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === 'NOMBRE_ES');
         const indiceInfoEs = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === 'INFO_ES');
+        // NUEVO: se necesita también INFO_EN como referencia, para que la terminología ambigua
+        // (ej. "ternera" -> veal/beef) se resuelva con el MISMO criterio en todos los idiomas,
+        // en vez de que cada idioma la traduzca de forma independiente solo desde el español.
+        const indiceInfoEn = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === 'INFO_EN');
         const indiceId = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === 'ID');
         const indiceCarpeta = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === 'CARPETA');
 
@@ -92,7 +96,11 @@ export const UIBatchInfoOtros = {
                 const esVino = carpetaValor === 'vinos';
                 let infoEs = null;
                 try { infoEs = JSON.parse(row[indiceInfoEs]); } catch (e) { infoEs = null; }
-                return { fila: i, row, esVino, infoEs };
+                let infoEn = null;
+                if (indiceInfoEn !== -1) {
+                    try { infoEn = JSON.parse(row[indiceInfoEn]); } catch (e) { infoEn = null; }
+                }
+                return { fila: i, row, esVino, infoEs, infoEn };
             }).filter(it => it.infoEs);
 
             if (itemsLote.length === 0) continue;
