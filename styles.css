@@ -112,7 +112,11 @@ body {
 .pro-panel .btn-secondary { background-color: #475569; color: white; }
 .pro-panel .btn-secondary:hover { background-color: #334155; }
 
-#consola { background-color: #020617; font-family: monospace; font-size: 13px; color: #38bdf8; overflow-y: auto; padding: 10px; border-radius: 6px; border: 1px solid #1e293b; flex: 1; }
+/* NUEVO: fix de scroll del Monitor de Sistema — sin altura máxima ni min-height:0, un flex item con
+   overflow:auto no se recorta nunca por debajo del tamaño de su contenido (bug clásico de flexbox), así
+   que el log seguía creciendo y empujaba todo lo de abajo en vez de mostrar la barra de scroll interna. */
+.c-consola { max-height: 420px; min-height: 0; }
+#consola { background-color: #020617; font-family: monospace; font-size: 13px; color: #38bdf8; overflow-y: auto; padding: 10px; border-radius: 6px; border: 1px solid #1e293b; flex: 1; min-height: 0; }
 
 .pro-panel table { width: 100%; border-collapse: collapse; margin-top: 10px; table-layout: fixed; }
 .pro-panel th, .pro-panel td { padding: 10px; border: 1px solid #334155; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
