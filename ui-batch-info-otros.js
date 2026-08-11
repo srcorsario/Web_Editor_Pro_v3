@@ -56,7 +56,10 @@ export const UIBatchInfoOtros = {
 
         const techoLimiteEvaluacion = Math.min(rangoFin, activeStateContainer.csvData.length);
         const CARPETAS_SIN_IA = ['cafe', 'refrescos', 'cerveza'];
-        const TAMANO_LOTE = (typeof window.INFO_EXTENDIDA_TAMANO_LOTE === 'number' && window.INFO_EXTENDIDA_TAMANO_LOTE > 0) ? window.INFO_EXTENDIDA_TAMANO_LOTE : 2;
+        // NUEVO: lote propio (por defecto 1), NO el mismo que Fase 1 — aquí cada plato ya implica
+        // traducir su ficha a 24 idiomas de golpe, así que agrupar varios platos dispara el tamaño
+        // de la respuesta y puede truncarla antes de completar el JSON.
+        const TAMANO_LOTE = (typeof window.INFO_OTROS_IDIOMAS_TAMANO_LOTE === 'number' && window.INFO_OTROS_IDIOMAS_TAMANO_LOTE > 0) ? window.INFO_OTROS_IDIOMAS_TAMANO_LOTE : 1;
 
         // Construir la lista de filas a las que les falta INFO_<idioma> de al menos un idioma objetivo,
         // siempre que ya tengan INFO_ES generado (de donde se traduce).
@@ -114,7 +117,7 @@ export const UIBatchInfoOtros = {
 
             while (!satisfecho && !procesoState.detenido && intentosLote < maxIntentosLote) {
                 try {
-                    const callResponse = await fetch(`${window.GEMINI_ENDPOINT_URL || 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent'}?key=${listaClavesAPI[procesoState.currentKeyIndex]}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: promptTraduccion }] }] }) });
+                    const callResponse = await fetch(`${window.GEMINI_ENDPOINT_URL || 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent'}?key=${listaClavesAPI[procesoState.currentKeyIndex]}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: promptTraduccion }] }], generationConfig: { maxOutputTokens: window.GEMINI_MAX_OUTPUT_TOKENS || 65536 } }) });
 
                     const textResponse = await callResponse.text();
                     let respuestaJsonData;
