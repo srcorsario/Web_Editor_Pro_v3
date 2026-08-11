@@ -1,7 +1,7 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '2.3.2'; // MODIFICADO: fix desbordamiento móvil en filas "Imagen Vino"/"Tipo de QR" de Sugerencias
+window.APP_VERSIONS.app = '2.3.3'; // MODIFICADO: escala por defecto de la botella del vino a 1.4x, QR ahora escala en proporción
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
