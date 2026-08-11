@@ -386,13 +386,23 @@
                 var maxAlturaPx = probe.getBoundingClientRect().height;
                 document.body.removeChild(probe);
 
-                // CORREGIDO: las filas de selectores (Tipo de QR, Imagen Vino, Tamaño) solo
-                // existen para la pantalla — en el papel se ocultan vía @media print. Si se
-                // miden con ellas visibles, la altura sale más alta de lo que de verdad ocupa
-                // la hoja impresa, y el script cree que hace falta quitar más de lo necesario
-                // (incluido un QR que ya estuviera desactivado). Se ocultan ANTES de la primera
-                // medición para que coincida con el resultado real en papel desde el principio.
-                document.querySelectorAll('.qr-selector-wrapper').forEach(function(el) {
+                // CORREGIDO: las filas de selectores (Tipo de QR, Imagen Vino, Tamaño) Y el botón
+                // "Imprimir Sugerencias..." solo existen para la pantalla — en el papel se ocultan
+                // vía @media print. Si se miden con ellos visibles, la altura sale más alta de lo
+                // que de verdad ocupa la hoja impresa, y el script cree que hace falta quitar más
+                // de lo necesario (imagen del vino, tamaño de letra...) cuando en realidad el
+                // contenido real cabe de sobra. Se ocultan ANTES de la primera medición para que
+                // coincida con el resultado real en papel desde el principio.
+                // NUEVO: .sugerencias-debug-a4 también se oculta antes de medir. Es position:absolute
+                // con una altura FIJA de 267mm dentro de un panel position:relative — eso hace que
+                // cuente para el scrollHeight del panel (el navegador incluye el alcance de los
+                // descendientes posicionados al calcularlo). En cuanto el contenido real se queda
+                // más corto que esos 267mm fijos, el rectángulo pasa a ser el elemento más bajo del
+                // panel y el scrollHeight deja de reflejar el contenido real — se queda "pegado" a la
+                // altura del rectángulo y no baja aunque se quite la imagen del vino, el QR, o se
+                // reduzca el texto. Se vuelve a mostrar y reposicionar al final, con el resultado ya
+                // decidido, solo para que la persona lo vea en la pantalla de aviso.
+                document.querySelectorAll('.qr-selector-wrapper, .btn-imprimir-a4, .sugerencias-debug-a4').forEach(function(el) {
                     el.style.setProperty('display', 'none', 'important');
                 });
 
@@ -519,6 +529,11 @@
 
             esperarImagenes(document.body).then(function() {
                 var resultado = ajustarAUnaPagina();
+                // Volver a mostrar el rectángulo de depuración con el resultado YA decidido (no
+                // afecta a ninguna medición a partir de aquí) y reposicionarlo, porque la cabecera
+                // puede haberse movido un poco tras apretar el espacio entre categorías.
+                var debugDiv = document.querySelector('.sugerencias-debug-a4');
+                if (debugDiv) { debugDiv.style.removeProperty('display'); posicionarDebugA4(document.querySelector('.sugerencias-panel')); }
                 var caja = mostrarAviso(resultado);
                 if (!caja) {
                     // Nada que avisar: todo cabía de partida, seguimos con el flujo rápido de siempre
