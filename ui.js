@@ -10,9 +10,10 @@ import { UICore } from './ui-core.js';
 import { UIRender } from './ui-render.js';
 import { UIBatchInfo } from './ui-batch-info.js';
 import { UIBatchNombres } from './ui-batch-nombres.js';
+import { UIBatchInfoOtros } from './ui-batch-info-otros.js';
 
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.ui = '1.5.3-SIN-MARIDAJE';
+window.APP_VERSIONS.ui = '1.6.0-INFO-OTROS-IDIOMAS';
 
 window.APP_VERSIONS.config = window.APP_VERSIONS.config || '2.2.0';
 window.APP_VERSIONS.app = window.APP_VERSIONS.app || '1.0.33';
@@ -21,7 +22,8 @@ export const UI = {
     ...UICore,
     ...UIRender,
     ...UIBatchInfo,
-    ...UIBatchNombres
+    ...UIBatchNombres,
+    ...UIBatchInfoOtros
 };
 
 // Exponer UI globalmente: necesario porque los onclick="UI...." del HTML (script clásico)

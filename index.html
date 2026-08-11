@@ -90,18 +90,19 @@
                             <span class="font-medium">Rango de Filas:</span>
                             <div class="flex items-center gap: 2px">
                                 <label class="text-slate-400">Desde: <input type="number" id="rangoInicio" value="2" min="2" class="w-20 text-center text-xs py-0.5 px-1 ml-1"></label>
-                                <label class="text-slate-400">Hasta: <input type="number" id="rangoFin" value="9999" min="2" class="w-20 text-center text-xs py-0.5 px-1 ml-1"></label>
+                                <label class="text-slate-400">Hasta: <input type="number" id="rangoFin" value="9999" min="2" class="w-20 text-center text-xs py-0.5 px-1 ml-1" title="Se actualiza automáticamente a la última fila con datos al cargar."></label>
                             </div>
                         </div>
-                        <div class="grid grid-cols-2 gap-1.5 text-xs">
-                            <button id="btnIniciar" class="btn btn-success font-bold py-1 px-1 text-[11px] tracking-tight uppercase">Generar Info Platos ES/EN</button>
+                        <!-- Orden de los 3 pasos de generación/traducción por IA: 1) nombres a todos los idiomas, 2) Info ES/EN, 3) Info al resto de idiomas -->
+                        <button id="btnIniciarNombres" class="btn btn-success font-bold py-1 px-1 text-[11px] tracking-tight uppercase w-full">🌐 Traducir Platos en ES a Todos los Idiomas Faltantes</button>
+                        <button id="btnIniciar" class="btn btn-success font-bold py-1 px-1 text-[11px] tracking-tight uppercase w-full mt-1">Generar Info Platos ES/EN</button>
+                        <button id="btnIniciarInfoOtros" class="btn btn-success font-bold py-1 px-1 text-[11px] tracking-tight uppercase w-full mt-1">🌍 Generar Info Platos Otros Idiomas</button>
+                        <div class="grid grid-cols-2 gap-1.5 text-xs mt-1">
                             <button id="btnPausa" class="btn btn-secondary font-bold py-1 px-1 uppercase">Pausar</button>
                             <button id="btnCancelar" class="btn btn-danger font-bold py-1 px-1 uppercase">Cancelar</button>
-                            <button id="saveCsvBtn" class="btn btn-primary font-bold py-1 px-1 text-[11px] whitespace-nowrap uppercase">Descargar CSV</button>
                         </div>
-                        <!-- NUEVO: Fase 2 - traduce NOMBRE_* al resto de idiomas en bloques (usa el mismo Pausar/Cancelar de arriba) -->
-                        <button id="btnIniciarNombres" class="btn btn-success font-bold py-1 px-1 text-[11px] tracking-tight uppercase w-full mt-1">🌐 Traducir Platos en ES a Todos los Idiomas Faltantes</button>
-                        <button id="btnSyncSheets" class="btn btn-success font-bold py-2 px-1 text-[11px] tracking-tight uppercase w-full col-span-2 mt-1 border border-emerald-400" style="grid-column: span 2;">☁️ Sincronizar con Google Sheet</button>
+                        <button id="btnSyncSheets" class="btn btn-success font-bold py-2 px-1 text-[11px] tracking-tight uppercase w-full mt-1 border border-emerald-400">☁️ Sincronizar con Google Sheet</button>
+                        <button id="saveCsvBtn" class="btn btn-primary font-bold py-1 px-1 text-[11px] whitespace-nowrap uppercase w-full mt-1">Descargar CSV</button>
                     </div>
                 </div>
                 <div class="card md:w-1/5 flex-none flex flex-col" style="width: 20%; min-width: 200px">

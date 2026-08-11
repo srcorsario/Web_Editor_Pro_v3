@@ -65,6 +65,7 @@ export const UICore = {
                         asegurarColumnasEstructura(stateContainer);
                         window.UI.log(`[OK] CSV cargado y columnas aseguradas. Filas: ${stateContainer.csvData.length}`);
                         window.UI.actualizarTextoBotonSync();
+                        window.UI.actualizarRangoFinAuto();
                         window.UI.renderTable();
                     }
                 } });
@@ -76,10 +77,21 @@ export const UICore = {
                     asegurarColumnasEstructura(stateContainer);
                     window.UI.log(`[OK] CSV cargado (Fallback) y columnas aseguradas.`);
                     window.UI.actualizarTextoBotonSync();
+                    window.UI.actualizarRangoFinAuto();
                     window.UI.renderTable();
                 }
             }
         } catch (e) { window.UI.log("[Error] Fallo al descargar CSV: " + e.message); }
+    },
+
+    // NUEVO: el campo "Hasta" del rango de filas ya no se queda fijo en el
+    // valor de partida (9999) — tras cada carga real de datos (Google Sheet,
+    // CSV local, o importación) se actualiza a la última fila que realmente
+    // tiene datos, para que el rango mostrado refleje el documento cargado.
+    actualizarRangoFinAuto: () => {
+        const selectorFin = document.getElementById('rangoFin');
+        if (!selectorFin || !stateContainer.csvData) return;
+        selectorFin.value = stateContainer.csvData.length + 1; // fila 1 = cabecera, datos empiezan en la fila 2
     },
 
     actualizarTextoBotonSync: () => {
@@ -204,6 +216,8 @@ export const UICore = {
         if (btnIniciar) btnIniciar.onclick = () => window.UI.iniciarTraduccionPorLotes(stateContainer);
         const btnIniciarNombres = document.getElementById('btnIniciarNombres');
         if (btnIniciarNombres) btnIniciarNombres.onclick = () => window.UI.iniciarTraduccionNombresPorLotes(stateContainer);
+        const btnIniciarInfoOtros = document.getElementById('btnIniciarInfoOtros');
+        if (btnIniciarInfoOtros) btnIniciarInfoOtros.onclick = () => window.UI.iniciarInfoOtrosIdiomasPorLotes(stateContainer);
         const btnPausa = document.getElementById('btnPausa');
         if (btnPausa) btnPausa.onclick = () => { procesoState.pausado = !procesoState.pausado; btnPausa.innerText = procesoState.pausado ? "REANUDAR" : "PAUSAR"; window.UI.log(procesoState.pausado ? "[Info] Pausado." : "[Info] Reanudando..."); };
         const btnCancelar = document.getElementById('btnCancelar');
@@ -230,6 +244,7 @@ export const UICore = {
             asegurarColumnasEstructura(stateContainer);
             window.UI.log(`[OK] Archivo cargado y columnas aseguradas. Filas: ${data.length}`);
             window.UI.actualizarTextoBotonSync();
+            window.UI.actualizarRangoFinAuto();
             window.UI.renderTable();
         });
         window.UI.cancelarImportacion();

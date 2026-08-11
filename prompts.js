@@ -178,6 +178,29 @@ Estructura exacta esperada (ejemplo con 2 vinos):
 {
   "0": { "nombre_en": "...", "es": { "desc": "..." }, "en": { "desc": "..." } },
   "1": { "nombre_en": "...", "es": { "desc": "..." }, "en": { "desc": "..." } }
-}`
+}`,
+
+    // ---------------------------------------------------------
+    // Usado en ui.js > iniciarInfoOtrosIdiomasPorLotes() [Fase 3: traduce el
+    // JSON de INFO_ES (descripción + preguntas/respuestas) ya generado al
+    // resto de idiomas objetivo, EN BLOQUE (varios platos/vinos por llamada).
+    // Es una TRADUCCIÓN fiel del contenido ya existente en INFO_ES, no una
+    // generación nueva: no debe inventar ni cambiar el contenido, solo
+    // traducirlo manteniendo exactamente las mismas claves JSON.
+    // ---------------------------------------------------------
+    infoOtrosIdiomasLote: (itemsArray, idiomasObjetivo) => `Actúa como un traductor experto de menús de restaurantes. Te paso una lista de ${itemsArray.length} elementos, cada uno con su ficha en español ya redactada (descripción y, si las tiene, preguntas/respuestas). Tu única tarea es TRADUCIR fielmente cada ficha a los siguientes idiomas (usa los códigos ISO proporcionados): ${idiomasObjetivo.join(', ')}.
+
+REGLAS OBLIGATORIAS:
+- Es una traducción, no una redacción nueva: no añadas, quites ni inventes información que no esté ya en el texto en español. No cambies el sentido de ninguna pregunta o respuesta.
+- Mantén EXACTAMENTE las mismas claves JSON que trae cada ficha en español (por ejemplo, si trae "desc", "q1", "r1", "q2", "r2", "q3", "r3", tradúcelas todas; si a un elemento le faltan q3/r3, no las añadas en la traducción).
+- Si la ficha incluye alérgenos en r3, tradúcelos a su nombre común habitual en cada idioma de destino, sin omitir ninguno ni añadir otros.
+- Estilo natural y profesional propio de una carta de restaurante en cada idioma, evitando traducciones literales torpes.
+
+Elementos a traducir (el número al inicio de cada línea es su índice, empezando en 0; la ficha en español de cada uno va en JSON tras "ES:"):
+${itemsArray.map((it, idx) => `${idx}. ${it.esVino ? '[VINO] ' : ''}ES: ${JSON.stringify(it.infoEs)}`).join('\n')}
+
+Responde EXCLUSIVAMENTE con un objeto JSON válido, sin texto fuera del JSON ni markdown. La clave de primer nivel debe ser el índice numérico del elemento tal cual aparece arriba (como string), y dentro de cada uno, usa los códigos ISO en MAYÚSCULAS como claves de segundo nivel, cada una con el mismo objeto de claves que la ficha en español de ese elemento.
+Estructura exacta esperada (ejemplo con 1 elemento y 2 idiomas, ficha con desc+q1+r1+q2+r2):
+{"0": {"DE": {"desc": "...", "q1": "...", "r1": "...", "q2": "...", "r2": "..."}, "FR": {"desc": "...", "q1": "...", "r1": "...", "q2": "...", "r2": "..."}}}`
 
 };
