@@ -413,20 +413,25 @@
                     var pieFijoMm = mmDesdePx(bloqueFijo.alturaFija, maxAlturaPx);
                     var disponibleCategoriasMm = mmDesdePx(maxAlturaPx - bloqueFijo.alturaFija, maxAlturaPx);
                     resultado.medidas.push(etiqueta + ': ' + alturaMm + 'mm de 267mm (cabecera+alérgenos+BODEGA: ' + pieFijoMm + 'mm → tope máximo disponible para Entrantes/Principales/Postres: ' + disponibleCategoriasMm + 'mm)');
-                    return panel.scrollHeight <= (maxAlturaPx + 2);
+                    // CORREGIDO: la tolerancia estaba en "+2" sin unidad — como maxAlturaPx está en
+                    // píxeles, esos "+2" eran 2px (~0.5mm), un margen casi nulo. Se calcula ahora el
+                    // equivalente real a 1mm de margen de tolerancia (imperceptible en el resultado
+                    // impreso), para no forzar pasos de más por un desajuste de décimas de milímetro.
+                    var pxPorMm = maxAlturaPx / 267;
+                    return panel.scrollHeight <= (maxAlturaPx + pxPorMm);
                 }
 
                 if (medir('Original')) return resultado;
 
-                // NUEVO: Paso 0 — antes de quitar nada visual (imagen del vino, QR), se prueba
-                // un apretón pequeño SOLO en el espacio entre categorías (Entrantes/Principales/
-                // Postres/Bodega) y bajo cada título de sección, sin tocar el tamaño de letra ni
-                // el espacio entre platos. Muchas veces con esto de sobra basta (diferencias de
-                // 1-2mm), y así no se sacrifica la imagen del vino por un desajuste mínimo.
-                var pasosGap = 0, MAX_PASOS_GAP = 4;
+                // AFINADO: pasos más finos (4% en vez de 15%, hasta 18 pasos = 72% de reducción
+                // máxima en vez de solo 60%) — con los saltos grandes de antes, un desajuste de
+                // apenas 0.5mm por encima del límite (267mm + ~0.5mm de margen de tolerancia) ya
+                // hacía saltar directamente a quitar la imagen del vino. Con pasos finos, el bucle
+                // encuentra el punto justo de apriete que hace falta y para ahí mismo.
+                var pasosGap = 0, MAX_PASOS_GAP = 18;
                 while (!medir('Apretando espacio entre categorías, paso ' + pasosGap) && pasosGap < MAX_PASOS_GAP) {
                     pasosGap++;
-                    var factorGap = 1 - (pasosGap * 0.15); // 12px -> ~10.2 -> 8.4 -> 6.6 -> 4.8
+                    var factorGap = 1 - (pasosGap * 0.04); // 12px baja de 4% en 4% hasta el 72% (3.4px) como mucho
                     panel.querySelectorAll('.sugerencias-seccion').forEach(function(el) {
                         el.style.setProperty('margin-bottom', (12 * factorGap) + 'px', 'important');
                     });
