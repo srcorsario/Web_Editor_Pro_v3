@@ -1,7 +1,7 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '2.3.3'; // MODIFICADO: escala por defecto de la botella del vino a 1.4x, QR ahora escala en proporción
+window.APP_VERSIONS.app = '2.3.4'; // MODIFICADO: título "Sugerencias del Chef" y logo más grandes en la cabecera de Sugerencias
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
