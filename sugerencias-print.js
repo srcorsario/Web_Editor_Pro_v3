@@ -172,6 +172,20 @@
         }
     };
 
+    // NUEVO: coloca el rectángulo de depuración (.sugerencias-debug-a4) justo debajo del botón
+    // "Imprimir Sugerencias..." — ese botón solo existe en pantalla (se oculta con @media print),
+    // así que el rectángulo debe empezar en la CABECERA real (logo/título), no en el borde superior
+    // absoluto del panel, o si no "engloba" también al botón, que nunca sale impreso. Se ancla vía
+    // offsetTop del propio header (el panel ya es position:relative) para que no dependa de a qué
+    // altura empiece a pintarse el botón en cada caso.
+    function posicionarDebugA4(panel) {
+        if (!panel) return;
+        const debugDiv = panel.querySelector('.sugerencias-debug-a4');
+        const header = panel.querySelector('.sugerencias-header-layout');
+        if (debugDiv && header) debugDiv.style.top = header.offsetTop + 'px';
+    }
+    window.posicionarDebugA4 = posicionarDebugA4;
+
     window.renderCarta = function(modo) {
         const config = SUGERENCIAS_CONFIG[modo];
         if (!config) return;
@@ -209,6 +223,7 @@
         platos.forEach(p => { const id = parseInt(p.id, 10); if (id === 12990) vinos.push(p); else if (id >= 12100 && id <= 12399) entrantes.push(p); else if (id >= 12400 && id <= 12899) principales.push(p); else if (id >= 12900 && id <= 12999) postres.push(p); else entrantes.push(p); });
 
         let html = `<button onclick="window.imprimirSugerencias('${modoSeguro}')" class="btn-imprimir-a4">🖨️ Imprimir Sugerencias ${getModoAlias(modoSeguro)} (A4)</button>
+            <div class="sugerencias-debug-a4"></div>
             <div class="sugerencias-header-layout">
                 <span class="sugerencias-version-tag" style="display:none;">Módulo ${config.versionStr}</span>
                 <div class="sugerencias-brand-title-group"><div class="sugerencias-title-es">SUGERENCIAS DEL CHEF</div><div class="sugerencias-title-en">CHEF'S SUGGESTIONS</div></div>
@@ -295,6 +310,7 @@
                     ${tieneVinoEspecial ? '' : `<img src="${initialImgSrc}" class="sugerencias-qr-img" id="${config.qrImgId}">`}
                 </div></div>`;
         contenedor.innerHTML = html;
+        posicionarDebugA4(contenedor);
     }
 
     window.imprimirSugerencias = function(modo) {
@@ -323,6 +339,17 @@
             }
 
             function mmDesdePx(px, maxAlturaPx) { return (px * 267 / maxAlturaPx).toFixed(1); }
+
+            // NUEVO: mismo posicionamiento que en la pestaña general (ver posicionarDebugA4 en
+            // sugerencias-print.js) — duplicado aquí porque esta ventana emergente es un documento
+            // JS completamente aparte y no puede llamar a funciones del documento padre sin depender
+            // de window.opener (poco fiable con bloqueadores de popups).
+            function posicionarDebugA4(panel) {
+                var debugDiv = panel.querySelector('.sugerencias-debug-a4');
+                var header = panel.querySelector('.sugerencias-header-layout');
+                if (debugDiv && header) debugDiv.style.top = header.offsetTop + 'px';
+            }
+            posicionarDebugA4(document.querySelector('.sugerencias-panel'));
 
             // NUEVO: mide por separado el "bloque fijo" de abajo — el aviso de alérgenos (2 líneas)
             // más la sección BODEGA / WINE CELLAR completa (título + nombre del vino + imagen del
@@ -504,7 +531,7 @@
             });
         `;
 
-        pWin.document.write(`<html><head><title>Sugerencias ${getModoAlias(modo)}</title><style>${styleContent}@media print { #sugerencias-aviso-ajuste { display: none !important; } }</style></head><body><div class="sugerencias-panel"><div class="sugerencias-debug-a4"></div>${contenedor.innerHTML}</div><script>${scriptAjuste}<\/script></body></html>`);
+        pWin.document.write(`<html><head><title>Sugerencias ${getModoAlias(modo)}</title><style>${styleContent}@media print { #sugerencias-aviso-ajuste { display: none !important; } }</style></head><body><div class="sugerencias-panel">${contenedor.innerHTML}</div><script>${scriptAjuste}<\/script></body></html>`);
         pWin.document.close();
     };
 })();
