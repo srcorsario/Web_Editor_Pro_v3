@@ -1,7 +1,7 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '2.4.8'; // DIAGNÓSTICO TEMPORAL: añadido texto de depuración visible en la propia hoja impresa (esquina inferior izquierda) para confirmar si repartirEspacioSobrante() se ejecuta y qué valores calcula — se quitará en cuanto quede confirmado
+window.APP_VERSIONS.app = '2.4.9'; // CONFIRMADO funcionando (diagnóstico visual verificado): repartirEspacioSobrante() se ejecuta y aplica correctamente. Quitado el texto de diagnóstico temporal de la v2.4.8
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
