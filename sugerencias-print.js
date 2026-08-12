@@ -72,8 +72,15 @@
             .sugerencias-title-en { font-weight: 300 !important; font-size: 1.2rem !important; color: #0d5c63 !important; text-transform: uppercase !important; margin:0 !important; } 
             .sugerencias-version-tag { position: absolute !important; top: -15px !important; left: 0 !important; font-size: 0.6rem !important; color: #94a3b8 !important; font-family: monospace !important; }
             .sugerencias-logo-img { width: 135px !important; height: auto !important; object-fit: contain !important; } 
-            .sugerencias-body { flex: 1 1 auto !important; display: flex !important; flex-direction: column !important; justify-content: space-between !important; }
-            .sugerencias-seccion { flex: 1 1 auto !important; display: flex !important; flex-direction: column !important; margin-bottom: 12px !important; }
+            /* CORREGIDO: flex-grow (el "1" inicial de "1 1 auto") hacía que .sugerencias-body Y
+               cada .sugerencias-seccion se estirasen automáticamente para absorber el hueco
+               sobrante DENTRO de sus propias cajas, de forma imprevisible — eso competía con
+               repartirEspacioSobrante() (ver más abajo, dentro de imprimirSugerencias), que
+               calcula y reparte ese mismo hueco de forma explícita y controlada. Con flex-grow:0
+               ninguno de los dos se estira solo; el body y las secciones ocupan exactamente su
+               alto natural, y el único que decide qué hacer con el sobrante es el script. */
+            .sugerencias-body { flex: 0 1 auto !important; display: flex !important; flex-direction: column !important; }
+            .sugerencias-seccion { flex: 0 1 auto !important; display: flex !important; flex-direction: column !important; margin-bottom: 12px !important; }
             .sugerencias-seccion-titulo { font-size: 0.85rem !important; font-weight: 700 !important; color: #d97706 !important; border-bottom: 1px solid #334155 !important; margin-bottom: 8px !important; text-transform: uppercase !important; }
             .sugerencias-plato { display: flex !important; align-items: baseline !important; margin-bottom: 5px !important; width: 100% !important; } 
             .sugerencias-plato-nombres { flex: 0 1 auto !important; max-width: 93% !important; display: flex !important; flex-direction: column !important; }
