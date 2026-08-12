@@ -1,7 +1,7 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '2.4.0'; // MODIFICADO: separada la hoja A4 real (sin controles) de un nuevo box de controles debajo (botón imprimir, opciones imagen vino/tamaño/QR); advertencia de alérgenos centrada y anclada abajo
+window.APP_VERSIONS.app = '2.4.1'; // MODIFICADO: reparte el hueco sobrante de la hoja como margen extra entre Entrantes/Principales/Postres (nunca tras BODEGA), para que el aviso de alérgenos no quede con un salto grande debajo
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
