@@ -126,6 +126,16 @@ const VINO_IMAGEN_TENISTA = 'imagenes/vinos/tenista_pegado.webp';
 const VINO_IMAGEN_DEFAULT_RESTAURANTE001 = true;  // true = "Con imagen Vino" marcado por defecto
 const VINO_IMAGEN_DEFAULT_RESTAURANTE002 = true;
 
+// NUEVO: tamaño por defecto de la imagen del vino y del QR en la hoja de Sugerencias (comparten
+// escala). Valores permitidos: 1, 1.2, 1.4, 1.6 — deben coincidir con uno de los botones que
+// ofrece la propia hoja (1x/1.2x/1.4x/1.6x), o si no, ninguno saldrá marcado como activo.
+const VINO_IMAGEN_ESCALA_DEFAULT = 1.2;
+
+// NUEVO: tipo de QR marcado por defecto en la hoja de Sugerencias, por restaurante. Valores
+// permitidos: 'none' (Sin QR), 'default' (Oficial), 'mod' (Alternativo).
+const QR_TIPO_DEFAULT_RESTAURANTE001 = 'none';
+const QR_TIPO_DEFAULT_RESTAURANTE002 = 'none';
+
 
 // =====================================================================
 // NUEVO: CONFIGURACIÓN DE TIEMPOS DEL SISTEMA
