@@ -1,7 +1,7 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '2.4.7'; // CORREGIDO: .sugerencias-body y .sugerencias-seccion tenían flex-grow:1, absorbiendo el hueco sobrante dentro de sus propias cajas de forma imprevisible y compitiendo con repartirEspacioSobrante(); quitado el flex-grow para que el reparto de espacio dependa solo del cálculo explícito en JS
+window.APP_VERSIONS.app = '2.4.8'; // DIAGNÓSTICO TEMPORAL: añadido texto de depuración visible en la propia hoja impresa (esquina inferior izquierda) para confirmar si repartirEspacioSobrante() se ejecuta y qué valores calcula — se quitará en cuanto quede confirmado
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
