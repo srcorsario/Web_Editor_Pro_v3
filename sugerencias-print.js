@@ -13,11 +13,10 @@
             qrRadioName: 'qr-mode-rg-footer',
             qrDefault: QR_RESTAURANTE001_DEFAULT, 
             qrMod: QR_RESTAURANTE001_MOD,           
-            defaultQrSelection: 'none', // NOTA: campo no leído por el código; el real es isDefault en qrOptions       
             qrOptions: [
-                { value: 'none', label: 'Sin QR', isDefault: true },
-                { value: 'default', label: 'Oficial', isDefault: false },
-                { value: 'mod', label: 'Alternativo', isDefault: false }
+                { value: 'none', label: 'Sin QR', isDefault: QR_TIPO_DEFAULT_RESTAURANTE001 === 'none' },
+                { value: 'default', label: 'Oficial', isDefault: QR_TIPO_DEFAULT_RESTAURANTE001 === 'default' },
+                { value: 'mod', label: 'Alternativo', isDefault: QR_TIPO_DEFAULT_RESTAURANTE001 === 'mod' }
             ],
             vinoImagenSrc: VINO_IMAGEN_TENISTA,
             vinoImagenWrapperId: 'vino-imagen-rg',
@@ -37,11 +36,10 @@
             qrRadioName: 'qr-mode-usopen-footer',
             qrDefault: QR_RESTAURANTE002_DEFAULT, 
             qrMod: QR_RESTAURANTE002_MOD,         
-            defaultQrSelection: 'none', // NOTA: campo no leído por el código; el real es isDefault en qrOptions      
             qrOptions: [
-                { value: 'none', label: 'Sin QR', isDefault: true },
-                { value: 'default', label: 'Oficial', isDefault: false },
-                { value: 'mod', label: 'Alternativo', isDefault: false }
+                { value: 'none', label: 'Sin QR', isDefault: QR_TIPO_DEFAULT_RESTAURANTE002 === 'none' },
+                { value: 'default', label: 'Oficial', isDefault: QR_TIPO_DEFAULT_RESTAURANTE002 === 'default' },
+                { value: 'mod', label: 'Alternativo', isDefault: QR_TIPO_DEFAULT_RESTAURANTE002 === 'mod' }
             ],
             vinoImagenSrc: VINO_IMAGEN_TENISTA,
             vinoImagenWrapperId: 'vino-imagen-usopen',
@@ -138,8 +136,9 @@
     // width:auto). Un porcentaje se resolvía de forma poco fiable dentro de la columna "auto"
     // del grid, dejando la botella más corta que el QR aunque compartieran la misma base.
     const VINO_IMAGEN_ESCALAS = [1, 1.2, 1.4, 1.6];
-    // MODIFICADO: tamaño por defecto ahora es 1.2x (antes 1.4x).
-    const VINO_IMAGEN_ESCALA_DEFAULT = 1.2;
+    // MODIFICADO: el valor por defecto ahora vive en config.js (VINO_IMAGEN_ESCALA_DEFAULT),
+    // junto al resto de opciones por defecto de este mismo bloque (VINO_IMAGEN_DEFAULT_*,
+    // QR_TIPO_DEFAULT_*) — así se puede tocar sin entrar en la lógica de este archivo.
     // MODIFICADO: base del QR igualada a VINO_IMAGEN_BASE_MAX_HEIGHT (antes 90px, un tamaño
     // propio distinto) — así, al aplicar la misma escala a ambas, el QR sale siempre con la
     // misma altura vertical que la botella (antes no coincidían: 90px vs 140px en la base).
