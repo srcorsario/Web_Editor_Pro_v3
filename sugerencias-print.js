@@ -573,8 +573,20 @@
                 var maxAlturaPx = probe.getBoundingClientRect().height;
                 document.body.removeChild(probe);
 
+                var footer = panel.querySelector('.sugerencias-footer');
+                if (!footer) return;
                 void panel.offsetHeight;
-                var libre = maxAlturaPx - panel.scrollHeight;
+
+                // CORREGIDO: panel.scrollHeight no servía aquí — .sugerencias-panel tiene
+                // min-height:267mm !important, así que el propio panel YA mide 267mm aunque el
+                // contenido real ocupe mucho menos (una carta corta), y "maxAlturaPx - scrollHeight"
+                // salía siempre ~0 (nunca se repartía nada). Se mide en su lugar dónde termina DE
+                // VERDAD el contenido: el borde inferior real del footer respecto al borde superior
+                // de la hoja — esa es la altura que el contenido ocupa de verdad.
+                var panelRect = panel.getBoundingClientRect();
+                var footerRect = footer.getBoundingClientRect();
+                var alturaContenidoReal = footerRect.bottom - panelRect.top;
+                var libre = maxAlturaPx - alturaContenidoReal;
                 if (libre <= 0) return; // no hay hueco que repartir (o el contenido ya está muy justo)
 
                 var secciones = [];
@@ -584,7 +596,13 @@
                 });
                 if (secciones.length === 0) return;
 
-                var extraPorSeccion = libre / secciones.length;
+                // NUEVO: tope por sección (~50mm) — en cartas muy cortas (pocas categorías), sin
+                // tope el sobrante entero se concentraría en 1-2 huecos enormes entre categorías,
+                // un problema tan feo como el original. Con el tope, cada sección recibe como
+                // mucho ~50mm extra; si aún sobra más allá de eso, el resto queda como un margen
+                // final (más pequeño que antes) justo delante del aviso de alérgenos.
+                var TOPE_PX = maxAlturaPx * (50 / 267);
+                var extraPorSeccion = Math.min(libre / secciones.length, TOPE_PX);
                 secciones.forEach(function(sec) {
                     var actual = parseFloat(getComputedStyle(sec).marginBottom) || 0;
                     sec.style.setProperty('margin-bottom', (actual + extraPorSeccion) + 'px', 'important');
