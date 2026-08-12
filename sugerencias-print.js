@@ -94,7 +94,7 @@
             .sugerencias-qr-toggle input:checked + span { font-weight: bold; }
             .sugerencias-qr-img { transition: opacity 0.3s; }
             .sugerencias-vino-imagen-wrapper { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center !important; padding: 20px 0 8px 0 !important; column-gap: 10px !important; }
-            .sugerencias-vino-imagen { justify-self: center !important; max-width: 55%; max-height: 140px; object-fit: contain !important; transition: max-height 0.15s ease, max-width 0.15s ease !important; }
+            .sugerencias-vino-imagen { justify-self: center !important; height: 140px; width: auto; max-width: 300px; object-fit: contain !important; transition: height 0.15s ease !important; }
             .sugerencias-vino-imagen-wrapper .sugerencias-qr-img { justify-self: end !important; }
             .vino-imagen-selector-wrapper { font-size: 0.75rem !important; color: #64748b !important; }
             .btn-imprimir-a4 { display: block; width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 0.9rem; cursor: pointer; margin-bottom: 15px; text-align: center; }
@@ -134,7 +134,9 @@
     // NUEVO: tamaño base de la imagen del vino (debe coincidir con el CSS .sugerencias-vino-imagen)
     // y multiplicadores disponibles para agrandarla desde la pantalla.
     const VINO_IMAGEN_BASE_MAX_HEIGHT = 140; // px
-    const VINO_IMAGEN_BASE_MAX_WIDTH = 55;   // %
+    // MODIFICADO: ya no se usa un ancho porcentual — ver .sugerencias-vino-imagen (height fijo,
+    // width:auto). Un porcentaje se resolvía de forma poco fiable dentro de la columna "auto"
+    // del grid, dejando la botella más corta que el QR aunque compartieran la misma base.
     const VINO_IMAGEN_ESCALAS = [1, 1.2, 1.4, 1.6];
     // MODIFICADO: tamaño por defecto ahora es 1.4x (antes 1x).
     const VINO_IMAGEN_ESCALA_DEFAULT = 1.4;
@@ -168,8 +170,7 @@
         if (!wrapper) return;
         const img = wrapper.querySelector('.sugerencias-vino-imagen');
         if (img) {
-            img.style.maxHeight = (VINO_IMAGEN_BASE_MAX_HEIGHT * escala) + 'px';
-            img.style.maxWidth = (VINO_IMAGEN_BASE_MAX_WIDTH * escala) + '%';
+            img.style.height = (VINO_IMAGEN_BASE_MAX_HEIGHT * escala) + 'px';
         }
         const qrImg = wrapper.querySelector('.sugerencias-qr-img');
         if (qrImg) {
@@ -272,13 +273,12 @@
         // MODIFICADO: tamaño inicial ya a VINO_IMAGEN_ESCALA_DEFAULT (1.4x) en vez del 1x base,
         // tanto para la botella como para el QR (proporcional, ver QR_IMAGEN_BASE_SIZE). El
         // !important en el QR es necesario para ganarle al width/height !important de su CSS base.
-        const vinoImgMaxHeightInicial = VINO_IMAGEN_BASE_MAX_HEIGHT * VINO_IMAGEN_ESCALA_DEFAULT;
-        const vinoImgMaxWidthInicial = VINO_IMAGEN_BASE_MAX_WIDTH * VINO_IMAGEN_ESCALA_DEFAULT;
+        const vinoImgAlturaInicial = VINO_IMAGEN_BASE_MAX_HEIGHT * VINO_IMAGEN_ESCALA_DEFAULT;
         const qrTamanoInicial = QR_IMAGEN_BASE_SIZE * VINO_IMAGEN_ESCALA_DEFAULT;
         const vinoImagenHtml = tieneVinoEspecial
             ? `<div class="sugerencias-vino-imagen-wrapper" id="${config.vinoImagenWrapperId}">
                 <span></span>
-                <img src="${config.vinoImagenSrc}" class="sugerencias-vino-imagen" style="display:${vinoImagenDefaultCon ? '' : 'none'}; max-height:${vinoImgMaxHeightInicial}px; max-width:${vinoImgMaxWidthInicial}%;" onerror="this.style.display='none';">
+                <img src="${config.vinoImagenSrc}" class="sugerencias-vino-imagen" style="display:${vinoImagenDefaultCon ? '' : 'none'}; height:${vinoImgAlturaInicial}px;" onerror="this.style.display='none';">
                 <img src="${initialImgSrc}" class="sugerencias-qr-img" id="${config.qrImgId}" style="width:${qrTamanoInicial}px !important; height:${qrTamanoInicial}px !important;">
                </div>`
             : '';
@@ -597,13 +597,11 @@
                 });
                 if (secciones.length === 0) return;
 
-                // NUEVO: tope por sección (~50mm) — en cartas muy cortas (pocas categorías), sin
-                // tope el sobrante entero se concentraría en 1-2 huecos enormes entre categorías,
-                // un problema tan feo como el original. Con el tope, cada sección recibe como
-                // mucho ~50mm extra; si aún sobra más allá de eso, el resto queda como un margen
-                // final (más pequeño que antes) justo delante del aviso de alérgenos.
-                var TOPE_PX = maxAlturaPx * (50 / 267);
-                var extraPorSeccion = Math.min(libre / secciones.length, TOPE_PX);
+                // MODIFICADO: sin tope — se reparte el sobrante COMPLETO entre Entrantes/
+                // Principales/Postres. Con cartas muy cortas (pocas categorías) esto puede dejar
+                // más separación entre ellas de lo habitual, pero es preferible a dejar un hueco
+                // muerto sin usar después del aviso de alérgenos.
+                var extraPorSeccion = libre / secciones.length;
                 secciones.forEach(function(sec) {
                     var actual = parseFloat(getComputedStyle(sec).marginBottom) || 0;
                     sec.style.setProperty('margin-bottom', (actual + extraPorSeccion) + 'px', 'important');
