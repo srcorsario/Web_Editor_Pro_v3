@@ -575,27 +575,9 @@
             // ese sobrante entre ellos. Aquí se mide el hueco real y se reparte como margen extra
             // ÚNICAMENTE entre Entrantes/Principales/Postres (nunca tras BODEGA), para que BODEGA
             // quede siempre pegada al aviso de alérgenos, sea cual sea el hueco sobrante.
-            // DIAGNÓSTICO TEMPORAL: escribe en la propia hoja impresa (esquina inferior
-            // izquierda, texto gris pequeño) qué está calculando esta función y por dónde sale,
-            // para confirmar de una vez si se ejecuta de verdad y qué valores reales maneja —
-            // en vez de seguir cambiando cosas a ciegas. Se quitará en cuanto quede confirmado.
-            function debugTexto(msg) {
-                var caja = document.getElementById('debug-reparto-espacio');
-                if (!caja) {
-                    caja = document.createElement('div');
-                    caja.id = 'debug-reparto-espacio';
-                    caja.style.cssText = 'position:fixed; bottom:4px; left:4px; z-index:9999; background:#fffbe6; border:1px solid #d4b106; color:#614700; font-size:8px; font-family:monospace; padding:4px 6px; max-width:250px; line-height:1.3;';
-                    document.body.appendChild(caja);
-                }
-                var linea = document.createElement('div');
-                linea.textContent = msg;
-                caja.appendChild(linea);
-            }
-
             function repartirEspacioSobrante() {
-                debugTexto('repartirEspacioSobrante() EJECUTADA');
                 var panel = document.querySelector('.sugerencias-panel');
-                if (!panel) { debugTexto('SALIDA: no se encontró .sugerencias-panel'); return; }
+                if (!panel) return;
 
                 var probe = document.createElement('div');
                 probe.style.cssText = 'position:absolute; visibility:hidden; height:267mm; width:0;';
@@ -604,31 +586,38 @@
                 document.body.removeChild(probe);
 
                 var footer = panel.querySelector('.sugerencias-footer');
-                if (!footer) { debugTexto('SALIDA: no se encontró .sugerencias-footer'); return; }
+                if (!footer) return;
                 void panel.offsetHeight;
 
+                // CORREGIDO: panel.scrollHeight no servía aquí — .sugerencias-panel tiene
+                // min-height:267mm !important, así que el propio panel YA mide 267mm aunque el
+                // contenido real ocupe mucho menos (una carta corta), y "maxAlturaPx - scrollHeight"
+                // salía siempre ~0 (nunca se repartía nada). Se mide en su lugar dónde termina DE
+                // VERDAD el contenido: el borde inferior real del footer respecto al borde superior
+                // de la hoja — esa es la altura que el contenido ocupa de verdad.
                 var panelRect = panel.getBoundingClientRect();
                 var footerRect = footer.getBoundingClientRect();
                 var alturaContenidoReal = footerRect.bottom - panelRect.top;
                 var libre = maxAlturaPx - alturaContenidoReal;
-                debugTexto('maxAlturaPx=' + maxAlturaPx.toFixed(0) + 'px, alturaContenidoReal=' + alturaContenidoReal.toFixed(0) + 'px, libre=' + libre.toFixed(0) + 'px (' + (libre * 267 / maxAlturaPx).toFixed(1) + 'mm)');
-                if (libre <= 0) { debugTexto('SALIDA: libre <= 0, nada que repartir'); return; }
+                if (libre <= 0) return; // no hay hueco que repartir (o el contenido ya está muy justo)
 
                 var secciones = [];
                 panel.querySelectorAll('.sugerencias-seccion').forEach(function(sec) {
                     var titulo = sec.querySelector('.sugerencias-seccion-titulo');
                     if (titulo && titulo.textContent.indexOf('BODEGA') === -1) secciones.push(sec);
                 });
-                debugTexto('secciones elegibles encontradas: ' + secciones.length);
-                if (secciones.length === 0) { debugTexto('SALIDA: 0 secciones elegibles'); return; }
+                if (secciones.length === 0) return;
 
+                // MODIFICADO: sin tope — se reparte el sobrante COMPLETO entre Entrantes/
+                // Principales/Postres. Con cartas muy cortas (pocas categorías) esto puede dejar
+                // más separación entre ellas de lo habitual, pero es preferible a dejar un hueco
+                // muerto sin usar después del aviso de alérgenos. CONFIRMADO funcionando
+                // correctamente (diagnóstico visual verificado sobre PDF real).
                 var extraPorSeccion = libre / secciones.length;
-                debugTexto('extraPorSeccion=' + extraPorSeccion.toFixed(0) + 'px — APLICANDO margin-bottom');
                 secciones.forEach(function(sec) {
                     var actual = parseFloat(getComputedStyle(sec).marginBottom) || 0;
                     sec.style.setProperty('margin-bottom', (actual + extraPorSeccion) + 'px', 'important');
                 });
-                debugTexto('FIN: margin-bottom aplicado a ' + secciones.length + ' secciones');
             }
 
             esperarImagenes(document.body).then(function() {
