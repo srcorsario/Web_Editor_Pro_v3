@@ -1,7 +1,7 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '2.4.5'; // MODIFICADO: escala por defecto de imagen vino/QR a 1.2x (antes 1.4x); "Sin QR" por defecto en ambos restaurantes. CORREGIDO: el render inicial no ocultaba el QR cuando el default era "Sin QR" (solo funcionaba al hacer clic manualmente)
+window.APP_VERSIONS.app = '2.4.6'; // MODIFICADO: la escala por defecto y el tipo de QR por defecto de Sugerencias se movieron a config.js (VINO_IMAGEN_ESCALA_DEFAULT, QR_TIPO_DEFAULT_RESTAURANTE001/002), junto al resto de opciones por defecto del mismo bloque
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
