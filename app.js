@@ -1,7 +1,7 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '2.4.1'; // MODIFICADO: reparte el hueco sobrante de la hoja como margen extra entre Entrantes/Principales/Postres (nunca tras BODEGA), para que el aviso de alérgenos no quede con un salto grande debajo
+window.APP_VERSIONS.app = '2.4.2'; // CORREGIDO: bug en el reparto de hueco sobrante — medía scrollHeight del panel (siempre ~267mm por min-height, sobrante falso ~0); ahora mide la posición real del borde inferior del footer, con tope de ~50mm por sección
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
