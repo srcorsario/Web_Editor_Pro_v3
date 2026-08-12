@@ -86,9 +86,9 @@
             .sugerencias-alergeno-icon { display: inline-block !important; width: 16px !important; height: 16px !important; object-fit: contain !important; vertical-align: middle !important; margin-right: 2px !important; } 
             .sugerencias-puntos { flex: 1 !important; border-bottom: 1px dotted #94a3b8 !important; margin: 0 8px !important; height: 1px !important; }
             .sugerencias-precio { font-size: 0.9rem !important; font-weight: 700 !important; flex-shrink: 0 !important; } 
-            .sugerencias-footer { padding-top: 15px !important; display: flex !important; justify-content: space-between !important; align-items: flex-end !important; width: 100% !important; }
-            .sugerencias-advertencia-alergenos { font-size: 0.6rem !important; color: #64748b !important; max-width: 65% !important; line-height: 1.3 !important; text-align: left !important; font-style: italic !important; margin-bottom: 5px !important; }
-            .sugerencias-qr-container { display: flex !important; flex-direction: column !important; align-items: center !important; gap: 5px !important; margin-left: auto !important; }
+            .sugerencias-footer { padding-top: 15px !important; display: flex !important; flex-direction: column !important; align-items: center !important; width: 100% !important; }
+            .sugerencias-advertencia-alergenos { font-size: 0.6rem !important; color: #64748b !important; max-width: 80% !important; line-height: 1.3 !important; text-align: center !important; font-style: italic !important; margin: 0 auto 5px auto !important; }
+            .sugerencias-qr-container { display: flex !important; flex-direction: column !important; align-items: center !important; gap: 5px !important; }
             .sugerencias-qr-img { width: 90px !important; height: 90px !important; object-fit: contain !important; } 
             .sugerencias-qr-toggle { font-size: 0.7rem !important; color: #64748b !important; cursor: pointer !important; display: flex !important; user-select: none !important; gap: 5px !important; }
             .sugerencias-qr-toggle input:checked + span { font-weight: bold; }
@@ -97,7 +97,13 @@
             .sugerencias-vino-imagen { justify-self: center !important; max-width: 55%; max-height: 140px; object-fit: contain !important; transition: max-height 0.15s ease, max-width 0.15s ease !important; }
             .sugerencias-vino-imagen-wrapper .sugerencias-qr-img { justify-self: end !important; }
             .vino-imagen-selector-wrapper { font-size: 0.75rem !important; color: #64748b !important; }
-            .btn-imprimir-a4 { display: block; width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 0.9rem; cursor: pointer; margin-bottom: 20px; text-align: center; }
+            .btn-imprimir-a4 { display: block; width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 0.9rem; cursor: pointer; margin-bottom: 15px; text-align: center; }
+            /* NUEVO: box de controles, deliberadamente separado y con estilo distinto (fondo gris,
+               borde, debajo de la hoja blanca) para que se note a simple vista que NO es parte de
+               la hoja A4 que se imprime — solo agrupa el botón de imprimir y las opciones (imagen
+               del vino, tamaño, tipo de QR), extraídas de dentro de la hoja para dejarla como un
+               espejo fiel de lo que sale impreso. */
+            .sugerencias-controles-box { max-width: 190mm; margin: 15px auto 0 auto; padding: 15px 20px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 10px; box-sizing: border-box; font-family: 'Montserrat', sans-serif; }
             /* NUEVO: en pantallas estrechas (móvil), las filas "Imagen Vino:" y "Tipo de QR:"
                se generan con flex-wrap:nowrap y white-space:nowrap en línea (para que en
                pantallas normales queden en una sola fila compacta), lo que en móvil las hacía
@@ -109,7 +115,7 @@
                 .qr-selector-wrapper { flex-wrap: wrap !important; white-space: normal !important; }
                 .vino-imagen-selector-wrapper { border-right: none !important; padding-right: 0 !important; }
             }
-            @media print { body { -webkit-print-color-adjust: exact !important; } .btn-imprimir-a4, .sugerencias-qr-toggle, .qr-selector-wrapper, .vino-imagen-selector-wrapper, .sugerencias-debug-a4 { display: none !important; } }
+            @media print { body { -webkit-print-color-adjust: exact !important; } .sugerencias-controles-box, .sugerencias-debug-a4 { display: none !important; } }
         `;
         document.head.appendChild(stylePrint);
     }
@@ -222,7 +228,11 @@
         let entrantes = [], principales = [], postres = [], vinos = [];
         platos.forEach(p => { const id = parseInt(p.id, 10); if (id === 12990) vinos.push(p); else if (id >= 12100 && id <= 12399) entrantes.push(p); else if (id >= 12400 && id <= 12899) principales.push(p); else if (id >= 12900 && id <= 12999) postres.push(p); else entrantes.push(p); });
 
-        let html = `<button onclick="window.imprimirSugerencias('${modoSeguro}')" class="btn-imprimir-a4">🖨️ Imprimir Sugerencias ${getModoAlias(modoSeguro)} (A4)</button>
+        // MODIFICADO: la hoja A4 real (.sugerencias-panel) ya NO contiene el botón de imprimir ni
+        // ninguna opción — así lo que se ve dentro de ella en pantalla es EXACTAMENTE lo que se
+        // imprime, sin nada de interfaz mezclado. El botón y las opciones (Imagen Vino, Tamaño,
+        // Tipo de QR) se juntan en un box aparte, debajo de la hoja (ver más abajo, sugerencias-controles-box).
+        let html = `<div class="sugerencias-panel">
             <div class="sugerencias-debug-a4"></div>
             <div class="sugerencias-header-layout">
                 <span class="sugerencias-version-tag" style="display:none;">Módulo ${config.versionStr}</span>
@@ -304,12 +314,21 @@
         
         html += `</div><div class="sugerencias-footer">
                 <div class="sugerencias-advertencia-alergenos">Si usted tiene algún tipo de alergia alimentaria, por favor comuníquelo a nuestro personal.<br>If you have any food allergies, please inform our staff.</div>
-                <div class="sugerencias-qr-container">
-                    ${(vinoImagenButtonsHtml || vinoImagenEscalaHtml) ? `<div class="qr-selector-wrapper" style="font-size: 0.75rem; color: #64748b; text-align: center; margin-bottom: 3px; user-select:none; display: flex; flex-direction: row; align-items: center; justify-content: center; flex-wrap: nowrap; gap: 8px; white-space: nowrap;">${vinoImagenButtonsHtml ? `<span class="vino-imagen-selector-wrapper" style="display:flex; align-items:center; gap:8px; padding-right:10px; border-right:1px solid #cbd5e1;">Imagen Vino: ${vinoImagenButtonsHtml}</span>` : ''}${vinoImagenEscalaHtml ? `<span class="vino-imagen-selector-wrapper" style="display:flex; align-items:center; gap:6px;">Tamaño: ${vinoImagenEscalaHtml}</span>` : ''}</div>` : ''}
-                    <div class="qr-selector-wrapper" style="font-size: 0.75rem; color: #64748b; text-align: center; margin-bottom: 5px; user-select:none; display: flex; flex-direction: row; align-items: center; justify-content: center; flex-wrap: nowrap; gap: 8px; white-space: nowrap;">Tipo de QR: ${qrButtonsHtml}</div>
-                    ${tieneVinoEspecial ? '' : `<img src="${initialImgSrc}" class="sugerencias-qr-img" id="${config.qrImgId}">`}
-                </div></div>`;
-        contenedor.innerHTML = html;
+                ${tieneVinoEspecial ? '' : `<div class="sugerencias-qr-container"><img src="${initialImgSrc}" class="sugerencias-qr-img" id="${config.qrImgId}"></div>`}
+            </div>
+        </div>`;
+
+        // NUEVO: box de controles, SEPARADO de la hoja A4 y colocado debajo de ella — agrupa
+        // todo lo que antes vivía disperso dentro de la propia hoja (botón de imprimir arriba del
+        // todo, opciones de imagen del vino/tamaño y de QR abajo del todo): así la hoja de encima
+        // es un espejo fiel y exclusivo de lo que se va a imprimir, y aquí abajo se controla cómo.
+        let controlesHtml = `<div class="sugerencias-controles-box">
+                <button onclick="window.imprimirSugerencias('${modoSeguro}')" class="btn-imprimir-a4">🖨️ Imprimir Sugerencias ${getModoAlias(modoSeguro)} (A4)</button>
+                ${(vinoImagenButtonsHtml || vinoImagenEscalaHtml) ? `<div class="qr-selector-wrapper" style="font-size: 0.75rem; color: #64748b; text-align: center; margin-bottom: 3px; user-select:none; display: flex; flex-direction: row; align-items: center; justify-content: center; flex-wrap: nowrap; gap: 8px; white-space: nowrap;">${vinoImagenButtonsHtml ? `<span class="vino-imagen-selector-wrapper" style="display:flex; align-items:center; gap:8px; padding-right:10px; border-right:1px solid #cbd5e1;">Imagen Vino: ${vinoImagenButtonsHtml}</span>` : ''}${vinoImagenEscalaHtml ? `<span class="vino-imagen-selector-wrapper" style="display:flex; align-items:center; gap:6px;">Tamaño: ${vinoImagenEscalaHtml}</span>` : ''}</div>` : ''}
+                <div class="qr-selector-wrapper" style="font-size: 0.75rem; color: #64748b; text-align: center; margin-bottom: 0; user-select:none; display: flex; flex-direction: row; align-items: center; justify-content: center; flex-wrap: nowrap; gap: 8px; white-space: nowrap;">Tipo de QR: ${qrButtonsHtml}</div>
+            </div>`;
+
+        contenedor.innerHTML = html + controlesHtml;
         posicionarDebugA4(contenedor);
     }
 
@@ -318,6 +337,11 @@
         if (!config) return;
         const contenedor = document.getElementById(config.containerId);
         if (!contenedor) return;
+        // MODIFICADO: contenedor ya no ES la hoja — ahora también incluye debajo el box de
+        // controles (botón imprimir, opciones). Se busca el div.sugerencias-panel real dentro,
+        // que es exactamente lo único que debe imprimirse.
+        const panelReal = contenedor.querySelector('.sugerencias-panel');
+        if (!panelReal) return;
         const styleContent = document.getElementById('sugerencias-print-styles').innerHTML;
         const pWin = window.open('', '_blank', 'width=800,height=1000');
 
@@ -386,25 +410,25 @@
                 var maxAlturaPx = probe.getBoundingClientRect().height;
                 document.body.removeChild(probe);
 
-                // CORREGIDO: las filas de selectores (Tipo de QR, Imagen Vino, Tamaño) Y el botón
-                // "Imprimir Sugerencias..." solo existen para la pantalla — en el papel se ocultan
-                // vía @media print. Si se miden con ellos visibles, la altura sale más alta de lo
-                // que de verdad ocupa la hoja impresa, y el script cree que hace falta quitar más
-                // de lo necesario (imagen del vino, tamaño de letra...) cuando en realidad el
-                // contenido real cabe de sobra. Se ocultan ANTES de la primera medición para que
-                // coincida con el resultado real en papel desde el principio.
-                // NUEVO: .sugerencias-debug-a4 también se oculta antes de medir. Es position:absolute
-                // con una altura FIJA de 267mm dentro de un panel position:relative — eso hace que
-                // cuente para el scrollHeight del panel (el navegador incluye el alcance de los
-                // descendientes posicionados al calcularlo). En cuanto el contenido real se queda
-                // más corto que esos 267mm fijos, el rectángulo pasa a ser el elemento más bajo del
-                // panel y el scrollHeight deja de reflejar el contenido real — se queda "pegado" a la
-                // altura del rectángulo y no baja aunque se quite la imagen del vino, el QR, o se
-                // reduzca el texto. Se vuelve a mostrar y reposicionar al final, con el resultado ya
-                // decidido, solo para que la persona lo vea en la pantalla de aviso.
-                document.querySelectorAll('.qr-selector-wrapper, .btn-imprimir-a4, .sugerencias-debug-a4').forEach(function(el) {
+                // CORREGIDO: antes había que ocultar aquí las filas de selectores y el botón de
+                // imprimir antes de medir (solo existían para pantalla, se ocultaban vía @media
+                // print). Ya no hace falta: ahora viven en un box de controles aparte, en la
+                // página principal — a esta ventana de impresión solo se copia la hoja real
+                // (.sugerencias-panel), así que nunca llegan a existir aquí.
+                // .sugerencias-debug-a4 SÍ sigue formando parte de la hoja, y sigue haciendo falta
+                // ocultarlo antes de medir. Es position:absolute con una altura FIJA de 267mm
+                // dentro de un panel position:relative — eso hace que cuente para el scrollHeight
+                // del panel (el navegador incluye el alcance de los descendientes posicionados al
+                // calcularlo). En cuanto el contenido real se queda más corto que esos 267mm fijos,
+                // el rectángulo pasa a ser el elemento más bajo del panel y el scrollHeight deja de
+                // reflejar el contenido real — se queda "pegado" a la altura del rectángulo y no
+                // baja aunque se quite la imagen del vino, el QR, o se reduzca el texto. Se vuelve
+                // a mostrar y reposicionar al final, con el resultado ya decidido, solo para que la
+                // persona lo vea en la pantalla de aviso.
+                document.querySelectorAll('.sugerencias-debug-a4').forEach(function(el) {
                     el.style.setProperty('display', 'none', 'important');
                 });
+
 
                 function medir(etiqueta) {
                     void panel.offsetHeight;
@@ -551,7 +575,7 @@
             });
         `;
 
-        pWin.document.write(`<html><head><title>Sugerencias ${getModoAlias(modo)}</title><style>${styleContent}@media print { #sugerencias-aviso-ajuste { display: none !important; } }</style></head><body><div class="sugerencias-panel">${contenedor.innerHTML}</div><script>${scriptAjuste}<\/script></body></html>`);
+        pWin.document.write(`<html><head><title>Sugerencias ${getModoAlias(modo)}</title><style>${styleContent}@media print { #sugerencias-aviso-ajuste { display: none !important; } }</style></head><body>${panelReal.outerHTML}<script>${scriptAjuste}<\/script></body></html>`);
         pWin.document.close();
     };
 })();
