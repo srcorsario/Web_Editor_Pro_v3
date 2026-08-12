@@ -1,7 +1,7 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '2.4.6'; // MODIFICADO: la escala por defecto y el tipo de QR por defecto de Sugerencias se movieron a config.js (VINO_IMAGEN_ESCALA_DEFAULT, QR_TIPO_DEFAULT_RESTAURANTE001/002), junto al resto de opciones por defecto del mismo bloque
+window.APP_VERSIONS.app = '2.4.7'; // CORREGIDO: .sugerencias-body y .sugerencias-seccion tenían flex-grow:1, absorbiendo el hueco sobrante dentro de sus propias cajas de forma imprevisible y compitiendo con repartirEspacioSobrante(); quitado el flex-grow para que el reparto de espacio dependa solo del cálculo explícito en JS
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
