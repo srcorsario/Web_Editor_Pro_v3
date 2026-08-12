@@ -556,8 +556,44 @@
                 return caja;
             }
 
+            // NUEVO: aunque el contenido quepa en una página (con o sin reducciones), casi nunca
+            // ocupa EXACTAMENTE 267mm — sobra algo de hueco. Antes ese hueco quedaba todo junto
+            // entre BODEGA y el aviso de alérgenos (un salto grande y feo), porque .sugerencias-body
+            // tiene flex:1 (se estira para llenar el alto disponible) pero sus hijos no repartían
+            // ese sobrante entre ellos. Aquí se mide el hueco real y se reparte como margen extra
+            // ÚNICAMENTE entre Entrantes/Principales/Postres (nunca tras BODEGA), para que BODEGA
+            // quede siempre pegada al aviso de alérgenos, sea cual sea el hueco sobrante.
+            function repartirEspacioSobrante() {
+                var panel = document.querySelector('.sugerencias-panel');
+                if (!panel) return;
+
+                var probe = document.createElement('div');
+                probe.style.cssText = 'position:absolute; visibility:hidden; height:267mm; width:0;';
+                document.body.appendChild(probe);
+                var maxAlturaPx = probe.getBoundingClientRect().height;
+                document.body.removeChild(probe);
+
+                void panel.offsetHeight;
+                var libre = maxAlturaPx - panel.scrollHeight;
+                if (libre <= 0) return; // no hay hueco que repartir (o el contenido ya está muy justo)
+
+                var secciones = [];
+                panel.querySelectorAll('.sugerencias-seccion').forEach(function(sec) {
+                    var titulo = sec.querySelector('.sugerencias-seccion-titulo');
+                    if (titulo && titulo.textContent.indexOf('BODEGA') === -1) secciones.push(sec);
+                });
+                if (secciones.length === 0) return;
+
+                var extraPorSeccion = libre / secciones.length;
+                secciones.forEach(function(sec) {
+                    var actual = parseFloat(getComputedStyle(sec).marginBottom) || 0;
+                    sec.style.setProperty('margin-bottom', (actual + extraPorSeccion) + 'px', 'important');
+                });
+            }
+
             esperarImagenes(document.body).then(function() {
                 var resultado = ajustarAUnaPagina();
+                repartirEspacioSobrante();
                 // Volver a mostrar el rectángulo de depuración con el resultado YA decidido (no
                 // afecta a ninguna medición a partir de aquí) y reposicionarlo, porque la cabecera
                 // puede haberse movido un poco tras apretar el espacio entre categorías.
