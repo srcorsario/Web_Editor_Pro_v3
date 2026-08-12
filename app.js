@@ -1,7 +1,7 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '2.4.3'; // MODIFICADO: más espacio entre la línea del vino y su imagen; QR igualado en altura a la botella (misma base 140px, escalan juntos)
+window.APP_VERSIONS.app = '2.4.4'; // CORREGIDO: altura de la botella pasa de max-height+max-width% a height fijo (el % no se resolvía bien en la columna auto del grid, quedaba más corta que el QR); quitado el tope de 50mm del reparto de hueco sobrante
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
