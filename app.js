@@ -1,7 +1,7 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '2.3.4'; // MODIFICADO: título "Sugerencias del Chef" y logo más grandes en la cabecera de Sugerencias
+window.APP_VERSIONS.app = '2.4.0'; // MODIFICADO: separada la hoja A4 real (sin controles) de un nuevo box de controles debajo (botón imprimir, opciones imagen vino/tamaño/QR); advertencia de alérgenos centrada y anclada abajo
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
