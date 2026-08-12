@@ -93,7 +93,7 @@
             .sugerencias-qr-toggle { font-size: 0.7rem !important; color: #64748b !important; cursor: pointer !important; display: flex !important; user-select: none !important; gap: 5px !important; }
             .sugerencias-qr-toggle input:checked + span { font-weight: bold; }
             .sugerencias-qr-img { transition: opacity 0.3s; }
-            .sugerencias-vino-imagen-wrapper { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center !important; padding: 8px 0 !important; column-gap: 10px !important; }
+            .sugerencias-vino-imagen-wrapper { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center !important; padding: 20px 0 8px 0 !important; column-gap: 10px !important; }
             .sugerencias-vino-imagen { justify-self: center !important; max-width: 55%; max-height: 140px; object-fit: contain !important; transition: max-height 0.15s ease, max-width 0.15s ease !important; }
             .sugerencias-vino-imagen-wrapper .sugerencias-qr-img { justify-self: end !important; }
             .vino-imagen-selector-wrapper { font-size: 0.75rem !important; color: #64748b !important; }
@@ -138,9 +138,10 @@
     const VINO_IMAGEN_ESCALAS = [1, 1.2, 1.4, 1.6];
     // MODIFICADO: tamaño por defecto ahora es 1.4x (antes 1x).
     const VINO_IMAGEN_ESCALA_DEFAULT = 1.4;
-    // NUEVO: tamaño base del QR (debe coincidir con el CSS .sugerencias-qr-img: 90px !important),
-    // para poder escalarlo en la misma proporción que la imagen del vino cuando comparten fila.
-    const QR_IMAGEN_BASE_SIZE = 90; // px
+    // MODIFICADO: base del QR igualada a VINO_IMAGEN_BASE_MAX_HEIGHT (antes 90px, un tamaño
+    // propio distinto) — así, al aplicar la misma escala a ambas, el QR sale siempre con la
+    // misma altura vertical que la botella (antes no coincidían: 90px vs 140px en la base).
+    const QR_IMAGEN_BASE_SIZE = VINO_IMAGEN_BASE_MAX_HEIGHT; // px
 
     // MODIFICADO: solo oculta/muestra la imagen del vino en sí, NUNCA el wrapper entero — desde
     // que el QR vive en la misma fila, ocultar el wrapper apagaba el QR también.
