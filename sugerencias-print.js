@@ -13,11 +13,11 @@
             qrRadioName: 'qr-mode-rg-footer',
             qrDefault: QR_RESTAURANTE001_DEFAULT, 
             qrMod: QR_RESTAURANTE001_MOD,           
-            defaultQrSelection: 'mod',       
+            defaultQrSelection: 'none', // NOTA: campo no leído por el código; el real es isDefault en qrOptions       
             qrOptions: [
-                { value: 'none', label: 'Sin QR', isDefault: false },
+                { value: 'none', label: 'Sin QR', isDefault: true },
                 { value: 'default', label: 'Oficial', isDefault: false },
-                { value: 'mod', label: 'Alternativo', isDefault: true }
+                { value: 'mod', label: 'Alternativo', isDefault: false }
             ],
             vinoImagenSrc: VINO_IMAGEN_TENISTA,
             vinoImagenWrapperId: 'vino-imagen-rg',
@@ -37,10 +37,10 @@
             qrRadioName: 'qr-mode-usopen-footer',
             qrDefault: QR_RESTAURANTE002_DEFAULT, 
             qrMod: QR_RESTAURANTE002_MOD,         
-            defaultQrSelection: 'default',      
+            defaultQrSelection: 'none', // NOTA: campo no leído por el código; el real es isDefault en qrOptions      
             qrOptions: [
-                { value: 'none', label: 'Sin QR', isDefault: false },
-                { value: 'default', label: 'Oficial', isDefault: true },
+                { value: 'none', label: 'Sin QR', isDefault: true },
+                { value: 'default', label: 'Oficial', isDefault: false },
                 { value: 'mod', label: 'Alternativo', isDefault: false }
             ],
             vinoImagenSrc: VINO_IMAGEN_TENISTA,
@@ -138,8 +138,8 @@
     // width:auto). Un porcentaje se resolvía de forma poco fiable dentro de la columna "auto"
     // del grid, dejando la botella más corta que el QR aunque compartieran la misma base.
     const VINO_IMAGEN_ESCALAS = [1, 1.2, 1.4, 1.6];
-    // MODIFICADO: tamaño por defecto ahora es 1.4x (antes 1x).
-    const VINO_IMAGEN_ESCALA_DEFAULT = 1.4;
+    // MODIFICADO: tamaño por defecto ahora es 1.2x (antes 1.4x).
+    const VINO_IMAGEN_ESCALA_DEFAULT = 1.2;
     // MODIFICADO: base del QR igualada a VINO_IMAGEN_BASE_MAX_HEIGHT (antes 90px, un tamaño
     // propio distinto) — así, al aplicar la misma escala a ambas, el QR sale siempre con la
     // misma altura vertical que la botella (antes no coincidían: 90px vs 140px en la base).
@@ -263,6 +263,11 @@
         let initialImgSrc = config.qrMod;
         const defaultOpt = config.qrOptions.find(o => o.isDefault);
         if (defaultOpt && defaultOpt.value === 'default') initialImgSrc = config.qrDefault;
+        // CORREGIDO: antes, si isDefault apuntaba a 'none' (Sin QR), el render inicial igual
+        // mostraba el QR — solo se ocultaba si el usuario hacía clic manualmente en el radio.
+        // Ahora se calcula también el estado inicial oculto, usado en los dos sitios donde se
+        // pinta el <img> del QR más abajo.
+        const qrInicialOculto = defaultOpt && defaultOpt.value === 'none';
 
         // NUEVO: si el vino especial (ID 12990) está activo, el QR se mueve a la MISMA fila que
         // la imagen del vino — imagen del vino centrada (columna central de un grid de 3), QR
@@ -270,7 +275,7 @@
         // de alérgenos.
         const tieneVinoEspecial = vinos.some(p => parseInt(p.id, 10) === 12990);
         const vinoImagenDefaultCon = config.vinoImagenOptions.find(o => o.isDefault)?.value === 'con';
-        // MODIFICADO: tamaño inicial ya a VINO_IMAGEN_ESCALA_DEFAULT (1.4x) en vez del 1x base,
+        // MODIFICADO: tamaño inicial ya a VINO_IMAGEN_ESCALA_DEFAULT (1.2x) en vez del 1x base,
         // tanto para la botella como para el QR (proporcional, ver QR_IMAGEN_BASE_SIZE). El
         // !important en el QR es necesario para ganarle al width/height !important de su CSS base.
         const vinoImgAlturaInicial = VINO_IMAGEN_BASE_MAX_HEIGHT * VINO_IMAGEN_ESCALA_DEFAULT;
@@ -279,7 +284,7 @@
             ? `<div class="sugerencias-vino-imagen-wrapper" id="${config.vinoImagenWrapperId}">
                 <span></span>
                 <img src="${config.vinoImagenSrc}" class="sugerencias-vino-imagen" style="display:${vinoImagenDefaultCon ? '' : 'none'}; height:${vinoImgAlturaInicial}px;" onerror="this.style.display='none';">
-                <img src="${initialImgSrc}" class="sugerencias-qr-img" id="${config.qrImgId}" style="width:${qrTamanoInicial}px !important; height:${qrTamanoInicial}px !important;">
+                <img src="${initialImgSrc}" class="sugerencias-qr-img" id="${config.qrImgId}" style="width:${qrTamanoInicial}px !important; height:${qrTamanoInicial}px !important; display:${qrInicialOculto ? 'none' : ''};">
                </div>`
             : '';
 
@@ -306,7 +311,7 @@
                 vinoImagenButtonsHtml += `<label style="${style}"><input type="radio" name="${config.vinoImagenRadioName}" value="${opt.value}" ${isActive ? 'checked' : ''} onchange="window.toggleVinoImagen('${opt.value}', '${modoSeguro}')"> ${opt.label}</label>`;
             });
             VINO_IMAGEN_ESCALAS.forEach((escala, idx) => {
-                const isActive = escala === VINO_IMAGEN_ESCALA_DEFAULT; // MODIFICADO: 1.4x por defecto (antes 1x)
+                const isActive = escala === VINO_IMAGEN_ESCALA_DEFAULT; // MODIFICADO: 1.2x por defecto (antes 1.4x)
                 const style = `cursor: pointer; color: ${isActive ? '#0d5c63' : '#64748b'}; font-weight: ${isActive ? 'bold' : 'normal'};`;
                 const etiqueta = escala === 1 ? '1x' : `${escala}x`;
                 vinoImagenEscalaHtml += `<label style="${style}"><input type="radio" name="vino-imagen-escala-${modoSeguro}" value="${escala}" ${isActive ? 'checked' : ''} onchange="window.setVinoImagenEscala(${escala}, '${modoSeguro}')"> ${etiqueta}</label>`;
@@ -315,7 +320,7 @@
         
         html += `</div><div class="sugerencias-footer">
                 <div class="sugerencias-advertencia-alergenos">Si usted tiene algún tipo de alergia alimentaria, por favor comuníquelo a nuestro personal.<br>If you have any food allergies, please inform our staff.</div>
-                ${tieneVinoEspecial ? '' : `<div class="sugerencias-qr-container"><img src="${initialImgSrc}" class="sugerencias-qr-img" id="${config.qrImgId}"></div>`}
+                ${tieneVinoEspecial ? '' : `<div class="sugerencias-qr-container"><img src="${initialImgSrc}" class="sugerencias-qr-img" id="${config.qrImgId}" style="display:${qrInicialOculto ? 'none' : ''};"></div>`}
             </div>
         </div>`;
 
