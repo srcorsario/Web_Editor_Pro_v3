@@ -95,7 +95,7 @@ export const UIBatchAuditoria = {
         window.UI.log("[Paso 5] Auditando alérgenos: comparando ALERGENOS_COD actual contra lo que dicen realmente INFO_ES / INFO_EN ahora mismo (sin depender de huellas ni de si cambió algo)...");
 
         const filasConDesajuste = [];
-        let revisadas = 0, sinInfoAun = 0;
+        let revisadas = 0, sinInfoAun = 0, huboSobrantes = false;
 
         for (let i = Math.max(0, rangoInicio); i < techoLimiteEvaluacion; i++) {
             const row = activeStateContainer.csvData[i];
@@ -137,7 +137,7 @@ export const UIBatchAuditoria = {
                 const faltan = Array.from(alergenosOficiales).filter(c => !mencionados.has(c));
                 const sobran = Array.from(mencionados).filter(c => !alergenosOficiales.has(c));
                 if (faltan.length > 0) problemasFila.push(`${lang.toUpperCase()}: registrado(s) pero no mencionado(s) en el texto → ${faltan.join(', ')}`);
-                if (sobran.length > 0) problemasFila.push(`${lang.toUpperCase()}: mencionado(s) en el texto pero NO registrado(s) en ALERGENOS_COD → ${sobran.join(', ')}`);
+                if (sobran.length > 0) { problemasFila.push(`${lang.toUpperCase()}: mencionado(s) en el texto pero NO registrado(s) en ALERGENOS_COD → ${sobran.join(', ')}`); huboSobrantes = true; }
             });
 
             if (problemasFila.length > 0) {
@@ -146,6 +146,9 @@ export const UIBatchAuditoria = {
         }
 
         window.UI.log(`[Auditoría] Revisados ${revisadas} platos con ficha generada (${sinInfoAun} aún sin ficha, omitidos). Desajustes encontrados: ${filasConDesajuste.length}.`);
+        if (huboSobrantes) {
+            window.UI.log(`⚠️ [Auditoría] IMPORTANTE: en al menos un plato el texto menciona un alérgeno que NO está marcado en ALERGENOS_COD. Esta auditoría siempre trata ALERGENOS_COD como la fuente de verdad — al "corregir", REESCRIBE el texto para que deje de mencionarlo, no añade el código. Si ese alérgeno es real, márcalo tú a mano en el editor de alérgenos de ese plato ANTES (o después) de fiarte de la ficha regenerada; si no, ignora este aviso.`);
+        }
 
         if (filasConDesajuste.length === 0) {
             return window.UI.log("[FIN Auditoría] Ningún desajuste detectado entre ALERGENOS_COD y lo que dice el texto de ES/EN ahora mismo. ⚠️ Recuerda que esto es una comprobación por palabras clave, no 100% infalible — ante una duda puntual, revisa esa ficha a mano.");
@@ -183,6 +186,15 @@ export const UIBatchAuditoria = {
         await window.UI.iniciarTraduccionPorLotes(activeStateContainer);
         if (!procesoState.detenido) await window.UI.iniciarInfoOtrosIdiomasPorLotes(activeStateContainer);
 
-        window.UI.log("[FIN Auditoría] Corrección automática completada. Cuando quieras guardar los cambios de verdad, pulsa \"☁️ Sincronizar con Google Sheet\".");
+        // NUEVO: el mensaje final ya no da por completado el trabajo sin comprobarlo — si el
+        // usuario pulsó "Cancelar"/"Pausar" o se agotó la cuota a mitad de la regeneración
+        // automática, aquí se avisa de que puede haber quedado contenido a medias en vez de
+        // decir "completada" sin más (revisa el mensaje [FIN]/[FIN - INCOMPLETO] de cada fase
+        // justo arriba para ver exactamente qué quedó pendiente).
+        if (procesoState.detenido) {
+            window.UI.log("[FIN Auditoría] Regeneración detenida antes de terminar (revisa los mensajes [FIN - INCOMPLETO] de arriba: puede quedar ficha pendiente en algún idioma). Vuelve a pulsar \"Generar Info Platos ES/EN\" y \"Generar Info Platos Otros Idiomas\" para completar lo que falte, y luego \"☁️ Sincronizar con Google Sheet\".");
+        } else {
+            window.UI.log("[FIN Auditoría] Corrección automática completada. Cuando quieras guardar los cambios de verdad, pulsa \"☁️ Sincronizar con Google Sheet\".");
+        }
     }
 };

@@ -147,6 +147,12 @@ export const UIBatchRevision = {
             if (!procesoState.detenido) await window.UI.iniciarInfoOtrosIdiomasPorLotes(activeStateContainer);
         }
 
-        window.UI.log("[FIN Revisión] Corrección automática completada. Revisa el resto de mensajes de arriba y, cuando quieras guardar los cambios de verdad, pulsa \"☁️ Sincronizar con Google Sheet\".");
+        // NUEVO: igual que en ui-batch-auditoria.js — no dar por "completada" la corrección sin
+        // comprobar si el usuario canceló/pausó o se agotó la cuota a mitad de la regeneración.
+        if (procesoState.detenido) {
+            window.UI.log("[FIN Revisión] Regeneración detenida antes de terminar (revisa los mensajes [FIN - INCOMPLETO] de arriba: puede quedar ficha o nombre pendiente en algún idioma). Vuelve a pulsar los botones de generación correspondientes para completar lo que falte, y luego \"☁️ Sincronizar con Google Sheet\".");
+        } else {
+            window.UI.log("[FIN Revisión] Corrección automática completada. Revisa el resto de mensajes de arriba y, cuando quieras guardar los cambios de verdad, pulsa \"☁️ Sincronizar con Google Sheet\".");
+        }
     }
 };
