@@ -98,6 +98,7 @@
                         <button id="btnIniciar" class="btn btn-success font-bold py-1 px-1 text-[11px] tracking-tight uppercase w-full mt-1">Generar Info Platos ES/EN (Solo en el Rango Asignado)</button>
                         <button id="btnIniciarInfoOtros" class="btn btn-success font-bold py-1 px-1 text-[11px] tracking-tight uppercase w-full mt-1">🌍 Generar Info Platos Otros Idiomas (Solo en el Rango Asignado)</button>
                         <button id="btnRevisarConsistencia" class="btn btn-secondary font-bold py-1 px-1 text-[11px] tracking-tight uppercase w-full mt-1 border border-amber-400" title="Detecta platos cuyo nombre/ingredientes o alérgenos han cambiado desde que se generaron sus traducciones, y las regenera automáticamente en todos los idiomas.">🔍 Revisar y Corregir Consistencia (Nombre/Alérgenos)</button>
+                        <button id="btnAuditarAlergenos" class="btn btn-secondary font-bold py-1 px-1 text-[11px] tracking-tight uppercase w-full mt-1 border border-rose-400" title="Comprueba AHORA MISMO, plato a plato, si el texto de ES/EN dice realmente los alérgenos que hay en ALERGENOS_COD (no depende de si algo ha cambiado o no). Detecta desajustes ya existentes.">🩺 Auditar Alérgenos Ahora (ES/EN)</button>
                         <div class="grid grid-cols-2 gap-1.5 text-xs mt-1">
                             <button id="btnPausa" class="btn btn-secondary font-bold py-1 px-1 uppercase">Pausar</button>
                             <button id="btnCancelar" class="btn btn-danger font-bold py-1 px-1 uppercase">Cancelar</button>
@@ -111,7 +112,10 @@
                     <div id="radiosIdiomas" class="w-full overflow-y-auto pr-1 flex-1"></div>
                 </div>
                 <div class="card flex-1 md:w-1/2 c-consola flex flex-col" style="width: 50%;">
-                    <h3 class="text-sm font-semibold uppercase tracking-wider mb-2">3. Monitor de Sistema</h3>
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-sm font-semibold uppercase tracking-wider">3. Monitor de Sistema</h3>
+                        <button id="btnCopiarConsola" class="btn btn-secondary text-[10px] py-0.5 px-2 whitespace-nowrap" title="Copia todo el texto de la consola al portapapeles">📋 Copiar consola</button>
+                    </div>
                     <div id="consola"></div>
                 </div>
             </div>

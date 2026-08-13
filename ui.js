@@ -12,9 +12,10 @@ import { UIBatchInfo } from './ui-batch-info.js';
 import { UIBatchNombres } from './ui-batch-nombres.js';
 import { UIBatchInfoOtros } from './ui-batch-info-otros.js';
 import { UIBatchRevision } from './ui-batch-revision.js';
+import { UIBatchAuditoria } from './ui-batch-auditoria.js';
 
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.ui = '1.7.0-REVISION-CONSISTENCIA';
+window.APP_VERSIONS.ui = '1.8.0-AUDITORIA-ALERGENOS';
 
 window.APP_VERSIONS.config = window.APP_VERSIONS.config || '2.2.0';
 window.APP_VERSIONS.app = window.APP_VERSIONS.app || '1.0.33';
@@ -25,7 +26,8 @@ export const UI = {
     ...UIBatchInfo,
     ...UIBatchNombres,
     ...UIBatchInfoOtros,
-    ...UIBatchRevision
+    ...UIBatchRevision,
+    ...UIBatchAuditoria
 };
 
 // Exponer UI globalmente: necesario porque los onclick="UI...." del HTML (script clásico)
