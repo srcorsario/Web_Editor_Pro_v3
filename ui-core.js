@@ -9,17 +9,74 @@
 
 import { stateContainer, procesoState, asegurarColumnasEstructura } from './ui-state.js';
 
+// NUEVO: formatea un nº de bytes como "12.3 KB" / "1.4 MB" para los mensajes de progreso.
+function formatearBytes(bytes) {
+    if (!bytes || bytes <= 0) return "0 B";
+    const unidades = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.min(unidades.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
+    return `${(bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1)} ${unidades[i]}`;
+}
+
 export const UICore = {
-    log: (mensaje) => {
+    // NUEVO: 2º parámetro opcional { idProgreso } — si se indica y ya existe una línea previa
+    // en la consola con ese mismo id, se ACTUALIZA esa línea en lugar de añadir una nueva. Así
+    // una descarga que informa de su progreso muchas veces no llena la consola de líneas repetidas.
+    log: (mensaje, opciones = {}) => {
         console.log(`[Editor Pro] ${mensaje}`);
         const statusCarga = document.getElementById('status-carga');
         if (statusCarga) statusCarga.innerText = mensaje;
         const consolaVisual = document.getElementById('consola');
         if (consolaVisual) {
-            const div = document.createElement('div');
+            let div = opciones.idProgreso ? consolaVisual.querySelector(`[data-progreso-id="${opciones.idProgreso}"]`) : null;
+            if (!div) {
+                div = document.createElement('div');
+                if (opciones.idProgreso) div.dataset.progresoId = opciones.idProgreso;
+                consolaVisual.appendChild(div);
+            }
             div.textContent = mensaje;
-            consolaVisual.appendChild(div);
             consolaVisual.scrollTop = consolaVisual.scrollHeight;
+        }
+    },
+
+    // NUEVO: copia todo el texto acumulado en la consola visual (#consola) al portapapeles,
+    // línea por línea, tal cual se ve — útil para pegar el log completo al pedir ayuda con un error.
+    copiarConsola: async (btnOrigen) => {
+        const consolaVisual = document.getElementById('consola');
+        if (!consolaVisual) return;
+        const lineas = Array.from(consolaVisual.children).map(div => div.textContent);
+        const texto = lineas.join('\n');
+        if (!texto.trim()) {
+            window.UI.log("[Info] La consola está vacía, no hay nada que copiar.");
+            return;
+        }
+
+        const restaurarTextoBoton = (msg, delayMs) => {
+            if (!btnOrigen) return;
+            const original = btnOrigen.dataset.textoOriginal || btnOrigen.innerText;
+            btnOrigen.dataset.textoOriginal = original;
+            btnOrigen.innerText = msg;
+            setTimeout(() => { btnOrigen.innerText = original; }, delayMs);
+        };
+
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(texto);
+            } else {
+                // Fallback para contextos sin API de portapapeles disponible (p.ej. sin HTTPS).
+                const textarea = document.createElement('textarea');
+                textarea.value = texto;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.focus();
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+            }
+            restaurarTextoBoton('✅ Copiado', 1500);
+        } catch (e) {
+            console.error('[Editor Pro] Error al copiar la consola:', e);
+            restaurarTextoBoton('❌ Error al copiar', 2000);
         }
     },
 
@@ -51,7 +108,8 @@ export const UICore = {
             await new Promise(r => setTimeout(r, 300));
             return window.UI.cargarGoogleSheets(targetUrl, retryCount + 1);
         }
-        window.UI.log(`[Info] Descargando CSV...`);
+        const ID_PROGRESO = 'descarga-csv';
+        window.UI.log(`[Info] Descargando CSV...`, { idProgreso: ID_PROGRESO });
         try {
             // OJO: no añadir cabeceras manuales aquí (Cache-Control/Pragma). No son cabeceras
             // "simples" para CORS, así que el navegador lanza antes una petición OPTIONS
@@ -61,7 +119,46 @@ export const UICore = {
             // cualquier caché intermedia — no hace falta nada más para forzar datos frescos.
             const resp = await fetch(targetUrl + '&zx=' + Date.now(), { cache: "no-store" });
             if (!resp.ok) throw new Error("Error HTTP " + resp.status);
-            const text = await resp.text();
+
+            // NUEVO: en vez de esperar a resp.text() (que no informa de nada hasta tenerlo
+            // todo), se lee el cuerpo por partes con un stream para poder mostrar el % ya
+            // descargado. El nº total de bytes (Content-Length) solo es fiable si el servidor
+            // NO comprimió la respuesta (gzip/br) — con compresión, esa cabecera es el tamaño
+            // comprimido y no cuadra con los bytes ya descomprimidos que vamos recibiendo, así
+            // que en ese caso (o si el navegador no soporta streaming) se muestra el nº de bytes
+            // recibidos sin porcentaje, en vez de un % que podría ser incorrecto.
+            const contentEncoding = resp.headers.get('content-encoding');
+            const contentLengthHeader = resp.headers.get('content-length');
+            const totalBytes = (!contentEncoding && contentLengthHeader) ? parseInt(contentLengthHeader, 10) : 0;
+
+            let text;
+            if (resp.body && typeof resp.body.getReader === 'function' && typeof TextDecoder !== 'undefined') {
+                const lector = resp.body.getReader();
+                const decodificador = new TextDecoder('utf-8');
+                let recibidos = 0;
+                let trozos = '';
+                let ultimaActualizacion = 0;
+                while (true) {
+                    const { done, value } = await lector.read();
+                    if (done) break;
+                    recibidos += value.length;
+                    trozos += decodificador.decode(value, { stream: true });
+                    const ahora = Date.now();
+                    if (ahora - ultimaActualizacion > 150) { // limita la frecuencia de refresco del log
+                        ultimaActualizacion = ahora;
+                        const mensajeProgreso = totalBytes > 0
+                            ? `[Info] Descargando CSV... ${Math.min(100, Math.round((recibidos / totalBytes) * 100))}% (${formatearBytes(recibidos)} / ${formatearBytes(totalBytes)})`
+                            : `[Info] Descargando CSV... ${formatearBytes(recibidos)} recibidos (tamaño total no disponible)`;
+                        window.UI.log(mensajeProgreso, { idProgreso: ID_PROGRESO });
+                    }
+                }
+                trozos += decodificador.decode(); // vacía cualquier resto pendiente del decodificador
+                text = trozos;
+                window.UI.log(`[Info] Descarga completada (${formatearBytes(recibidos)}). Procesando CSV...`, { idProgreso: ID_PROGRESO });
+            } else {
+                // Fallback para navegadores sin soporte de streaming: sin progreso, pero sigue funcionando.
+                text = await resp.text();
+            }
 
             if (window.Papa) {
                 window.Papa.parse(text, { skipEmptyLines: true, complete: (resultado) => {
@@ -226,10 +323,15 @@ export const UICore = {
         if (btnIniciarInfoOtros) btnIniciarInfoOtros.onclick = () => window.UI.iniciarInfoOtrosIdiomasPorLotes(stateContainer);
         const btnRevisarConsistencia = document.getElementById('btnRevisarConsistencia');
         if (btnRevisarConsistencia) btnRevisarConsistencia.onclick = () => window.UI.revisarConsistencia(stateContainer);
+        const btnAuditarAlergenos = document.getElementById('btnAuditarAlergenos');
+        if (btnAuditarAlergenos) btnAuditarAlergenos.onclick = () => window.UI.auditarAlergenos(stateContainer);
         const btnPausa = document.getElementById('btnPausa');
         if (btnPausa) btnPausa.onclick = () => { procesoState.pausado = !procesoState.pausado; btnPausa.innerText = procesoState.pausado ? "REANUDAR" : "PAUSAR"; window.UI.log(procesoState.pausado ? "[Info] Pausado." : "[Info] Reanudando..."); };
         const btnCancelar = document.getElementById('btnCancelar');
         if (btnCancelar) btnCancelar.onclick = () => { procesoState.detenido = true; window.UI.log("[Info] Deteniendo bucle..."); };
+
+        const btnCopiarConsola = document.getElementById('btnCopiarConsola');
+        if (btnCopiarConsola) btnCopiarConsola.onclick = () => window.UI.copiarConsola(btnCopiarConsola);
 
         const btnQaRefrescar = document.getElementById('qa-refrescar');
         if (btnQaRefrescar) btnQaRefrescar.onclick = () => window.UI.renderQA();
