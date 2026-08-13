@@ -62,6 +62,18 @@ export function asegurarColumnasEstructura(container) {
         }
     });
 
+    // NUEVO: columnas de "huella" (hash) usadas por revisarConsistencia() (ui-batch-revision.js)
+    // para detectar si NOMBRE_ES o ALERGENOS_COD han cambiado desde la última vez que se
+    // generaron/tradujeron los nombres o la ficha (INFO_*) de un plato. Empiezan por "INFO_"
+    // a propósito: así Código.gs las conserva automáticamente al guardar (ver doPost), sin
+    // necesidad de tocar la lista de cabeceras fijas del backend.
+    ['INFO_HASH_NOMBRE', 'INFO_HASH_FICHA'].forEach(nombreHeader => {
+        if (!container.headers.some(h => h.toUpperCase() === nombreHeader)) {
+            container.headers.push(nombreHeader);
+            columnasCreadasNuevas.push(nombreHeader);
+        }
+    });
+
     console.log("[DIAGNÓSTICO] 2. Columnas nuevas creadas/añadidas en memoria:");
     console.log(columnasCreadasNuevas.length > 0 ? JSON.stringify(columnasCreadasNuevas) : "Ninguna (todas ya existían)");
     console.log("-----------------------------------------");

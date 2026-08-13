@@ -58,6 +58,24 @@ function formatWineName(texto) {
  * @returns {Object} El JSON parseado.
  * @throws {Error} Si no encuentra un JSON válido.
  */
+/**
+ * Hash determinista y corto (FNV-1a de 32 bits, en hexadecimal) de un texto.
+ * NO es criptográfico: solo sirve como "huella" barata para detectar si un
+ * texto ha cambiado respecto a la última vez que se generó/tradujo contenido
+ * a partir de él (ver revisarConsistencia() en ui-batch-revision.js).
+ * @param {String} texto
+ * @returns {String} Hash en hexadecimal, p.ej. "a1b2c3d4"
+ */
+function calcularHashContenido(texto) {
+    const normalizado = (texto || "").toString().trim().toUpperCase();
+    let hash = 0x811c9dc5; // offset básico FNV-1a
+    for (let i = 0; i < normalizado.length; i++) {
+        hash ^= normalizado.charCodeAt(i);
+        hash = Math.imul(hash, 0x01000193); // primo FNV
+    }
+    return (hash >>> 0).toString(16);
+}
+
 function extraerJSON(texto) {
     let limpio = texto.replace(/```json/g, '').replace(/```/g, '').trim();
     let braceCount = 0;

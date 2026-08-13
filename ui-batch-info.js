@@ -34,6 +34,10 @@ export const UIBatchInfo = {
         const indiceAlergenos = activeStateContainer.headers.findIndex(h => h && h.toUpperCase().replace(/[^A-Z]/g, '') === 'ALERGENOSCOD');
         const indiceId = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === 'ID');
         const indiceCarpeta = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === 'CARPETA');
+        // NUEVO: huella de (NOMBRE_ES + ALERGENOS_COD) en el momento de generar la ficha —
+        // usada por revisarConsistencia() (ui-batch-revision.js) para saber si el nombre o los
+        // alérgenos han cambiado desde entonces y haría falta regenerar la ficha en todos los idiomas.
+        const indiceHashFicha = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === 'INFO_HASH_FICHA');
 
         if (indiceCastellanoBase === -1 || indiceInglesBase === -1 || indiceInfoEs === -1 || indiceInfoIngles === -1) {
             return window.UI.log("[Error Crítico] Faltan columnas base obligatorias (NOMBRE_ES, NOMBRE_EN, INFO_ES o INFO_EN).");
@@ -154,6 +158,15 @@ export const UIBatchInfo = {
                         if (!nombreEnActual && parsed.nombre_en) row[indiceInglesBase] = parsed.nombre_en;
                         if (!infoEsActual) row[indiceInfoEs] = JSON.stringify(parsed.es);
                         if (!infoEnActual) row[indiceInfoIngles] = JSON.stringify(parsed.en);
+
+                        // NUEVO: si se ha (re)generado la ficha ES/EN de esta fila, se anota la
+                        // huella de NOMBRE_ES + ALERGENOS_COD usados, para poder detectar más
+                        // adelante si vuelven a cambiar y haría falta regenerarla en todos los idiomas.
+                        if ((!infoEsActual || !infoEnActual) && indiceHashFicha !== -1 && typeof window.calcularHashContenido === 'function') {
+                            const nombreEsRow = row[indiceCastellanoBase] || "";
+                            const alergenosRow = indiceAlergenos !== -1 ? (row[indiceAlergenos] || "") : "";
+                            row[indiceHashFicha] = window.calcularHashContenido(`${nombreEsRow}|${alergenosRow}`);
+                        }
                         algunoAplicado = true;
                         if (esVino) vinosCompletados++; else platosCompletados++;
                     });

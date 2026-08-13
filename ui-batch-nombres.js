@@ -43,6 +43,9 @@ export const UIBatchNombres = {
         const indiceInglesBase = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === 'NOMBRE_EN');
         const indiceId = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === 'ID');
         const indiceCarpeta = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === 'CARPETA');
+        // NUEVO: huella de NOMBRE_ES en el momento de traducir — usada por revisarConsistencia()
+        // (ui-batch-revision.js) para saber si el nombre ha cambiado desde entonces.
+        const indiceHashNombre = activeStateContainer.headers.findIndex(h => h && h.toUpperCase() === 'INFO_HASH_NOMBRE');
 
         if (indiceCastellanoBase === -1 || indiceInglesBase === -1) {
             return window.UI.log("[Error Crítico] Faltan columnas base obligatorias (NOMBRE_ES o NOMBRE_EN).");
@@ -165,6 +168,12 @@ export const UIBatchNombres = {
                             it.row[indicesObjetivo[l]] = desglosadoTraduccion.uvas ? `${nombreFinal} // ${desglosadoTraduccion.uvas}` : nombreFinal;
                             algunoAplicado = true;
                         });
+                        // NUEVO: al completar (o confirmar) los nombres de esta fila, se anota la
+                        // huella del NOMBRE_ES usado, para poder detectar más adelante si vuelve a
+                        // cambiar y haría falta re-traducirlo a todos los idiomas.
+                        if (algunoAplicado && indiceHashNombre !== -1 && typeof window.calcularHashContenido === 'function') {
+                            it.row[indiceHashNombre] = window.calcularHashContenido(it.row[indiceCastellanoBase] || "");
+                        }
                         if (algunoAplicado) platosCompletados++;
                     });
                     satisfecho = true;

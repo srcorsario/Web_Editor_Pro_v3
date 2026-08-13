@@ -224,6 +224,8 @@ export const UICore = {
         if (btnIniciarNombres) btnIniciarNombres.onclick = () => window.UI.iniciarTraduccionNombresPorLotes(stateContainer);
         const btnIniciarInfoOtros = document.getElementById('btnIniciarInfoOtros');
         if (btnIniciarInfoOtros) btnIniciarInfoOtros.onclick = () => window.UI.iniciarInfoOtrosIdiomasPorLotes(stateContainer);
+        const btnRevisarConsistencia = document.getElementById('btnRevisarConsistencia');
+        if (btnRevisarConsistencia) btnRevisarConsistencia.onclick = () => window.UI.revisarConsistencia(stateContainer);
         const btnPausa = document.getElementById('btnPausa');
         if (btnPausa) btnPausa.onclick = () => { procesoState.pausado = !procesoState.pausado; btnPausa.innerText = procesoState.pausado ? "REANUDAR" : "PAUSAR"; window.UI.log(procesoState.pausado ? "[Info] Pausado." : "[Info] Reanudando..."); };
         const btnCancelar = document.getElementById('btnCancelar');
