@@ -379,11 +379,11 @@ function abrirEditor(id, esNuevo = false) {
         let alergenosHtml = "";
         if (esVino) {
             const sel = actuales.includes("SULFITOS") || actuales.includes("SULFITO");
-            alergenosHtml = `<div class="alergeno-btn ${sel ? 'selected' : ''}">🧪 SULFITOS</div>`;
+            alergenosHtml = `<div class="alergeno-btn ${sel ? 'selected' : ''}" onclick="this.classList.toggle('selected')">🧪 SULFITOS</div>`;
         } else {
             alergenosHtml = ALERGENOS_LISTA.map(a => {
                 const sel = actuales.some(act => act.includes(a.split(" ").pop()));
-                return `<div class="alergeno-btn ${sel ? 'selected' : ''}">${a}</div>`;
+                return `<div class="alergeno-btn ${sel ? 'selected' : ''}" onclick="this.classList.toggle('selected')">${a}</div>`;
             }).join('');
         }
         alergenosGrid.innerHTML = alergenosHtml;
