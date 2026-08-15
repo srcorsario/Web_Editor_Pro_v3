@@ -257,17 +257,24 @@
         reajustarVistaPrevia(modo);
     };
 
-    // NUEVO: coloca el rectángulo de depuración (.sugerencias-debug-a4) justo debajo del botón
-    // "Imprimir Sugerencias..." — ese botón solo existe en pantalla (se oculta con @media print),
-    // así que el rectángulo debe empezar en la CABECERA real (logo/título), no en el borde superior
-    // absoluto del panel, o si no "engloba" también al botón, que nunca sale impreso. Se ancla vía
-    // offsetTop del propio header (el panel ya es position:relative) para que no dependa de a qué
-    // altura empiece a pintarse el botón en cada caso.
+    // MODIFICADO: esta función anclaba el rectángulo de depuración al offsetTop de la cabecera
+    // porque, en una versión antigua, el botón "Imprimir Sugerencias..." vivía DENTRO del propio
+    // panel, encima de la cabecera — y como ese botón nunca sale impreso, el rectángulo tenía que
+    // empezar más abajo para no "engloparlo" también. Desde que el botón y el resto de controles
+    // se sacaron del panel a su propia caja aparte (sugerencias-controles-box, ver más abajo en
+    // procesarYRender), ya no hay nada entre el borde superior del panel y la cabecera salvo el
+    // padding del propio panel — así que ese desplazamiento (el padding-top, ~15px) ya no evitaba
+    // nada real: solo hacía que el recuadro rojo se dibujara empezando más abajo de donde de
+    // verdad empieza la zona de 267mm que usa el cálculo de ajuste (que sí mide desde el borde
+    // superior real del panel, ver medir() más arriba) — el recuadro quedaba "de más" 15px por
+    // abajo, dando la falsa impresión visual de que quedaba más sitio del que el cálculo real
+    // estaba considerando. Se deja el rectángulo en su posición por defecto (top:0, ya puesto en
+    // el CSS), pegado al borde superior real del panel, para que lo que se ve coincida con lo que
+    // de verdad se mide.
     function posicionarDebugA4(panel) {
         if (!panel) return;
         const debugDiv = panel.querySelector('.sugerencias-debug-a4');
-        const header = panel.querySelector('.sugerencias-header-layout');
-        if (debugDiv && header) debugDiv.style.top = header.offsetTop + 'px';
+        if (debugDiv) debugDiv.style.top = '0px';
     }
     window.posicionarDebugA4 = posicionarDebugA4;
 
