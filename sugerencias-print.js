@@ -57,7 +57,20 @@
         stylePrint.innerHTML = `
             @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap');
             @page { size: A4; margin: 15mm 10mm; } /* Margen superior/inferior a 15mm (10mm original + 5mm más) */
-            .sugerencias-panel { background: #ffffff !important; padding: 15px 25px !important; width: 100% !important; max-width: 190mm !important; min-height: 267mm !important; margin: 0 auto !important; font-family: 'Montserrat', sans-serif !important; box-sizing: border-box !important; display: flex !important; flex-direction: column !important; position: relative !important; }
+            /* MODIFICADO: ancho FIJO de 190mm (antes width:100% con tope max-width:190mm) — con
+               width:100% el panel se encogía para caber en el hueco disponible dentro de la pestaña
+               del editor si esa columna era más estrecha que 190mm (ventana del navegador no
+               maximizada, portátil pequeño...). Un panel más estrecho envuelve los nombres de los
+               platos en más líneas de las que ocupan en la hoja impresa (la ventana de impresión sí
+               consigue los 190mm completos en su propia ventana nueva), y ese contenido "de más" es
+               justo lo que hacía saltar el ajuste automático (quitar botella/QR, encoger letra) SIN
+               falta ninguna: la vista previa medía un ancho distinto al que de verdad se imprime. Con
+               un ancho fijo, el panel envuelve el texto EXACTAMENTE igual en pantalla que en el
+               papel — si no cabe en la ventana del editor, se ve con scroll horizontal en vez de
+               deformarse (ver overflow-x en el contenedor, más abajo).
+            */
+            .sugerencias-panel { background: #ffffff !important; padding: 15px 25px !important; width: 190mm !important; max-width: 190mm !important; min-height: 267mm !important; margin: 0 auto !important; font-family: 'Montserrat', sans-serif !important; box-sizing: border-box !important; display: flex !important; flex-direction: column !important; position: relative !important; flex-shrink: 0 !important; }
+            #sugerencias-contenido, #sugerencias-contenido-usopen { overflow-x: auto; }
             /* NUEVO: rectángulo de depuración visual — marca exactamente los 190mm x 267mm de zona
                imprimible real (el resultado de A4 menos los márgenes de @page). Se ancla al propio
                .sugerencias-panel (que ya tiene position:relative) para que top/left:0 coincida con
@@ -615,6 +628,10 @@
             mostrarAvisoInline(contenedor, panel, resultado);
         });
     }
+    // NUEVO: expuesta en window — botón manual "🔄" en los controles, por si la persona quiere
+    // forzar un recálculo del ajuste a una página sin esperar a la pasada automática ni tener que
+    // abrir la ventana de impresión para comprobarlo.
+    window.reajustarVistaPreviaSugerencias = reajustarVistaPrevia;
 
     window.renderCarta = function(modo) {
         const config = SUGERENCIAS_CONFIG[modo];
@@ -787,7 +804,10 @@
         // todo, opciones de imagen del vino/tamaño y de QR abajo del todo): así la hoja de encima
         // es un espejo fiel y exclusivo de lo que se va a imprimir, y aquí abajo se controla cómo.
         let controlesHtml = `<div class="sugerencias-controles-box">
-                <button onclick="window.imprimirSugerencias('${modoSeguro}')" class="btn-imprimir-a4">🖨️ Imprimir Sugerencias ${getModoAlias(modoSeguro)} (A4)</button>
+                <div style="display:flex; gap:8px; margin-bottom:15px;">
+                    <button onclick="window.imprimirSugerencias('${modoSeguro}')" class="btn-imprimir-a4" style="margin-bottom:0; flex:1;">🖨️ Imprimir Sugerencias ${getModoAlias(modoSeguro)} (A4)</button>
+                    <button type="button" onclick="window.reajustarVistaPreviaSugerencias('${modoSeguro}')" title="Vuelve a calcular el ajuste a una página, por si algo no se ha actualizado solo" style="flex:0 0 auto; padding:12px 14px; background:#e2e8f0; color:#334155; border:none; border-radius:8px; font-weight:700; font-size:0.9rem; cursor:pointer;">🔄</button>
+                </div>
                 ${(vinoImagenButtonsHtml || vinoImagenEscalaHtml) ? `<div class="qr-selector-wrapper" style="font-size: 0.75rem; color: #64748b; text-align: center; margin-bottom: 3px; user-select:none; display: flex; flex-direction: row; align-items: center; justify-content: center; flex-wrap: nowrap; gap: 8px; white-space: nowrap;">${vinoImagenButtonsHtml ? `<span class="vino-imagen-selector-wrapper" style="display:flex; align-items:center; gap:8px; padding-right:10px; border-right:1px solid #cbd5e1;">Imagen Vino: ${vinoImagenButtonsHtml}</span>` : ''}${vinoImagenEscalaHtml ? `<span class="vino-imagen-selector-wrapper" style="display:flex; align-items:center; gap:6px;">Tamaño: ${vinoImagenEscalaHtml}</span>` : ''}</div>` : ''}
                 <div class="qr-selector-wrapper" style="font-size: 0.75rem; color: #64748b; text-align: center; margin-bottom: 0; user-select:none; display: flex; flex-direction: row; align-items: center; justify-content: center; flex-wrap: nowrap; gap: 8px; white-space: nowrap;">Tipo de QR: ${qrButtonsHtml}</div>
                 ${selectorQuitarHtml}
