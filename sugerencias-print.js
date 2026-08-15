@@ -132,6 +132,38 @@
         document.head.appendChild(stylePrint);
     }
 
+    // NUEVO: platos quitados A MANO de la hoja de Sugerencias (por restaurante), para poder
+    // encajarla en una página sin depender solo de reducir letra/espaciado. Es un estado SOLO
+    // de esta pantalla (no se guarda en el Excel ni afecta al plato en el resto de la carta):
+    // se pierde al recargar la página, igual que el tipo de QR o el tamaño de la imagen del vino.
+    const platosExcluidosSugerencias = { restaurante001: new Set(), restaurante002: new Set() };
+
+    // NUEVO: quita un plato concreto de la hoja de Sugerencias (a petición del usuario, típicamente
+    // porque el aviso de que "no cabe ni reduciendo el texto" señala que hace falta quitar alguno) y
+    // vuelve a renderizar — el nuevo renderizado ya recalcula el ajuste a una página automáticamente.
+    window.quitarPlatoSugerencia = function(id, modo) {
+        const set = platosExcluidosSugerencias[modo];
+        if (!set) return;
+        set.add(parseInt(id, 10));
+        if (typeof window.renderCarta === 'function') window.renderCarta(modo);
+    };
+
+    // NUEVO: devuelve un plato concreto (quitado antes a mano) a la hoja de Sugerencias.
+    window.devolverPlatoSugerencia = function(id, modo) {
+        const set = platosExcluidosSugerencias[modo];
+        if (!set) return;
+        set.delete(parseInt(id, 10));
+        if (typeof window.renderCarta === 'function') window.renderCarta(modo);
+    };
+
+    // NUEVO: devuelve TODOS los platos quitados a mano de una hoja de Sugerencias.
+    window.restaurarTodosPlatosSugerencia = function(modo) {
+        const set = platosExcluidosSugerencias[modo];
+        if (!set) return;
+        set.clear();
+        if (typeof window.renderCarta === 'function') window.renderCarta(modo);
+    };
+
     // MODIFICADO: Ahora recibe 'restaurante001' o 'restaurante002'
     window.toggleQR = function(tipo, modo) {
         const config = SUGERENCIAS_CONFIG[modo];
@@ -268,6 +300,12 @@
         panel.querySelectorAll('.sugerencias-seccion, .sugerencias-seccion-titulo, .sugerencias-plato').forEach(function(el) {
             el.style.removeProperty('margin-bottom');
         });
+        // El aviso de alérgenos puede llevar un font-size forzado a mano (ver
+        // protegerAdvertenciaAlergenos, dentro de ajustarAUnaPagina) para blindarlo de la
+        // reducción general de texto — se limpia aquí también, junto con el resto, y se
+        // recalculará su propio valor de nuevo al empezar el siguiente ajuste.
+        var advertencia = panel.querySelector('.sugerencias-advertencia-alergenos');
+        if (advertencia) advertencia.style.removeProperty('font-size');
         // Restaura SOLO lo que el propio ajuste automático ocultó (marcado con
         // data-fit-oculto) a su estado justo anterior — nunca toca un elemento
         // que el usuario haya ocultado a mano con los selectores de opciones.
@@ -286,10 +324,22 @@
     }
 
     function ajustarAUnaPagina(panel) {
-        var resultado = { espacioCategoriasReducido: false, imagenVinoQuitada: false, qrQuitado: false, textoReducido: false, medidas: [] };
+        var resultado = { espacioCategoriasReducido: false, imagenVinoQuitada: false, qrQuitado: false, textoReducido: false, noCabeNiReduciendo: false, medidas: [] };
         if (!panel) return resultado;
 
         limpiarAjustePrevio(panel);
+
+        // IMPORTANTE: el aviso de alérgenos es información de seguridad alimentaria — es MÁS
+        // IMPORTANTE que cualquier plato de la hoja, así que nunca debe encogerse junto con el
+        // resto del texto (ver más abajo, donde se reaplica su tamaño original cada vez que se
+        // reduce la letra del panel). Se captura su tamaño real ANTES de tocar nada.
+        var advertenciaAlergenos = panel.querySelector('.sugerencias-advertencia-alergenos');
+        var tamanoAdvertenciaOriginal = advertenciaAlergenos ? getComputedStyle(advertenciaAlergenos).fontSize : null;
+        function protegerAdvertenciaAlergenos() {
+            if (advertenciaAlergenos && tamanoAdvertenciaOriginal) {
+                advertenciaAlergenos.style.setProperty('font-size', tamanoAdvertenciaOriginal, 'important');
+            }
+        }
 
         var probe = document.createElement('div');
         probe.style.cssText = 'position:absolute; visibility:hidden; height:267mm; width:0;';
@@ -349,6 +399,11 @@
         if (medir('Sin QR')) return resultado;
 
         var factor = 1, pasos = 0, MAX_PASOS = 12;
+        // NUEVO: suelo de legibilidad — el texto de los platos no se reduce por debajo de este
+        // punto (82% del tamaño original). Si aun así no cabe, se marca noCabeNiReduciendo para
+        // que se avise de que hace falta quitar algún plato en vez de seguir encogiendo la letra
+        // hasta hacerla ilegible.
+        var FACTOR_MINIMO_LEGIBLE = 0.82;
 
         var bloqueFijoActual = medirBloqueFijo(panel);
         var disponibleParaCategoriasPx = maxAlturaPx - bloqueFijoActual.alturaFija;
@@ -360,11 +415,12 @@
         });
         if (alturaCategoriasActualPx > 0 && disponibleParaCategoriasPx > 0) {
             var factorEstimado = disponibleParaCategoriasPx / alturaCategoriasActualPx;
-            var factorInicial = Math.max(0.7, Math.min(1, factorEstimado - 0.03));
+            var factorInicial = Math.max(FACTOR_MINIMO_LEGIBLE, Math.min(1, factorEstimado - 0.03));
             if (factorInicial < 1) {
                 factor = factorInicial;
                 pasos = Math.max(1, Math.round((1 - factor) / 0.03));
                 panel.style.setProperty('font-size', (factor * 100) + '%', 'important');
+                protegerAdvertenciaAlergenos();
                 panel.querySelectorAll('.sugerencias-plato').forEach(function(el) {
                     el.style.setProperty('margin-bottom', (5 * factor) + 'px', 'important');
                 });
@@ -378,10 +434,11 @@
             }
         }
 
-        while (!medir('Reduciendo texto, paso ' + pasos) && pasos < MAX_PASOS) {
+        while (!medir('Reduciendo texto, paso ' + pasos) && pasos < MAX_PASOS && (factor - 0.03) >= FACTOR_MINIMO_LEGIBLE) {
             factor -= 0.03;
             pasos++;
             panel.style.setProperty('font-size', (factor * 100) + '%', 'important');
+            protegerAdvertenciaAlergenos();
             panel.querySelectorAll('.sugerencias-plato').forEach(function(el) {
                 el.style.setProperty('margin-bottom', (5 * factor) + 'px', 'important');
             });
@@ -393,6 +450,13 @@
             });
         }
         if (pasos > 0) resultado.textoReducido = true;
+
+        // NUEVO: comprobación final — si ni reduciendo el texto hasta el mínimo legible cabe todo
+        // en una página, no se sigue encogiendo: se marca para pedirle a la persona que quite algún
+        // plato de la hoja (ver el desplegable "Quitar un plato de esta hoja" en los controles).
+        if (!medir('Comprobación final')) {
+            resultado.noCabeNiReduciendo = true;
+        }
         return resultado;
     }
 
@@ -454,22 +518,38 @@
         var avisoPrevio = contenedor.querySelector('.sugerencias-aviso-ajuste-inline');
         if (avisoPrevio) avisoPrevio.remove();
         if (!resultado) return;
-        if (!resultado.espacioCategoriasReducido && !resultado.imagenVinoQuitada && !resultado.qrQuitado && !resultado.textoReducido) return;
+        if (!resultado.espacioCategoriasReducido && !resultado.imagenVinoQuitada && !resultado.qrQuitado && !resultado.textoReducido && !resultado.noCabeNiReduciendo) return;
 
         var mensajes = [];
         if (resultado.espacioCategoriasReducido) mensajes.push('Se ha reducido un poco el espacio entre categorías.');
         if (resultado.imagenVinoQuitada) mensajes.push('No se usará la imagen del vino, para que quepa todo en una hoja A4.');
         if (resultado.qrQuitado) mensajes.push('No se incluirá el código QR, para que quepa todo en una hoja A4.');
-        if (resultado.textoReducido) mensajes.push('Se ha reducido ligeramente el tamaño de letra y el espaciado.');
+        if (resultado.textoReducido) mensajes.push('Se ha reducido ligeramente el tamaño de letra y el espaciado (el aviso de alérgenos NUNCA se reduce).');
 
         var aviso = document.createElement('div');
         aviso.className = 'sugerencias-aviso-ajuste-inline';
-        aviso.style.cssText = 'max-width: 190mm; margin: 12px auto 0 auto; background:#fff7ed; border:1px solid #f59e0b; color:#92400e; padding:10px 16px; border-radius:8px; font-size:13px; font-family: Montserrat, sans-serif; box-sizing: border-box;';
-        aviso.innerHTML = '<b>⚠️ Esta vista previa ya está ajustada a una página A4 (así saldrá impresa):</b>' +
+        var esCritico = resultado.noCabeNiReduciendo;
+        aviso.style.cssText = 'max-width: 190mm; margin: 12px auto 0 auto; padding:10px 16px; border-radius:8px; font-size:13px; font-family: Montserrat, sans-serif; box-sizing: border-box; ' +
+            (esCritico ? 'background:#fef2f2; border:1px solid #dc2626; color:#991b1b;' : 'background:#fff7ed; border:1px solid #f59e0b; color:#92400e;');
+        var htmlAviso = '<b>⚠️ Esta vista previa ya está ajustada a una página A4 (así saldrá impresa):</b>' +
             '<ul style="margin:6px 0 0 18px; padding:0;">' + mensajes.map(function(m) { return '<li>' + m + '</li>'; }).join('') + '</ul>';
+        if (esCritico) {
+            htmlAviso += '<div style="margin-top:8px; font-weight:700;">Aun así, sigue sin caber todo en una página aunque el texto ya está en el tamaño mínimo legible.<br>Quita algún plato con "Quitar un plato de esta hoja" (justo debajo) para que quepa.</div>';
+        }
+        aviso.innerHTML = htmlAviso;
 
         if (panel && panel.parentNode) panel.parentNode.insertBefore(aviso, panel.nextSibling);
         else contenedor.insertBefore(aviso, contenedor.firstChild);
+
+        if (esCritico) {
+            var selectorQuitar = contenedor.querySelector('.sugerencias-selector-quitar-plato');
+            if (selectorQuitar) {
+                selectorQuitar.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                selectorQuitar.style.setProperty('outline', '2px solid #dc2626', 'important');
+                selectorQuitar.style.setProperty('border-radius', '8px', 'important');
+                setTimeout(function() { selectorQuitar.style.removeProperty('outline'); }, 4000);
+            }
+        }
     }
 
     // NUEVO: reejecuta el ajuste a una página sobre el panel YA visible en la
@@ -520,7 +600,12 @@
 
     function procesarYRender(fuente, contenedor, config, modoSeguro) {
         aplicarParcheOptimista(fuente, modoSeguro);
-        const platos = fuente.filter(p => p && p.activa && parseInt(p.id, 10) >= 12000 && parseInt(p.id, 10) <= 12999);
+        const excluidos = platosExcluidosSugerencias[modoSeguro] || new Set();
+        // NUEVO: los platos que la persona haya quitado a mano de ESTA hoja (ver
+        // window.quitarPlatoSugerencia) se excluyen aquí — es independiente de "activa" (el plato
+        // sigue en el resto de la carta con normalidad, solo se omite en esta hoja de Sugerencias).
+        const todosLosPlatos = fuente.filter(p => p && p.activa && parseInt(p.id, 10) >= 12000 && parseInt(p.id, 10) <= 12999);
+        const platos = todosLosPlatos.filter(p => !excluidos.has(parseInt(p.id, 10)));
         let entrantes = [], principales = [], postres = [], vinos = [];
         platos.forEach(p => { const id = parseInt(p.id, 10); if (id === 12990) vinos.push(p); else if (id >= 12100 && id <= 12399) entrantes.push(p); else if (id >= 12400 && id <= 12899) principales.push(p); else if (id >= 12900 && id <= 12999) postres.push(p); else entrantes.push(p); });
 
@@ -618,6 +703,37 @@
             </div>
         </div>`;
 
+        // NUEVO: selector para quitar un plato concreto de ESTA hoja de Sugerencias (no afecta al
+        // resto de la carta, el plato sigue activo normalmente). Pensado sobre todo para cuando ni
+        // reduciendo el texto al mínimo legible cabe todo en una página (ver noCabeNiReduciendo en
+        // ajustarAUnaPagina): en vez de seguir encogiendo la letra, se le pide a la persona que
+        // decida qué plato quitar — el aviso de alérgenos nunca se sacrifica (ver protegerAdvertenciaAlergenos).
+        const opcionesPlatosHtml = platos.map(p => {
+            const nombreCorto = (window.desglosarNombre(p.es).nombre || p.es || ('#' + p.id));
+            return `<option value="${p.id}">${nombreCorto}</option>`;
+        }).join('');
+        const selectorQuitarHtml = platos.length > 0
+            ? `<div class="sugerencias-selector-quitar-plato" style="display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap; margin-top:10px; padding-top:10px; border-top:1px solid #cbd5e1;">
+                    <label style="font-size:0.75rem; color:#64748b;">Quitar un plato de esta hoja:</label>
+                    <select id="select-quitar-plato-${modoSeguro}" style="font-size:0.8rem; padding:4px 6px; border-radius:5px; border:1px solid #cbd5e1; max-width:220px;">${opcionesPlatosHtml}</select>
+                    <button type="button" onclick="window.quitarPlatoSugerencia(document.getElementById('select-quitar-plato-${modoSeguro}').value, '${modoSeguro}')" style="font-size:0.75rem; padding:5px 10px; border-radius:5px; border:1px solid #dc2626; background:#fef2f2; color:#991b1b; cursor:pointer;">Quitar</button>
+               </div>`
+            : '';
+
+        const platosExcluidosArray = todosLosPlatos.filter(p => excluidos.has(parseInt(p.id, 10)));
+        const listaQuitadosHtml = platosExcluidosArray.length > 0
+            ? `<div style="margin-top:10px; padding-top:10px; border-top:1px solid #cbd5e1; text-align:center;">
+                    <div style="font-size:0.75rem; color:#64748b; margin-bottom:4px;">Quitados de esta hoja:</div>
+                    <div style="display:flex; flex-wrap:wrap; gap:6px; justify-content:center;">
+                        ${platosExcluidosArray.map(p => {
+                            const nombreCorto = (window.desglosarNombre(p.es).nombre || p.es || ('#' + p.id));
+                            return `<span style="font-size:0.75rem; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:12px; padding:3px 8px; display:inline-flex; align-items:center; gap:5px;">${nombreCorto} <a href="javascript:void(0)" onclick="window.devolverPlatoSugerencia(${p.id}, '${modoSeguro}')" style="color:#0d5c63; text-decoration:none; font-weight:700;" title="Devolver a la hoja">↺</a></span>`;
+                        }).join('')}
+                    </div>
+                    <button type="button" onclick="window.restaurarTodosPlatosSugerencia('${modoSeguro}')" style="margin-top:6px; font-size:0.7rem; color:#64748b; background:none; border:none; text-decoration:underline; cursor:pointer;">Restaurar todos</button>
+               </div>`
+            : '';
+
         // NUEVO: box de controles, SEPARADO de la hoja A4 y colocado debajo de ella — agrupa
         // todo lo que antes vivía disperso dentro de la propia hoja (botón de imprimir arriba del
         // todo, opciones de imagen del vino/tamaño y de QR abajo del todo): así la hoja de encima
@@ -626,6 +742,8 @@
                 <button onclick="window.imprimirSugerencias('${modoSeguro}')" class="btn-imprimir-a4">🖨️ Imprimir Sugerencias ${getModoAlias(modoSeguro)} (A4)</button>
                 ${(vinoImagenButtonsHtml || vinoImagenEscalaHtml) ? `<div class="qr-selector-wrapper" style="font-size: 0.75rem; color: #64748b; text-align: center; margin-bottom: 3px; user-select:none; display: flex; flex-direction: row; align-items: center; justify-content: center; flex-wrap: nowrap; gap: 8px; white-space: nowrap;">${vinoImagenButtonsHtml ? `<span class="vino-imagen-selector-wrapper" style="display:flex; align-items:center; gap:8px; padding-right:10px; border-right:1px solid #cbd5e1;">Imagen Vino: ${vinoImagenButtonsHtml}</span>` : ''}${vinoImagenEscalaHtml ? `<span class="vino-imagen-selector-wrapper" style="display:flex; align-items:center; gap:6px;">Tamaño: ${vinoImagenEscalaHtml}</span>` : ''}</div>` : ''}
                 <div class="qr-selector-wrapper" style="font-size: 0.75rem; color: #64748b; text-align: center; margin-bottom: 0; user-select:none; display: flex; flex-direction: row; align-items: center; justify-content: center; flex-wrap: nowrap; gap: 8px; white-space: nowrap;">Tipo de QR: ${qrButtonsHtml}</div>
+                ${selectorQuitarHtml}
+                ${listaQuitadosHtml}
             </div>`;
 
         contenedor.innerHTML = html + controlesHtml;
@@ -678,19 +796,25 @@
             ${repartirEspacioSobrante.toString()}
 
             function mostrarAviso(resultado) {
-                if (!resultado.espacioCategoriasReducido && !resultado.imagenVinoQuitada && !resultado.qrQuitado && !resultado.textoReducido) return;
+                if (!resultado.espacioCategoriasReducido && !resultado.imagenVinoQuitada && !resultado.qrQuitado && !resultado.textoReducido && !resultado.noCabeNiReduciendo) return;
                 var mensajes = [];
                 if (resultado.espacioCategoriasReducido) mensajes.push('Se ha reducido un poco el espacio entre categorías.');
                 if (resultado.imagenVinoQuitada) mensajes.push('No se ha usado la imagen del vino, para que quepa todo en una hoja A4.');
                 if (resultado.qrQuitado) mensajes.push('No se ha incluido el código QR, para que quepa todo en una hoja A4.');
-                if (resultado.textoReducido) mensajes.push('Se ha reducido ligeramente el tamaño de letra y el espaciado.');
+                if (resultado.textoReducido) mensajes.push('Se ha reducido ligeramente el tamaño de letra y el espaciado (el aviso de alérgenos NUNCA se reduce).');
+                var esCritico = resultado.noCabeNiReduciendo;
                 var caja = document.createElement('div');
                 caja.id = 'sugerencias-aviso-ajuste';
-                caja.style.cssText = 'position:fixed; top:16px; right:16px; z-index:9999; background:#fff7ed; border:1px solid #f59e0b; color:#92400e; padding:12px 16px; border-radius:8px; font-size:13px; max-width:340px; box-shadow:0 4px 12px rgba(0,0,0,0.15); font-family:sans-serif;';
-                caja.innerHTML = '<b>⚠️ Ajuste automático a una página</b>' +
+                caja.style.cssText = 'position:fixed; top:16px; right:16px; z-index:9999; padding:12px 16px; border-radius:8px; font-size:13px; max-width:340px; box-shadow:0 4px 12px rgba(0,0,0,0.15); font-family:sans-serif; ' +
+                    (esCritico ? 'background:#fef2f2; border:1px solid #dc2626; color:#991b1b;' : 'background:#fff7ed; border:1px solid #f59e0b; color:#92400e;');
+                var htmlCaja = '<b>⚠️ Ajuste automático a una página</b>' +
                     '<ul style="margin:6px 0 0 18px; padding:0;">' + mensajes.map(function(m){ return '<li>' + m + '</li>'; }).join('') + '</ul>' +
-                    '<details style="margin-top:8px; font-size:11px; color:#78716c;"><summary style="cursor:pointer;">Ver medidas</summary>' + resultado.medidas.join('<br>') + '</details>' +
-                    '<div style="text-align:right; margin-top:8px;"><button id="btn-continuar-impresion" style="cursor:pointer; background:#f59e0b; color:#fff; border:none; padding:5px 12px; border-radius:5px; font-size:12px;">Imprimir ahora</button></div>';
+                    '<details style="margin-top:8px; font-size:11px; color:#78716c;"><summary style="cursor:pointer;">Ver medidas</summary>' + resultado.medidas.join('<br>') + '</details>';
+                if (esCritico) {
+                    htmlCaja += '<div style="margin-top:8px; font-weight:700;">Aun con el texto en su tamaño mínimo legible, sigue sin caber todo en una página. Cierra esta ventana y quita algún plato con "Quitar un plato de esta hoja" antes de imprimir.</div>';
+                }
+                htmlCaja += '<div style="text-align:right; margin-top:8px;"><button id="btn-continuar-impresion" style="cursor:pointer; background:' + (esCritico ? '#dc2626' : '#f59e0b') + '; color:#fff; border:none; padding:5px 12px; border-radius:5px; font-size:12px;">' + (esCritico ? 'Imprimir de todas formas' : 'Imprimir ahora') + '</button></div>';
+                caja.innerHTML = htmlCaja;
                 document.body.appendChild(caja);
                 return caja;
             }
