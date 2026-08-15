@@ -69,7 +69,23 @@
                papel — si no cabe en la ventana del editor, se ve con scroll horizontal en vez de
                deformarse (ver overflow-x en el contenedor, más abajo).
             */
-            .sugerencias-panel { background: #ffffff !important; padding: 15px 25px !important; width: 190mm !important; max-width: 190mm !important; min-height: 267mm !important; margin: 0 auto !important; font-family: 'Montserrat', sans-serif !important; box-sizing: border-box !important; display: flex !important; flex-direction: column !important; position: relative !important; flex-shrink: 0 !important; }
+            /* MODIFICADO: line-height: normal !important añadido aquí — el panel heredaba el
+               line-height que tuviera puesto <html>/<body> en CADA página donde vive. En la
+               ventana de impresión (documento aislado, sin ningún CSS de la web) eso siempre ha
+               sido el "normal" del navegador (~1.2), pero en la propia página del editor,
+               Tailwind (cargado por <script src="https://cdn.tailwindcss.com">) pone
+               line-height:1.5 en <html> como parte de su reset — un 25% más alto en CADA línea
+               de texto de la hoja (nombres de plato, descripciones en inglés, títulos...), que
+               con varios platos se traduce en varios centímetros de más. Esa era la causa real
+               de que con muy pocos platos el ajuste ya diera por hecho que no cabía la imagen del
+               vino y la quitase: la vista previa medía con interlineado 1.5 mientras que la
+               impresión (que sí cabía de sobra, como confirman los PDF) medía con el normal del
+               navegador — dos alturas de verdad distintas para el mismo contenido, sin que
+               ningún reajuste manual pudiera arreglarlo, porque la medida en pantalla ERA así de
+               alta de verdad. Fijar aquí "normal" desengancha el panel de lo que decida el CSS
+               global de la página donde esté incrustado, así vista previa e impresión miden
+               siempre lo mismo. */
+            .sugerencias-panel { background: #ffffff !important; padding: 15px 25px !important; width: 190mm !important; max-width: 190mm !important; min-height: 267mm !important; margin: 0 auto !important; font-family: 'Montserrat', sans-serif !important; line-height: normal !important; box-sizing: border-box !important; display: flex !important; flex-direction: column !important; position: relative !important; flex-shrink: 0 !important; }
             #sugerencias-contenido, #sugerencias-contenido-usopen { overflow-x: auto; }
             /* NUEVO: rectángulo de depuración visual — marca exactamente los 190mm x 267mm de zona
                imprimible real (el resultado de A4 menos los márgenes de @page). Se ancla al propio
