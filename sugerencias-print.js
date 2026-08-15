@@ -270,6 +270,38 @@
         }));
     }
 
+    // NUEVO: espera a que la fuente Montserrat (importada por @import en el <style> de más abajo)
+    // termine de cargar Y de aplicarse antes de medir nada. Sin esto, la primera vez que se
+    // renderiza la hoja (nada más entrar en la pestaña, con la fuente todavía descargándose de
+    // Google Fonts) el texto se mide con la fuente de reserva del sistema — que puede envolver los
+    // nombres de los platos en más o menos líneas que Montserrat — y eso puede hacer que el
+    // algoritmo decida (mal) quitar la imagen del vino o el QR para "que quepa", cuando con la
+    // fuente definitiva sí cabía. Como no había ningún reajuste posterior, esa decisión se quedaba
+    // fija en la vista previa aunque la fuente terminara de cargar un instante después — por eso la
+    // ventana de impresión (que mide más tarde, con la fuente ya en caché) sí mostraba la botella.
+    function esperarFuentes() {
+        var listo;
+        if (document.fonts && document.fonts.ready) {
+            try {
+                ['300', '400', '600', '700'].forEach(function(peso) {
+                    document.fonts.load(peso + ' 16px Montserrat');
+                });
+            } catch (e) { /* ignorar: si el navegador no soporta document.fonts.load, seguimos igual */ }
+            listo = document.fonts.ready.catch(function() {});
+        } else {
+            listo = Promise.resolve();
+        }
+        // Doble requestAnimationFrame: además de esperar a que la fuente termine de cargar, se
+        // espera a que el navegador pinte al menos un frame con ella ya aplicada — si se mide justo
+        // al resolverse la promesa de fuentes, el layout definitivo puede no haberse aplicado
+        // todavía en ese mismo instante.
+        return listo.then(function() {
+            return new Promise(function(resolve) {
+                requestAnimationFrame(function() { requestAnimationFrame(resolve); });
+            });
+        });
+    }
+
     function mmDesdePx(px, maxAlturaPx) { return (px * 267 / maxAlturaPx).toFixed(1); }
 
     function medirBloqueFijo(panel) {
@@ -356,15 +388,31 @@
             el.style.setProperty('display', 'none', 'important');
         });
 
+        // CORREGIDO: medir() usaba panel.scrollHeight, pero .sugerencias-panel tiene
+        // min-height:267mm !important — eso hace que scrollHeight mida SIEMPRE alrededor de
+        // 267mm pase lo que pase (una carta cortísima o una larga), porque el propio panel ya
+        // está "estirado" a esa altura mínima por CSS. En la práctica scrollHeight salía unos
+        // px por ENCIMA de los 267mm de la sonda (por redondeos del layout flex), lo bastante
+        // para superar el margen de tolerancia SIEMPRE — así que "Original" nunca daba por
+        // bueno el hueco real disponible y el algoritmo pasaba a apretar espacio, quitar la
+        // imagen del vino, el QR... aunque sobrara muchísimo sitio de verdad. Se mide en su
+        // lugar el final REAL del contenido (borde inferior del footer menos borde superior del
+        // panel) — la misma técnica ya usada más abajo en repartirEspacioSobrante() por este
+        // mismo motivo, documentado allí desde antes.
+        var footerParaMedir = panel.querySelector('.sugerencias-footer');
+
         function medir(etiqueta) {
             void panel.offsetHeight;
             var bloqueFijo = medirBloqueFijo(panel);
-            var alturaMm = mmDesdePx(panel.scrollHeight, maxAlturaPx);
+            var panelRect = panel.getBoundingClientRect();
+            var footerRect = footerParaMedir ? footerParaMedir.getBoundingClientRect() : panelRect;
+            var alturaContenidoReal = footerRect.bottom - panelRect.top;
+            var alturaMm = mmDesdePx(alturaContenidoReal, maxAlturaPx);
             var pieFijoMm = mmDesdePx(bloqueFijo.alturaFija, maxAlturaPx);
             var disponibleCategoriasMm = mmDesdePx(maxAlturaPx - bloqueFijo.alturaFija, maxAlturaPx);
             resultado.medidas.push(etiqueta + ': ' + alturaMm + 'mm de 267mm (cabecera+alérgenos+BODEGA: ' + pieFijoMm + 'mm → tope máximo disponible para Entrantes/Principales/Postres: ' + disponibleCategoriasMm + 'mm)');
             var pxPorMm = maxAlturaPx / 267;
-            return panel.scrollHeight <= (maxAlturaPx + pxPorMm);
+            return alturaContenidoReal <= (maxAlturaPx + pxPorMm);
         }
 
         if (medir('Original')) return resultado;
@@ -499,7 +547,7 @@
     // aviso en pantalla como para el de la ventana de impresión.
     function ajustarYRepartir(panel) {
         if (!panel) return Promise.resolve(null);
-        return esperarImagenes(panel).then(function() {
+        return Promise.all([esperarImagenes(panel), esperarFuentes()]).then(function() {
             var resultado = ajustarAUnaPagina(panel);
             repartirEspacioSobrante(panel);
             panel.querySelectorAll('.sugerencias-debug-a4').forEach(function(el) {
@@ -756,6 +804,23 @@
         const panelParaAjustar = contenedor.querySelector('.sugerencias-panel');
         ajustarYRepartir(panelParaAjustar).then(function(resultado) {
             mostrarAvisoInline(contenedor, panelParaAjustar, resultado);
+
+            // NUEVO: red de seguridad — se repite el ajuste una vez más al cabo de un instante,
+            // por si al primer cálculo le faltaba algo por asentar del todo (una imagen que
+            // reajusta su tamaño real tras cargar, la fuente aplicándose con un pelín de retraso,
+            // un reflow tardío del navegador...). Es barato y no hace nada si ya estaba bien —
+            // limpiarAjustePrevio() deshace el primer ajuste antes de volver a medir, así que esta
+            // segunda pasada no puede dejar las cosas peor, solo corregirlas si hacía falta. Evita
+            // que la vista previa se quede "pillada" en un estado incorrecto (p. ej. la botella de
+            // vino quitada sin necesitarlo) hasta que la persona abre la ventana de impresión.
+            if (contenedor.querySelector('.sugerencias-panel') === panelParaAjustar) {
+                setTimeout(function() {
+                    if (contenedor.querySelector('.sugerencias-panel') !== panelParaAjustar) return; // se re-renderizó mientras tanto
+                    ajustarYRepartir(panelParaAjustar).then(function(resultadoFinal) {
+                        mostrarAvisoInline(contenedor, panelParaAjustar, resultadoFinal);
+                    });
+                }, 900);
+            }
         });
     }
 
@@ -787,6 +852,7 @@
         // y se recalcula desde cero por si la fuente o el layout rinden distinto en la ventana nueva.
         const scriptAjuste = `
             ${esperarImagenes.toString()}
+            ${esperarFuentes.toString()}
             ${mmDesdePx.toString()}
             ${medirBloqueFijo.toString()}
             ${posicionarDebugA4.toString()}
@@ -819,7 +885,7 @@
                 return caja;
             }
 
-            esperarImagenes(document.body).then(function() {
+            Promise.all([esperarImagenes(document.body), esperarFuentes()]).then(function() {
                 var panel = document.querySelector('.sugerencias-panel');
                 var resultado = ajustarAUnaPagina(panel);
                 repartirEspacioSobrante(panel);
