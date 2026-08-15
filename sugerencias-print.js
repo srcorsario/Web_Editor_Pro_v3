@@ -272,14 +272,97 @@
     //      algoritmo que se pueda quedar desincronizada con el tiempo.
     // ============================================================
 
+    // MODIFICADO: antes, si una imagen (sobre todo la de la botella de vino) fallaba al cargar
+    // UNA sola vez — p.ej. justo al abrir la pestaña, con la conexión ocupada cargando fuentes,
+    // CSS y el resto de recursos a la vez — su propio onerror la escondía para siempre
+    // (this.style.display='none') y ahí se quedaba: nada volvía a intentar cargarla, así que la
+    // vista previa en pantalla se quedaba con un hueco en blanco de forma permanente. La ventana
+    // de impresión, en cambio, es un documento nuevo aparte (ver imprimirSugerencias) — al copiar
+    // el HTML de la hoja, la imagen vuelve a pedirse desde cero, ya sin la carga inicial
+    // compitiendo con todo lo demás, y esa segunda vez normalmente sí cargaba bien: por eso
+    // imprimir "arreglaba" la botella pero la vista previa seguía en blanco.
+    // Ahora, para las imágenes que antes se escondían solas al fallar (botella de vino, iconos de
+    // alérgenos, QR), esperarImagenes() reintenta la carga un par de veces (con un pequeño retraso
+    // y "cache-bust" en la URL) antes de darse por vencida — y como esta misma función se ejecuta
+    // en CADA reajuste (la pasada automática de seguridad a los 900ms, el botón manual 🔄, o al
+    // cambiar cualquier opción), una imagen que solo tuvo mala suerte una vez tiene más de una
+    // oportunidad de recuperarse sola, sin tener que abrir la ventana de impresión para "arreglarla".
+    var SELECTOR_IMAGENES_CON_REINTENTO = '.sugerencias-vino-imagen, .sugerencias-qr-img, .sugerencias-alergeno-icon';
+    var MAX_REINTENTOS_IMG = 2;
+    var RETRASO_REINTENTO_IMG_MS = 500;
+
+    function esperarUnaImagen(img, conReintento) {
+        return new Promise(function(resolve) {
+            var intentos = 0;
+            function intentar() {
+                function limpiar() {
+                    img.removeEventListener('load', onOk);
+                    img.removeEventListener('error', onFallo);
+                }
+                function onOk() {
+                    limpiar();
+                    // Si una pasada ANTERIOR había acabado dándose por vencida y escondiendo esta
+                    // imagen (ver más abajo), y ahora por fin ha cargado bien, hay que devolverle
+                    // el display de antes de esconderla — si no, se queda invisible para siempre
+                    // aunque ya haya cargado correctamente (el fallo de carga habría "curado" pero
+                    // el escondite manual seguiría activo).
+                    if (img.hasAttribute('data-carga-fallida') || img.hasAttribute('data-display-previo-fallo')) {
+                        img.style.display = img.getAttribute('data-display-previo-fallo') || '';
+                        img.removeAttribute('data-display-previo-fallo');
+                    }
+                    img.removeAttribute('data-carga-fallida');
+                    resolve();
+                }
+                function onFallo() {
+                    limpiar();
+                    if (conReintento && intentos < MAX_REINTENTOS_IMG) {
+                        intentos++;
+                        setTimeout(function() {
+                            var base = (img.getAttribute('data-src-original') || img.src).split('?')[0];
+                            img.setAttribute('data-src-original', base);
+                            img.src = base + '?reintento=' + intentos + '-' + Date.now();
+                            intentar();
+                        }, RETRASO_REINTENTO_IMG_MS * intentos);
+                        return;
+                    }
+                    if (conReintento) {
+                        // Se han agotado los reintentos: se marca como fallo de carga "real" (no
+                        // por falta de espacio) para que el aviso pueda contarlo tal cual, y se
+                        // esconde como hacía antes el onerror en línea — guardando primero el
+                        // display que tenía, para poder devolvérselo si más adelante se recupera.
+                        if (!img.hasAttribute('data-display-previo-fallo')) {
+                            img.setAttribute('data-display-previo-fallo', img.style.display || '');
+                        }
+                        img.setAttribute('data-carga-fallida', '1');
+                        img.style.setProperty('display', 'none', 'important');
+                    }
+                    resolve();
+                }
+                if (img.complete) {
+                    if (!img.src || img.naturalWidth > 0) {
+                        if (img.hasAttribute('data-carga-fallida') || img.hasAttribute('data-display-previo-fallo')) {
+                            img.style.display = img.getAttribute('data-display-previo-fallo') || '';
+                            img.removeAttribute('data-display-previo-fallo');
+                        }
+                        img.removeAttribute('data-carga-fallida');
+                        resolve();
+                        return;
+                    }
+                    onFallo();
+                    return;
+                }
+                img.addEventListener('load', onOk);
+                img.addEventListener('error', onFallo);
+            }
+            intentar();
+        });
+    }
+
     function esperarImagenes(root) {
         var imgs = Array.prototype.slice.call(root.querySelectorAll('img'));
         return Promise.all(imgs.map(function(img) {
-            if (img.complete) return Promise.resolve();
-            return new Promise(function(resolve) {
-                img.addEventListener('load', resolve);
-                img.addEventListener('error', resolve);
-            });
+            var conReintento = img.matches && img.matches(SELECTOR_IMAGENES_CON_REINTENTO);
+            return esperarUnaImagen(img, conReintento);
         }));
     }
 
@@ -369,10 +452,22 @@
     }
 
     function ajustarAUnaPagina(panel) {
-        var resultado = { espacioCategoriasReducido: false, imagenVinoQuitada: false, qrQuitado: false, textoReducido: false, noCabeNiReduciendo: false, medidas: [] };
+        var resultado = { espacioCategoriasReducido: false, imagenVinoQuitada: false, imagenVinoFalloCarga: false, qrQuitado: false, textoReducido: false, noCabeNiReduciendo: false, medidas: [] };
         if (!panel) return resultado;
 
         limpiarAjustePrevio(panel);
+
+        // NUEVO: esto se comprueba SIEMPRE, ANTES de medir nada — si se dejara para la sección de
+        // "quitar imagen del vino por falta de espacio" (más abajo), esa comprobación solo se
+        // ejecuta cuando el ajuste llega hasta ahí, y con una hoja corta que cabe de sobra el
+        // algoritmo devuelve el resultado mucho antes de llegar a mirar la imagen — así que un
+        // fallo real de carga (ver esperarImagenes, más arriba) podía quedar sin avisar nunca,
+        // aunque la imagen llevara ya un buen rato en blanco por un problema de red y no por falta
+        // de sitio en la hoja.
+        var vinoImgParaCarga = panel.querySelector('.sugerencias-vino-imagen');
+        if (vinoImgParaCarga && vinoImgParaCarga.dataset.cargaFallida === '1') {
+            resultado.imagenVinoFalloCarga = true;
+        }
 
         // IMPORTANTE: el aviso de alérgenos es información de seguridad alimentaria — es MÁS
         // IMPORTANTE que cualquier plato de la hoja, así que nunca debe encogerse junto con el
@@ -579,19 +674,24 @@
         var avisoPrevio = contenedor.querySelector('.sugerencias-aviso-ajuste-inline');
         if (avisoPrevio) avisoPrevio.remove();
         if (!resultado) return;
-        if (!resultado.espacioCategoriasReducido && !resultado.imagenVinoQuitada && !resultado.qrQuitado && !resultado.textoReducido && !resultado.noCabeNiReduciendo) return;
+        if (!resultado.espacioCategoriasReducido && !resultado.imagenVinoQuitada && !resultado.imagenVinoFalloCarga && !resultado.qrQuitado && !resultado.textoReducido && !resultado.noCabeNiReduciendo) return;
 
         var mensajes = [];
         if (resultado.espacioCategoriasReducido) mensajes.push('Se ha reducido un poco el espacio entre categorías.');
         if (resultado.imagenVinoQuitada) mensajes.push('No se usará la imagen del vino, para que quepa todo en una hoja A4.');
+        if (resultado.imagenVinoFalloCarga) mensajes.push('La imagen de la botella de vino no se ha podido cargar (posible fallo de red), no por falta de espacio. Pulsa el botón 🔄 para intentarlo de nuevo.');
         if (resultado.qrQuitado) mensajes.push('No se incluirá el código QR, para que quepa todo en una hoja A4.');
         if (resultado.textoReducido) mensajes.push('Se ha reducido ligeramente el tamaño de letra y el espaciado (el aviso de alérgenos NUNCA se reduce).');
 
         var aviso = document.createElement('div');
         aviso.className = 'sugerencias-aviso-ajuste-inline';
         var esCritico = resultado.noCabeNiReduciendo;
+        // El fallo de carga de la imagen no tiene que ver con "quitar un plato" (no es un problema
+        // de espacio), pero sí merece el mismo color de alerta que "crítico" para que no pase
+        // desapercibido — solo se diferencia en que NO resalta el selector de quitar plato.
+        var esAvisoImportante = esCritico || resultado.imagenVinoFalloCarga;
         aviso.style.cssText = 'max-width: 190mm; margin: 12px auto 0 auto; padding:10px 16px; border-radius:8px; font-size:13px; font-family: Montserrat, sans-serif; box-sizing: border-box; ' +
-            (esCritico ? 'background:#fef2f2; border:1px solid #dc2626; color:#991b1b;' : 'background:#fff7ed; border:1px solid #f59e0b; color:#92400e;');
+            (esAvisoImportante ? 'background:#fef2f2; border:1px solid #dc2626; color:#991b1b;' : 'background:#fff7ed; border:1px solid #f59e0b; color:#92400e;');
         var htmlAviso = '<b>⚠️ Esta vista previa ya está ajustada a una página A4 (así saldrá impresa):</b>' +
             '<ul style="margin:6px 0 0 18px; padding:0;">' + mensajes.map(function(m) { return '<li>' + m + '</li>'; }).join('') + '</ul>';
         if (esCritico) {
@@ -691,7 +791,7 @@
             let h = `<div class="sugerencias-seccion"><div class="sugerencias-seccion-titulo">${titulo}</div>`;
             lista.forEach(p => {
                 let iconsHtml = '';
-                if (p.alergenos) iconsHtml = '<div class="sugerencias-alergenos">' + p.alergenos.split(',').map(a => `<img src="${PATH_ALERGENOS}${a.trim()}.webp" class="sugerencias-alergeno-icon" onerror="this.style.display='none'">`).join('') + '</div>';
+                if (p.alergenos) iconsHtml = '<div class="sugerencias-alergenos">' + p.alergenos.split(',').map(a => `<img src="${PATH_ALERGENOS}${a.trim()}.webp" class="sugerencias-alergeno-icon">`).join('') + '</div>';
                 const objEs = window.desglosarNombre(p.es); const objEn = window.desglosarNombre(p.en);
                 const esVino = (p.id === 12990 || p.id >= 13000);
                 let htmlNombreEs = "", htmlNombreEn = "";
@@ -727,7 +827,7 @@
         const vinoImagenHtml = tieneVinoEspecial
             ? `<div class="sugerencias-vino-imagen-wrapper" id="${config.vinoImagenWrapperId}">
                 <span></span>
-                <img src="${config.vinoImagenSrc}" class="sugerencias-vino-imagen" style="display:${vinoImagenDefaultCon ? '' : 'none'}; height:${vinoImgAlturaInicial}px;" onerror="this.style.display='none';">
+                <img src="${config.vinoImagenSrc}" class="sugerencias-vino-imagen" style="display:${vinoImagenDefaultCon ? '' : 'none'}; height:${vinoImgAlturaInicial}px;">
                 <img src="${initialImgSrc}" class="sugerencias-qr-img" id="${config.qrImgId}" style="width:${qrTamanoInicial}px !important; height:${qrTamanoInicial}px !important; display:${qrInicialOculto ? 'none' : ''};">
                </div>`
             : '';
@@ -871,6 +971,10 @@
         // previa aplicado; aquí se resetea (limpiarAjustePrevio, al principio de ajustarAUnaPagina)
         // y se recalcula desde cero por si la fuente o el layout rinden distinto en la ventana nueva.
         const scriptAjuste = `
+            var SELECTOR_IMAGENES_CON_REINTENTO = ${JSON.stringify(SELECTOR_IMAGENES_CON_REINTENTO)};
+            var MAX_REINTENTOS_IMG = ${MAX_REINTENTOS_IMG};
+            var RETRASO_REINTENTO_IMG_MS = ${RETRASO_REINTENTO_IMG_MS};
+            ${esperarUnaImagen.toString()}
             ${esperarImagenes.toString()}
             ${esperarFuentes.toString()}
             ${mmDesdePx.toString()}
@@ -882,17 +986,19 @@
             ${repartirEspacioSobrante.toString()}
 
             function mostrarAviso(resultado) {
-                if (!resultado.espacioCategoriasReducido && !resultado.imagenVinoQuitada && !resultado.qrQuitado && !resultado.textoReducido && !resultado.noCabeNiReduciendo) return;
+                if (!resultado.espacioCategoriasReducido && !resultado.imagenVinoQuitada && !resultado.imagenVinoFalloCarga && !resultado.qrQuitado && !resultado.textoReducido && !resultado.noCabeNiReduciendo) return;
                 var mensajes = [];
                 if (resultado.espacioCategoriasReducido) mensajes.push('Se ha reducido un poco el espacio entre categorías.');
                 if (resultado.imagenVinoQuitada) mensajes.push('No se ha usado la imagen del vino, para que quepa todo en una hoja A4.');
+                if (resultado.imagenVinoFalloCarga) mensajes.push('La imagen de la botella de vino no se ha podido cargar (posible fallo de red), no por falta de espacio.');
                 if (resultado.qrQuitado) mensajes.push('No se ha incluido el código QR, para que quepa todo en una hoja A4.');
                 if (resultado.textoReducido) mensajes.push('Se ha reducido ligeramente el tamaño de letra y el espaciado (el aviso de alérgenos NUNCA se reduce).');
                 var esCritico = resultado.noCabeNiReduciendo;
+                var esAvisoImportante = esCritico || resultado.imagenVinoFalloCarga;
                 var caja = document.createElement('div');
                 caja.id = 'sugerencias-aviso-ajuste';
                 caja.style.cssText = 'position:fixed; top:16px; right:16px; z-index:9999; padding:12px 16px; border-radius:8px; font-size:13px; max-width:340px; box-shadow:0 4px 12px rgba(0,0,0,0.15); font-family:sans-serif; ' +
-                    (esCritico ? 'background:#fef2f2; border:1px solid #dc2626; color:#991b1b;' : 'background:#fff7ed; border:1px solid #f59e0b; color:#92400e;');
+                    (esAvisoImportante ? 'background:#fef2f2; border:1px solid #dc2626; color:#991b1b;' : 'background:#fff7ed; border:1px solid #f59e0b; color:#92400e;');
                 var htmlCaja = '<b>⚠️ Ajuste automático a una página</b>' +
                     '<ul style="margin:6px 0 0 18px; padding:0;">' + mensajes.map(function(m){ return '<li>' + m + '</li>'; }).join('') + '</ul>' +
                     '<details style="margin-top:8px; font-size:11px; color:#78716c;"><summary style="cursor:pointer;">Ver medidas</summary>' + resultado.medidas.join('<br>') + '</details>';
