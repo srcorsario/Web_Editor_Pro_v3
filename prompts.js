@@ -43,8 +43,8 @@ REGLA DE CONSISTENCIA CON EL INGLÉS DE REFERENCIA: si el texto en inglés ya ha
 REGLA DE TÉRMINOS TÉCNICOS/EXTRANJEROS (ej. AOJISO, AOVE, siglas, técnicas en otro idioma ya presentes en el nombre): mantenlos SIN traducir su significado en todos los idiomas que usan alfabeto latino (cirílico, griego, etc. incluidos: transcríbelos fonéticamente, no los sustituyas por su significado). Solo en idiomas sin alfabeto fonético equivalente claro (ej. chino, japonés, coreano, árabe) puedes optar por la transcripción fonética habitual del término en ese idioma; evita traducir su significado salvo que sea el término nativo real de ese idioma (p. ej. si el término ya es una palabra japonesa y traduces al japonés).
 
 Traduce a los siguientes idiomas (usa los códigos ISO proporcionados): ${idiomasObjetivo.join(', ')}.
-    Responde EXCLUSIVAMENTE con un objeto JSON válido. No incluyas texto fuera del JSON. 
-    Usa los códigos ISO como claves. Ejemplo de formato de respuesta esperado: {"de": "Nombre // Uva", "fr": "Nom Français"}`,
+    Responde EXCLUSIVAMENTE con un objeto JSON válido. No incluyas texto fuera del JSON.
+    Usa los códigos ISO EN MAYÚSCULAS como claves, tal cual se han listado arriba. Ejemplo de formato de respuesta esperado: {"DE": "Nombre // Uva", "FR": "Nom Français"}`,
 
     // ---------------------------------------------------------
     // Usado en ui.js > iniciarTraduccionNombresPorLotes() [Fase 2: traducción de nombres en bloque]

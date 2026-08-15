@@ -626,33 +626,52 @@ async function ejecutarTraduccionAutomatica() {
                 continue; 
             } 
             
-            const txt = data.candidates?.[0]?.content?.parts?.[0]?.text; 
-            if (txt) { 
-                const traducciones = extraerJSON(txt); 
-                idiomasObjetivo.forEach(l => { 
-                    if (traducciones[l]) { 
-                        const desglosado = desglosarNombre(traducciones[l]); 
-                        const finalName = esVino ? formatWineName(desglosado.nombre) : desglosado.nombre; 
-                        const inputField = document.getElementById(`edit-${l.toLowerCase()}`); 
-                        if (inputField) inputField.value = finalName; 
-                        
-                        const inputUva = document.getElementById(`edit-${l.toLowerCase()}-uvas`); 
-                        if (inputUva && inputUva.style.display !== "none") { 
-                            inputUva.value = desglosado.uvas; 
-                        } 
-                    } 
-                }); 
-                exito = true; 
-            } 
-        } catch(err) { 
-            ultimoError = err.message; 
-            intentos++; 
-        } 
-    } 
-    
-    if (!exito) { 
-        alert("❌ Error al traducir con Gemini.\nDetalles del error: " + ultimoError); 
-    } 
+            const txt = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (txt) {
+                const traducciones = extraerJSON(txt);
+                // CORREGIDO: Gemini a veces devuelve las claves de idioma en minúscula
+                // pese a pedirse en MAYÚSCULAS (o viceversa). Antes esto hacía que
+                // traducciones[l] fallara en silencio (ningún campo se rellenaba pero
+                // exito se marcaba true igualmente, sin avisar al usuario). Ahora se
+                // busca la clave sin distinguir mayúsculas/minúsculas.
+                const clavesRespuesta = Object.keys(traducciones);
+                let rellenados = 0;
+                idiomasObjetivo.forEach(l => {
+                    const claveReal = clavesRespuesta.find(k => k.toUpperCase() === l.toUpperCase());
+                    const valor = claveReal ? traducciones[claveReal] : undefined;
+                    if (valor) {
+                        rellenados++;
+                        const desglosado = desglosarNombre(valor);
+                        const finalName = esVino ? formatWineName(desglosado.nombre) : desglosado.nombre;
+                        const inputField = document.getElementById(`edit-${l.toLowerCase()}`);
+                        if (inputField) inputField.value = finalName;
+
+                        const inputUva = document.getElementById(`edit-${l.toLowerCase()}-uvas`);
+                        if (inputUva && inputUva.style.display !== "none") {
+                            inputUva.value = desglosado.uvas;
+                        }
+                    }
+                });
+                // NUEVO: si la IA respondió pero ninguna traducción coincidió con los
+                // idiomas pedidos, no lo tratamos como éxito: reintenta con la
+                // siguiente key y, si se agotan, se avisa con el alert de abajo en
+                // vez de cerrar el modal como si todo hubiera ido bien.
+                if (rellenados > 0) {
+                    exito = true;
+                } else {
+                    ultimoError = "La respuesta de Gemini no contenía ninguna de las claves de idioma esperadas (" + idiomasObjetivo.join(', ') + ").";
+                    intentos++;
+                }
+            }
+        } catch(err) {
+            ultimoError = err.message;
+            intentos++;
+        }
+    }
+
+    if (!exito) {
+        alert("❌ Error al traducir con Gemini.\nDetalles del error: " + ultimoError);
+    }
     
     btn.innerText = originalText; 
     btn.disabled = false; 
