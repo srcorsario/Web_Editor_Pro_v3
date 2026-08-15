@@ -68,9 +68,9 @@
             .sugerencias-debug-a4 { position: absolute !important; top: 0; left: 0 !important; width: 100% !important; height: 267mm !important; border: 2px solid red !important; box-sizing: border-box !important; pointer-events: none !important; z-index: 9998 !important; }
             .sugerencias-header-layout { display: flex !important; justify-content: space-between !important; align-items: center !important; margin-bottom: 15px !important; position: relative !important; }
             .sugerencias-brand-title-group { display: flex !important; flex-direction: column !important; gap: 2px !important; }
-            .sugerencias-title-es { font-weight: 700 !important; font-size: 1.7rem !important; color: #e05a2b !important; text-transform: uppercase !important; margin:0 !important; } 
-            .sugerencias-title-en { font-weight: 300 !important; font-size: 1.2rem !important; color: #0d5c63 !important; text-transform: uppercase !important; margin:0 !important; } 
-            .sugerencias-version-tag { position: absolute !important; top: -15px !important; left: 0 !important; font-size: 0.6rem !important; color: #94a3b8 !important; font-family: monospace !important; }
+            .sugerencias-title-es { font-weight: 700 !important; font-size: 1.7em !important; color: #e05a2b !important; text-transform: uppercase !important; margin:0 !important; }
+            .sugerencias-title-en { font-weight: 300 !important; font-size: 1.2em !important; color: #0d5c63 !important; text-transform: uppercase !important; margin:0 !important; }
+            .sugerencias-version-tag { position: absolute !important; top: -15px !important; left: 0 !important; font-size: 0.6em !important; color: #94a3b8 !important; font-family: monospace !important; }
             .sugerencias-logo-img { width: 135px !important; height: auto !important; object-fit: contain !important; } 
             /* CORREGIDO: flex-grow (el "1" inicial de "1 1 auto") hacía que .sugerencias-body Y
                cada .sugerencias-seccion se estirasen automáticamente para absorber el hueco
@@ -81,18 +81,25 @@
                alto natural, y el único que decide qué hacer con el sobrante es el script. */
             .sugerencias-body { flex: 0 1 auto !important; display: flex !important; flex-direction: column !important; }
             .sugerencias-seccion { flex: 0 1 auto !important; display: flex !important; flex-direction: column !important; margin-bottom: 12px !important; }
-            .sugerencias-seccion-titulo { font-size: 0.85rem !important; font-weight: 700 !important; color: #d97706 !important; border-bottom: 1px solid #334155 !important; margin-bottom: 8px !important; text-transform: uppercase !important; }
-            .sugerencias-plato { display: flex !important; align-items: baseline !important; margin-bottom: 5px !important; width: 100% !important; } 
+            .sugerencias-seccion-titulo { font-size: 0.85em !important; font-weight: 700 !important; color: #d97706 !important; border-bottom: 1px solid #334155 !important; margin-bottom: 8px !important; text-transform: uppercase !important; }
+            .sugerencias-plato { display: flex !important; align-items: baseline !important; margin-bottom: 5px !important; width: 100% !important; }
             .sugerencias-plato-nombres { flex: 0 1 auto !important; max-width: 93% !important; display: flex !important; flex-direction: column !important; }
-            .sugerencias-nombre-es { font-size: 0.9rem !important; font-weight: 600 !important; color: #000000 !important; } 
-            .sugerencias-nombre-en { font-size: 0.8rem !important; color: #7f8c8d !important; font-style: italic !important; }
-            .sugerencias-detalles-uvas-inline { display: inline !important; margin-left: 4px !important; font-size: 0.8rem !important; color: #555 !important; font-style: normal !important; font-weight: 400 !important; }
+            .sugerencias-nombre-es { font-size: 0.9em !important; font-weight: 600 !important; color: #000000 !important; }
+            .sugerencias-nombre-en { font-size: 0.8em !important; color: #7f8c8d !important; font-style: italic !important; }
+            .sugerencias-detalles-uvas-inline { display: inline !important; margin-left: 4px !important; font-size: 0.8em !important; color: #555 !important; font-style: normal !important; font-weight: 400 !important; }
             .sugerencias-alergenos { display: flex !important; flex-direction: row !important; flex-wrap: wrap !important; margin-top: 2px !important; align-items: center !important; }
             .sugerencias-alergeno-icon { display: inline-block !important; width: 20px !important; height: 20px !important; object-fit: contain !important; vertical-align: middle !important; margin-right: 3px !important; }
             .sugerencias-puntos { flex: 1 !important; border-bottom: 1px dotted #94a3b8 !important; margin: 0 8px !important; height: 1px !important; }
-            .sugerencias-precio { font-size: 0.9rem !important; font-weight: 700 !important; flex-shrink: 0 !important; } 
+            .sugerencias-precio { font-size: 0.9em !important; font-weight: 700 !important; flex-shrink: 0 !important; }
             .sugerencias-footer { padding-top: 15px !important; display: flex !important; flex-direction: column !important; align-items: center !important; width: 100% !important; }
-            .sugerencias-advertencia-alergenos { font-size: 0.6rem !important; color: #64748b !important; max-width: 80% !important; line-height: 1.3 !important; text-align: center !important; font-style: italic !important; margin: 0 auto 5px auto !important; }
+            /* MODIFICADO: font-size en "em" en vez de "rem" en todas las reglas de dentro de
+               .sugerencias-panel (título, nombres, precio, aviso de alérgenos...) — necesario
+               para que ajustarAUnaPagina() pueda encoger SOLO el texto de esta hoja aplicando
+               un font-size al propio .sugerencias-panel (ver más abajo). Con "rem" no habría
+               forma de hacerlo sin tocar el <html> de toda la página del editor, que es
+               justo lo que impedía reutilizar el mismo ajuste en la vista previa en pantalla
+               (solo funcionaba en la ventana de impresión, que es un documento aparte). */
+            .sugerencias-advertencia-alergenos { font-size: 0.6em !important; color: #64748b !important; max-width: 80% !important; line-height: 1.3 !important; text-align: center !important; font-style: italic !important; margin: 0 auto 5px auto !important; }
             .sugerencias-qr-container { display: flex !important; flex-direction: column !important; align-items: center !important; gap: 5px !important; }
             .sugerencias-qr-img { width: 90px !important; height: 90px !important; object-fit: contain !important; } 
             .sugerencias-qr-toggle { font-size: 0.7rem !important; color: #64748b !important; cursor: pointer !important; display: flex !important; user-select: none !important; gap: 5px !important; }
@@ -131,9 +138,10 @@
         if (!config) return;
         const img = document.getElementById(config.qrImgId);
         if (!img) return;
-        if (tipo === 'none') { img.style.display = 'none'; return; }
+        if (tipo === 'none') { img.style.display = 'none'; reajustarVistaPrevia(modo); return; }
         img.style.display = 'block';
         img.src = (tipo === 'default') ? config.qrDefault : config.qrMod;
+        reajustarVistaPrevia(modo);
     };
 
     // NUEVO: tamaño base de la imagen del vino (debe coincidir con el CSS .sugerencias-vino-imagen)
@@ -160,6 +168,7 @@
         if (!wrapper) return;
         const img = wrapper.querySelector('.sugerencias-vino-imagen');
         if (img) img.style.display = (tipo === 'con') ? '' : 'none';
+        reajustarVistaPrevia(modo);
     };
 
     // NUEVO: ajusta el tamaño de la imagen del vino aplicando un multiplicador sobre el tamaño
@@ -184,6 +193,7 @@
             qrImg.style.setProperty('width', qrTamano, 'important');
             qrImg.style.setProperty('height', qrTamano, 'important');
         }
+        reajustarVistaPrevia(modo);
     };
 
     // NUEVO: coloca el rectángulo de depuración (.sugerencias-debug-a4) justo debajo del botón
@@ -199,6 +209,284 @@
         if (debugDiv && header) debugDiv.style.top = header.offsetTop + 'px';
     }
     window.posicionarDebugA4 = posicionarDebugA4;
+
+    // ============================================================
+    // NUEVO: motor de "ajuste a una página A4", COMPARTIDO entre la vista
+    // previa en pantalla (pestaña Sugerencias) y la ventana de impresión.
+    // Antes este algoritmo vivía solo dentro del script que imprimirSugerencias()
+    // inyectaba en la ventana emergente — por eso la vista previa nunca
+    // mostraba el resultado real (letra/espaciado reducidos, imagen del vino
+    // o QR quitados) hasta pulsar "Imprimir". Ahora se define aquí UNA vez y:
+    //   1) se ejecuta directamente sobre el panel en pantalla cada vez que se
+    //      renderiza o se cambia una opción (imagen del vino, tamaño, QR),
+    //      así la vista previa ya es un espejo fiel de lo que se imprimirá.
+    //   2) se serializa con .toString() dentro del script que se inyecta en
+    //      la ventana emergente de imprimirSugerencias() — que sigue sin
+    //      depender de window.opener (poco fiable: bloqueadores de popups,
+    //      iframes de Apps Script...), pero ya no hay una copia aparte del
+    //      algoritmo que se pueda quedar desincronizada con el tiempo.
+    // ============================================================
+
+    function esperarImagenes(root) {
+        var imgs = Array.prototype.slice.call(root.querySelectorAll('img'));
+        return Promise.all(imgs.map(function(img) {
+            if (img.complete) return Promise.resolve();
+            return new Promise(function(resolve) {
+                img.addEventListener('load', resolve);
+                img.addEventListener('error', resolve);
+            });
+        }));
+    }
+
+    function mmDesdePx(px, maxAlturaPx) { return (px * 267 / maxAlturaPx).toFixed(1); }
+
+    function medirBloqueFijo(panel) {
+        var header = panel.querySelector('.sugerencias-header-layout');
+        var alturaHeader = header ? header.getBoundingClientRect().height : 0;
+
+        var footer = panel.querySelector('.sugerencias-footer');
+        var alturaFooter = footer ? footer.getBoundingClientRect().height : 0;
+
+        var alturaBodega = 0;
+        panel.querySelectorAll('.sugerencias-seccion-titulo').forEach(function(titulo) {
+            if (titulo.textContent.indexOf('BODEGA') !== -1 && titulo.parentElement) {
+                alturaBodega = titulo.parentElement.getBoundingClientRect().height;
+            }
+        });
+
+        return { alturaHeader: alturaHeader, alturaFooter: alturaFooter, alturaBodega: alturaBodega, alturaFija: alturaHeader + alturaFooter + alturaBodega };
+    }
+
+    // NUEVO: deshace TODO lo que haya aplicado una pasada anterior de
+    // ajustarAUnaPagina() sobre este panel — imprescindible en la vista previa
+    // en pantalla, donde el mismo panel se reajusta una y otra vez (cada vez
+    // que cambia una opción); sin este reseteo el ajuste solo podría encoger
+    // más y más, sin poder recuperar espacio si el usuario quita a mano el QR
+    // o la imagen del vino, o si el nombre de un plato se acorta.
+    function limpiarAjustePrevio(panel) {
+        panel.style.removeProperty('font-size');
+        panel.querySelectorAll('.sugerencias-seccion, .sugerencias-seccion-titulo, .sugerencias-plato').forEach(function(el) {
+            el.style.removeProperty('margin-bottom');
+        });
+        // Restaura SOLO lo que el propio ajuste automático ocultó (marcado con
+        // data-fit-oculto) a su estado justo anterior — nunca toca un elemento
+        // que el usuario haya ocultado a mano con los selectores de opciones.
+        panel.querySelectorAll('[data-fit-oculto="1"]').forEach(function(el) {
+            el.style.display = el.dataset.fitDisplayPrevio || '';
+            delete el.dataset.fitOculto;
+            delete el.dataset.fitDisplayPrevio;
+        });
+    }
+
+    function ocultarPorAjuste(el) {
+        if (!el || el.dataset.fitOculto === '1') return;
+        el.dataset.fitDisplayPrevio = el.style.display || '';
+        el.style.setProperty('display', 'none', 'important');
+        el.dataset.fitOculto = '1';
+    }
+
+    function ajustarAUnaPagina(panel) {
+        var resultado = { espacioCategoriasReducido: false, imagenVinoQuitada: false, qrQuitado: false, textoReducido: false, medidas: [] };
+        if (!panel) return resultado;
+
+        limpiarAjustePrevio(panel);
+
+        var probe = document.createElement('div');
+        probe.style.cssText = 'position:absolute; visibility:hidden; height:267mm; width:0;';
+        document.body.appendChild(probe);
+        var maxAlturaPx = probe.getBoundingClientRect().height;
+        document.body.removeChild(probe);
+
+        // .sugerencias-debug-a4 es position:absolute con una altura FIJA de
+        // 267mm dentro de un panel position:relative — eso hace que cuente
+        // para el scrollHeight del panel. Se oculta durante toda la medición
+        // (se restaura al final, fuera de esta función, junto con el reparto
+        // del hueco sobrante) para que no falsee ningún cálculo.
+        panel.querySelectorAll('.sugerencias-debug-a4').forEach(function(el) {
+            el.style.setProperty('display', 'none', 'important');
+        });
+
+        function medir(etiqueta) {
+            void panel.offsetHeight;
+            var bloqueFijo = medirBloqueFijo(panel);
+            var alturaMm = mmDesdePx(panel.scrollHeight, maxAlturaPx);
+            var pieFijoMm = mmDesdePx(bloqueFijo.alturaFija, maxAlturaPx);
+            var disponibleCategoriasMm = mmDesdePx(maxAlturaPx - bloqueFijo.alturaFija, maxAlturaPx);
+            resultado.medidas.push(etiqueta + ': ' + alturaMm + 'mm de 267mm (cabecera+alérgenos+BODEGA: ' + pieFijoMm + 'mm → tope máximo disponible para Entrantes/Principales/Postres: ' + disponibleCategoriasMm + 'mm)');
+            var pxPorMm = maxAlturaPx / 267;
+            return panel.scrollHeight <= (maxAlturaPx + pxPorMm);
+        }
+
+        if (medir('Original')) return resultado;
+
+        var pasosGap = 0, MAX_PASOS_GAP = 18;
+        while (!medir('Apretando espacio entre categorías, paso ' + pasosGap) && pasosGap < MAX_PASOS_GAP) {
+            pasosGap++;
+            var factorGap = 1 - (pasosGap * 0.04);
+            panel.querySelectorAll('.sugerencias-seccion').forEach(function(el) {
+                el.style.setProperty('margin-bottom', (12 * factorGap) + 'px', 'important');
+            });
+            panel.querySelectorAll('.sugerencias-seccion-titulo').forEach(function(el) {
+                el.style.setProperty('margin-bottom', (8 * factorGap) + 'px', 'important');
+            });
+        }
+        if (pasosGap > 0) resultado.espacioCategoriasReducido = true;
+        if (medir('Tras apretar categorías')) return resultado;
+
+        var vinoImg = panel.querySelector('.sugerencias-vino-imagen');
+        if (vinoImg && vinoImg.style.display !== 'none') {
+            ocultarPorAjuste(vinoImg);
+            resultado.imagenVinoQuitada = true;
+        }
+        if (medir('Sin imagen vino')) return resultado;
+
+        var qrImg = panel.querySelector('.sugerencias-qr-img');
+        var qrYaEstabaVisible = qrImg && qrImg.style.display !== 'none' && qrImg.offsetHeight > 0;
+        if (qrImg) {
+            ocultarPorAjuste(qrImg);
+            if (qrYaEstabaVisible) resultado.qrQuitado = true;
+        }
+        if (medir('Sin QR')) return resultado;
+
+        var factor = 1, pasos = 0, MAX_PASOS = 12;
+
+        var bloqueFijoActual = medirBloqueFijo(panel);
+        var disponibleParaCategoriasPx = maxAlturaPx - bloqueFijoActual.alturaFija;
+        var alturaCategoriasActualPx = 0;
+        panel.querySelectorAll('.sugerencias-seccion').forEach(function(sec) {
+            var titulo = sec.querySelector('.sugerencias-seccion-titulo');
+            if (titulo && titulo.textContent.indexOf('BODEGA') !== -1) return;
+            alturaCategoriasActualPx += sec.getBoundingClientRect().height;
+        });
+        if (alturaCategoriasActualPx > 0 && disponibleParaCategoriasPx > 0) {
+            var factorEstimado = disponibleParaCategoriasPx / alturaCategoriasActualPx;
+            var factorInicial = Math.max(0.7, Math.min(1, factorEstimado - 0.03));
+            if (factorInicial < 1) {
+                factor = factorInicial;
+                pasos = Math.max(1, Math.round((1 - factor) / 0.03));
+                panel.style.setProperty('font-size', (factor * 100) + '%', 'important');
+                panel.querySelectorAll('.sugerencias-plato').forEach(function(el) {
+                    el.style.setProperty('margin-bottom', (5 * factor) + 'px', 'important');
+                });
+                panel.querySelectorAll('.sugerencias-seccion').forEach(function(el) {
+                    el.style.setProperty('margin-bottom', (12 * factor) + 'px', 'important');
+                });
+                panel.querySelectorAll('.sugerencias-seccion-titulo').forEach(function(el) {
+                    el.style.setProperty('margin-bottom', (8 * factor) + 'px', 'important');
+                });
+                resultado.medidas.push('Salto directo a factor ' + (factor * 100).toFixed(0) + '% (disponible categorías: ' + mmDesdePx(disponibleParaCategoriasPx, maxAlturaPx) + 'mm, necesario: ' + mmDesdePx(alturaCategoriasActualPx, maxAlturaPx) + 'mm)');
+            }
+        }
+
+        while (!medir('Reduciendo texto, paso ' + pasos) && pasos < MAX_PASOS) {
+            factor -= 0.03;
+            pasos++;
+            panel.style.setProperty('font-size', (factor * 100) + '%', 'important');
+            panel.querySelectorAll('.sugerencias-plato').forEach(function(el) {
+                el.style.setProperty('margin-bottom', (5 * factor) + 'px', 'important');
+            });
+            panel.querySelectorAll('.sugerencias-seccion').forEach(function(el) {
+                el.style.setProperty('margin-bottom', (12 * factor) + 'px', 'important');
+            });
+            panel.querySelectorAll('.sugerencias-seccion-titulo').forEach(function(el) {
+                el.style.setProperty('margin-bottom', (8 * factor) + 'px', 'important');
+            });
+        }
+        if (pasos > 0) resultado.textoReducido = true;
+        return resultado;
+    }
+
+    function repartirEspacioSobrante(panel) {
+        if (!panel) return;
+
+        var probe = document.createElement('div');
+        probe.style.cssText = 'position:absolute; visibility:hidden; height:267mm; width:0;';
+        document.body.appendChild(probe);
+        var maxAlturaPx = probe.getBoundingClientRect().height;
+        document.body.removeChild(probe);
+
+        var footer = panel.querySelector('.sugerencias-footer');
+        if (!footer) return;
+        void panel.offsetHeight;
+
+        var panelRect = panel.getBoundingClientRect();
+        var footerRect = footer.getBoundingClientRect();
+        var alturaContenidoReal = footerRect.bottom - panelRect.top;
+        var libre = maxAlturaPx - alturaContenidoReal;
+        if (libre <= 0) return;
+
+        var secciones = [];
+        panel.querySelectorAll('.sugerencias-seccion').forEach(function(sec) {
+            var titulo = sec.querySelector('.sugerencias-seccion-titulo');
+            if (titulo && titulo.textContent.indexOf('BODEGA') === -1) secciones.push(sec);
+        });
+        if (secciones.length === 0) return;
+
+        var extraPorSeccion = libre / secciones.length;
+        secciones.forEach(function(sec) {
+            var actual = parseFloat(getComputedStyle(sec).marginBottom) || 0;
+            sec.style.setProperty('margin-bottom', (actual + extraPorSeccion) + 'px', 'important');
+        });
+    }
+
+    // Punto de entrada único: espera a que carguen las imágenes del panel y
+    // aplica el ajuste completo (encaje a una página + reparto del hueco
+    // sobrante). Devuelve una promesa con el resultado, usado tanto para el
+    // aviso en pantalla como para el de la ventana de impresión.
+    function ajustarYRepartir(panel) {
+        if (!panel) return Promise.resolve(null);
+        return esperarImagenes(panel).then(function() {
+            var resultado = ajustarAUnaPagina(panel);
+            repartirEspacioSobrante(panel);
+            panel.querySelectorAll('.sugerencias-debug-a4').forEach(function(el) {
+                el.style.removeProperty('display');
+            });
+            posicionarDebugA4(panel);
+            return resultado;
+        });
+    }
+
+    // NUEVO: aviso EN PANTALLA (dentro de la propia pestaña) de que la vista
+    // previa se ha reajustado para caber en una A4 — antes este aviso solo
+    // existía dentro de la ventana emergente de impresión, así que la persona
+    // solo se enteraba de la reducción de tamaño/letra al pulsar "Imprimir".
+    function mostrarAvisoInline(contenedor, panel, resultado) {
+        var avisoPrevio = contenedor.querySelector('.sugerencias-aviso-ajuste-inline');
+        if (avisoPrevio) avisoPrevio.remove();
+        if (!resultado) return;
+        if (!resultado.espacioCategoriasReducido && !resultado.imagenVinoQuitada && !resultado.qrQuitado && !resultado.textoReducido) return;
+
+        var mensajes = [];
+        if (resultado.espacioCategoriasReducido) mensajes.push('Se ha reducido un poco el espacio entre categorías.');
+        if (resultado.imagenVinoQuitada) mensajes.push('No se usará la imagen del vino, para que quepa todo en una hoja A4.');
+        if (resultado.qrQuitado) mensajes.push('No se incluirá el código QR, para que quepa todo en una hoja A4.');
+        if (resultado.textoReducido) mensajes.push('Se ha reducido ligeramente el tamaño de letra y el espaciado.');
+
+        var aviso = document.createElement('div');
+        aviso.className = 'sugerencias-aviso-ajuste-inline';
+        aviso.style.cssText = 'max-width: 190mm; margin: 12px auto 0 auto; background:#fff7ed; border:1px solid #f59e0b; color:#92400e; padding:10px 16px; border-radius:8px; font-size:13px; font-family: Montserrat, sans-serif; box-sizing: border-box;';
+        aviso.innerHTML = '<b>⚠️ Esta vista previa ya está ajustada a una página A4 (así saldrá impresa):</b>' +
+            '<ul style="margin:6px 0 0 18px; padding:0;">' + mensajes.map(function(m) { return '<li>' + m + '</li>'; }).join('') + '</ul>';
+
+        if (panel && panel.parentNode) panel.parentNode.insertBefore(aviso, panel.nextSibling);
+        else contenedor.insertBefore(aviso, contenedor.firstChild);
+    }
+
+    // NUEVO: reejecuta el ajuste a una página sobre el panel YA visible en la
+    // pestaña (tras un cambio de opción como QR / imagen del vino / tamaño)
+    // para que la vista previa en pantalla siga siendo un espejo fiel de lo
+    // que saldrá impreso, sin tener que pulsar "Imprimir" para descubrirlo.
+    function reajustarVistaPrevia(modo) {
+        const config = SUGERENCIAS_CONFIG[modo];
+        if (!config) return;
+        const contenedor = document.getElementById(config.containerId);
+        if (!contenedor) return;
+        const panel = contenedor.querySelector('.sugerencias-panel');
+        if (!panel) return;
+        ajustarYRepartir(panel).then(function(resultado) {
+            mostrarAvisoInline(contenedor, panel, resultado);
+        });
+    }
 
     window.renderCarta = function(modo) {
         const config = SUGERENCIAS_CONFIG[modo];
@@ -342,6 +630,15 @@
 
         contenedor.innerHTML = html + controlesHtml;
         posicionarDebugA4(contenedor);
+
+        // NUEVO: ajusta la vista previa a una página A4 nada más renderizarla,
+        // el mismo cálculo que antes solo se aplicaba al pulsar "Imprimir"
+        // (ver ajustarYRepartir más arriba) — así lo que se ve en pantalla ya
+        // es lo que va a salir impreso, sin sorpresas de última hora.
+        const panelParaAjustar = contenedor.querySelector('.sugerencias-panel');
+        ajustarYRepartir(panelParaAjustar).then(function(resultado) {
+            mostrarAvisoInline(contenedor, panelParaAjustar, resultado);
+        });
     }
 
     window.imprimirSugerencias = function(modo) {
@@ -362,193 +659,23 @@
         // comunicación en silencio, sin error visible). Ahora el aviso se muestra DENTRO de esta
         // misma ventana de impresión, antes de imprimir, con las medidas reales en mm para poder
         // depurar si algo se quita sin hacer falta.
+        // MODIFICADO: el algoritmo de ajuste ya NO está duplicado aquí a mano — se serializan con
+        // .toString() las mismas funciones que usa la vista previa en pantalla (definidas arriba,
+        // ajustarAUnaPagina / repartirEspacioSobrante y sus auxiliares), para que solo exista UNA
+        // copia del cálculo y no puedan divergir con el tiempo. Sigue sin depender de window.opener
+        // por el mismo motivo de siempre: esta ventana es un documento JS completamente aparte. El
+        // panel que se copia (panelReal.outerHTML, más abajo) ya llega con el ajuste de la vista
+        // previa aplicado; aquí se resetea (limpiarAjustePrevio, al principio de ajustarAUnaPagina)
+        // y se recalcula desde cero por si la fuente o el layout rinden distinto en la ventana nueva.
         const scriptAjuste = `
-            function esperarImagenes(root) {
-                var imgs = Array.prototype.slice.call(root.querySelectorAll('img'));
-                return Promise.all(imgs.map(function(img) {
-                    if (img.complete) return Promise.resolve();
-                    return new Promise(function(resolve) {
-                        img.addEventListener('load', resolve);
-                        img.addEventListener('error', resolve);
-                    });
-                }));
-            }
-
-            function mmDesdePx(px, maxAlturaPx) { return (px * 267 / maxAlturaPx).toFixed(1); }
-
-            // NUEVO: mismo posicionamiento que en la pestaña general (ver posicionarDebugA4 en
-            // sugerencias-print.js) — duplicado aquí porque esta ventana emergente es un documento
-            // JS completamente aparte y no puede llamar a funciones del documento padre sin depender
-            // de window.opener (poco fiable con bloqueadores de popups).
-            function posicionarDebugA4(panel) {
-                var debugDiv = panel.querySelector('.sugerencias-debug-a4');
-                var header = panel.querySelector('.sugerencias-header-layout');
-                if (debugDiv && header) debugDiv.style.top = header.offsetTop + 'px';
-            }
-            posicionarDebugA4(document.querySelector('.sugerencias-panel'));
-
-            // NUEVO: mide por separado el "bloque fijo" de abajo — el aviso de alérgenos (2 líneas)
-            // más la sección BODEGA / WINE CELLAR completa (título + nombre del vino + imagen del
-            // vino a su escala actual, p.ej. 1.4x, + QR) — porque su altura NO depende de cuántos
-            // entrantes/principales/postres haya. Conociendo esta altura fija (y la de la cabecera,
-            // que tampoco varía) se puede calcular de una vez cuánto sitio le queda de verdad a
-            // Entrantes/Principales/Postres, en vez de ir remidiendo el panel entero a ciegas en
-            // cada paso.
-            function medirBloqueFijo(panel) {
-                var header = panel.querySelector('.sugerencias-header-layout');
-                var alturaHeader = header ? header.getBoundingClientRect().height : 0;
-
-                var footer = panel.querySelector('.sugerencias-footer');
-                var alturaFooter = footer ? footer.getBoundingClientRect().height : 0;
-
-                var alturaBodega = 0;
-                panel.querySelectorAll('.sugerencias-seccion-titulo').forEach(function(titulo) {
-                    if (titulo.textContent.indexOf('BODEGA') !== -1 && titulo.parentElement) {
-                        alturaBodega = titulo.parentElement.getBoundingClientRect().height;
-                    }
-                });
-
-                return { alturaHeader: alturaHeader, alturaFooter: alturaFooter, alturaBodega: alturaBodega, alturaFija: alturaHeader + alturaFooter + alturaBodega };
-            }
-
-            function ajustarAUnaPagina() {
-                var resultado = { espacioCategoriasReducido: false, imagenVinoQuitada: false, qrQuitado: false, textoReducido: false, medidas: [] };
-                var panel = document.querySelector('.sugerencias-panel');
-                if (!panel) return resultado;
-
-                var probe = document.createElement('div');
-                probe.style.cssText = 'position:absolute; visibility:hidden; height:267mm; width:0;';
-                document.body.appendChild(probe);
-                var maxAlturaPx = probe.getBoundingClientRect().height;
-                document.body.removeChild(probe);
-
-                // CORREGIDO: antes había que ocultar aquí las filas de selectores y el botón de
-                // imprimir antes de medir (solo existían para pantalla, se ocultaban vía @media
-                // print). Ya no hace falta: ahora viven en un box de controles aparte, en la
-                // página principal — a esta ventana de impresión solo se copia la hoja real
-                // (.sugerencias-panel), así que nunca llegan a existir aquí.
-                // .sugerencias-debug-a4 SÍ sigue formando parte de la hoja, y sigue haciendo falta
-                // ocultarlo antes de medir. Es position:absolute con una altura FIJA de 267mm
-                // dentro de un panel position:relative — eso hace que cuente para el scrollHeight
-                // del panel (el navegador incluye el alcance de los descendientes posicionados al
-                // calcularlo). En cuanto el contenido real se queda más corto que esos 267mm fijos,
-                // el rectángulo pasa a ser el elemento más bajo del panel y el scrollHeight deja de
-                // reflejar el contenido real — se queda "pegado" a la altura del rectángulo y no
-                // baja aunque se quite la imagen del vino, el QR, o se reduzca el texto. Se vuelve
-                // a mostrar y reposicionar al final, con el resultado ya decidido, solo para que la
-                // persona lo vea en la pantalla de aviso.
-                document.querySelectorAll('.sugerencias-debug-a4').forEach(function(el) {
-                    el.style.setProperty('display', 'none', 'important');
-                });
-
-
-                function medir(etiqueta) {
-                    void panel.offsetHeight;
-                    var bloqueFijo = medirBloqueFijo(panel);
-                    var alturaMm = mmDesdePx(panel.scrollHeight, maxAlturaPx);
-                    var pieFijoMm = mmDesdePx(bloqueFijo.alturaFija, maxAlturaPx);
-                    var disponibleCategoriasMm = mmDesdePx(maxAlturaPx - bloqueFijo.alturaFija, maxAlturaPx);
-                    resultado.medidas.push(etiqueta + ': ' + alturaMm + 'mm de 267mm (cabecera+alérgenos+BODEGA: ' + pieFijoMm + 'mm → tope máximo disponible para Entrantes/Principales/Postres: ' + disponibleCategoriasMm + 'mm)');
-                    // CORREGIDO: la tolerancia estaba en "+2" sin unidad — como maxAlturaPx está en
-                    // píxeles, esos "+2" eran 2px (~0.5mm), un margen casi nulo. Se calcula ahora el
-                    // equivalente real a 1mm de margen de tolerancia (imperceptible en el resultado
-                    // impreso), para no forzar pasos de más por un desajuste de décimas de milímetro.
-                    var pxPorMm = maxAlturaPx / 267;
-                    return panel.scrollHeight <= (maxAlturaPx + pxPorMm);
-                }
-
-                if (medir('Original')) return resultado;
-
-                // AFINADO: pasos más finos (4% en vez de 15%, hasta 18 pasos = 72% de reducción
-                // máxima en vez de solo 60%) — con los saltos grandes de antes, un desajuste de
-                // apenas 0.5mm por encima del límite (267mm + ~0.5mm de margen de tolerancia) ya
-                // hacía saltar directamente a quitar la imagen del vino. Con pasos finos, el bucle
-                // encuentra el punto justo de apriete que hace falta y para ahí mismo.
-                var pasosGap = 0, MAX_PASOS_GAP = 18;
-                while (!medir('Apretando espacio entre categorías, paso ' + pasosGap) && pasosGap < MAX_PASOS_GAP) {
-                    pasosGap++;
-                    var factorGap = 1 - (pasosGap * 0.04); // 12px baja de 4% en 4% hasta el 72% (3.4px) como mucho
-                    panel.querySelectorAll('.sugerencias-seccion').forEach(function(el) {
-                        el.style.setProperty('margin-bottom', (12 * factorGap) + 'px', 'important');
-                    });
-                    panel.querySelectorAll('.sugerencias-seccion-titulo').forEach(function(el) {
-                        el.style.setProperty('margin-bottom', (8 * factorGap) + 'px', 'important');
-                    });
-                }
-                if (pasosGap > 0) resultado.espacioCategoriasReducido = true;
-                if (medir('Tras apretar categorías')) return resultado;
-
-                var vinoImg = panel.querySelector('.sugerencias-vino-imagen');
-                if (vinoImg && vinoImg.style.display !== 'none') {
-                    vinoImg.style.setProperty('display', 'none', 'important');
-                    resultado.imagenVinoQuitada = true;
-                }
-                if (medir('Sin imagen vino')) return resultado;
-
-                var qrImg = panel.querySelector('.sugerencias-qr-img');
-                var qrYaEstabaVisible = qrImg && qrImg.style.display !== 'none' && qrImg.offsetHeight > 0;
-                if (qrImg) {
-                    qrImg.style.setProperty('display', 'none', 'important');
-                    if (qrYaEstabaVisible) resultado.qrQuitado = true;
-                }
-                if (medir('Sin QR')) return resultado;
-
-                var factor = 1, pasos = 0, MAX_PASOS = 12;
-
-                // NUEVO: en vez de arrancar la reducción de texto en 100% e ir bajando de 3% en 3%
-                // a ciegas (hasta 12 remedidas del panel entero), se calcula primero un factor de
-                // arranque directamente a partir del tope máximo real ya conocido (cabecera +
-                // alérgenos + BODEGA a su escala actual) frente a lo que ocupan de verdad ahora
-                // mismo Entrantes/Principales/Postres. Así se salta en un solo paso cerca del punto
-                // necesario, y el bucle de abajo solo tiene que afinar (normalmente 0-1 pasos más)
-                // en vez de recorrer la escala entera paso a paso.
-                var bloqueFijoActual = medirBloqueFijo(panel);
-                var disponibleParaCategoriasPx = maxAlturaPx - bloqueFijoActual.alturaFija;
-                var alturaCategoriasActualPx = 0;
-                panel.querySelectorAll('.sugerencias-seccion').forEach(function(sec) {
-                    var titulo = sec.querySelector('.sugerencias-seccion-titulo');
-                    if (titulo && titulo.textContent.indexOf('BODEGA') !== -1) return; // Bodega ya cuenta como bloque fijo
-                    alturaCategoriasActualPx += sec.getBoundingClientRect().height;
-                });
-                if (alturaCategoriasActualPx > 0 && disponibleParaCategoriasPx > 0) {
-                    var factorEstimado = disponibleParaCategoriasPx / alturaCategoriasActualPx;
-                    // -0.03 de margen de seguridad extra (el texto no encoge 100% proporcional al alto
-                    // por el interlineado), y nunca se salta de golpe por debajo del 70%.
-                    var factorInicial = Math.max(0.7, Math.min(1, factorEstimado - 0.03));
-                    if (factorInicial < 1) {
-                        factor = factorInicial;
-                        pasos = Math.max(1, Math.round((1 - factor) / 0.03));
-                        document.documentElement.style.setProperty('font-size', (factor * 100) + '%', 'important');
-                        panel.querySelectorAll('.sugerencias-plato').forEach(function(el) {
-                            el.style.setProperty('margin-bottom', (5 * factor) + 'px', 'important');
-                        });
-                        panel.querySelectorAll('.sugerencias-seccion').forEach(function(el) {
-                            el.style.setProperty('margin-bottom', (12 * factor) + 'px', 'important');
-                        });
-                        panel.querySelectorAll('.sugerencias-seccion-titulo').forEach(function(el) {
-                            el.style.setProperty('margin-bottom', (8 * factor) + 'px', 'important');
-                        });
-                        resultado.medidas.push('Salto directo a factor ' + (factor * 100).toFixed(0) + '% (disponible categorías: ' + mmDesdePx(disponibleParaCategoriasPx, maxAlturaPx) + 'mm, necesario: ' + mmDesdePx(alturaCategoriasActualPx, maxAlturaPx) + 'mm)');
-                    }
-                }
-
-                while (!medir('Reduciendo texto, paso ' + pasos) && pasos < MAX_PASOS) {
-                    factor -= 0.03;
-                    pasos++;
-                    document.documentElement.style.setProperty('font-size', (factor * 100) + '%', 'important');
-                    panel.querySelectorAll('.sugerencias-plato').forEach(function(el) {
-                        el.style.setProperty('margin-bottom', (5 * factor) + 'px', 'important');
-                    });
-                    panel.querySelectorAll('.sugerencias-seccion').forEach(function(el) {
-                        el.style.setProperty('margin-bottom', (12 * factor) + 'px', 'important');
-                    });
-                    panel.querySelectorAll('.sugerencias-seccion-titulo').forEach(function(el) {
-                        el.style.setProperty('margin-bottom', (8 * factor) + 'px', 'important');
-                    });
-                }
-                if (pasos > 0) resultado.textoReducido = true;
-                return resultado;
-            }
+            ${esperarImagenes.toString()}
+            ${mmDesdePx.toString()}
+            ${medirBloqueFijo.toString()}
+            ${posicionarDebugA4.toString()}
+            ${limpiarAjustePrevio.toString()}
+            ${ocultarPorAjuste.toString()}
+            ${ajustarAUnaPagina.toString()}
+            ${repartirEspacioSobrante.toString()}
 
             function mostrarAviso(resultado) {
                 if (!resultado.espacioCategoriasReducido && !resultado.imagenVinoQuitada && !resultado.qrQuitado && !resultado.textoReducido) return;
@@ -568,66 +695,15 @@
                 return caja;
             }
 
-            // NUEVO: aunque el contenido quepa en una página (con o sin reducciones), casi nunca
-            // ocupa EXACTAMENTE 267mm — sobra algo de hueco. Antes ese hueco quedaba todo junto
-            // entre BODEGA y el aviso de alérgenos (un salto grande y feo), porque .sugerencias-body
-            // tiene flex:1 (se estira para llenar el alto disponible) pero sus hijos no repartían
-            // ese sobrante entre ellos. Aquí se mide el hueco real y se reparte como margen extra
-            // ÚNICAMENTE entre Entrantes/Principales/Postres (nunca tras BODEGA), para que BODEGA
-            // quede siempre pegada al aviso de alérgenos, sea cual sea el hueco sobrante.
-            function repartirEspacioSobrante() {
-                var panel = document.querySelector('.sugerencias-panel');
-                if (!panel) return;
-
-                var probe = document.createElement('div');
-                probe.style.cssText = 'position:absolute; visibility:hidden; height:267mm; width:0;';
-                document.body.appendChild(probe);
-                var maxAlturaPx = probe.getBoundingClientRect().height;
-                document.body.removeChild(probe);
-
-                var footer = panel.querySelector('.sugerencias-footer');
-                if (!footer) return;
-                void panel.offsetHeight;
-
-                // CORREGIDO: panel.scrollHeight no servía aquí — .sugerencias-panel tiene
-                // min-height:267mm !important, así que el propio panel YA mide 267mm aunque el
-                // contenido real ocupe mucho menos (una carta corta), y "maxAlturaPx - scrollHeight"
-                // salía siempre ~0 (nunca se repartía nada). Se mide en su lugar dónde termina DE
-                // VERDAD el contenido: el borde inferior real del footer respecto al borde superior
-                // de la hoja — esa es la altura que el contenido ocupa de verdad.
-                var panelRect = panel.getBoundingClientRect();
-                var footerRect = footer.getBoundingClientRect();
-                var alturaContenidoReal = footerRect.bottom - panelRect.top;
-                var libre = maxAlturaPx - alturaContenidoReal;
-                if (libre <= 0) return; // no hay hueco que repartir (o el contenido ya está muy justo)
-
-                var secciones = [];
-                panel.querySelectorAll('.sugerencias-seccion').forEach(function(sec) {
-                    var titulo = sec.querySelector('.sugerencias-seccion-titulo');
-                    if (titulo && titulo.textContent.indexOf('BODEGA') === -1) secciones.push(sec);
-                });
-                if (secciones.length === 0) return;
-
-                // MODIFICADO: sin tope — se reparte el sobrante COMPLETO entre Entrantes/
-                // Principales/Postres. Con cartas muy cortas (pocas categorías) esto puede dejar
-                // más separación entre ellas de lo habitual, pero es preferible a dejar un hueco
-                // muerto sin usar después del aviso de alérgenos. CONFIRMADO funcionando
-                // correctamente (diagnóstico visual verificado sobre PDF real).
-                var extraPorSeccion = libre / secciones.length;
-                secciones.forEach(function(sec) {
-                    var actual = parseFloat(getComputedStyle(sec).marginBottom) || 0;
-                    sec.style.setProperty('margin-bottom', (actual + extraPorSeccion) + 'px', 'important');
-                });
-            }
-
             esperarImagenes(document.body).then(function() {
-                var resultado = ajustarAUnaPagina();
-                repartirEspacioSobrante();
+                var panel = document.querySelector('.sugerencias-panel');
+                var resultado = ajustarAUnaPagina(panel);
+                repartirEspacioSobrante(panel);
                 // Volver a mostrar el rectángulo de depuración con el resultado YA decidido (no
                 // afecta a ninguna medición a partir de aquí) y reposicionarlo, porque la cabecera
                 // puede haberse movido un poco tras apretar el espacio entre categorías.
-                var debugDiv = document.querySelector('.sugerencias-debug-a4');
-                if (debugDiv) { debugDiv.style.removeProperty('display'); posicionarDebugA4(document.querySelector('.sugerencias-panel')); }
+                panel.querySelectorAll('.sugerencias-debug-a4').forEach(function(el) { el.style.removeProperty('display'); });
+                posicionarDebugA4(panel);
                 var caja = mostrarAviso(resultado);
                 if (!caja) {
                     // Nada que avisar: todo cabía de partida, seguimos con el flujo rápido de siempre
