@@ -47,7 +47,7 @@ const WEB_APP_URL_RESTAURANTE001 = 'https://script.google.com/macros/s/AKfycbxon
 
 // CONFIGURACION US OPEN (restaurante002)
 const CSV_URL_RESTAURANTE002 = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSOWewZgqWZEFYiIMh8DTUX5tr6EEXBwvUJGr7hrpkCG91UhE5xU8fDJ12qcRVrT69xfZ5NGGGyhNCE/pub?output=csv'; 
-const WEB_APP_URL_RESTAURANTE002 = 'https://script.google.com/macros/s/AKfycbzfA3OnavQcmM3IG-7-PeHJw3U44UH5CREnLtwypxDxNQehQ4ZuM6iYqu5lt0VmUnKn/exec';
+const WEB_APP_URL_RESTAURANTE002 = 'https://script.google.com/macros/s/AKfycbwpeg72_mQqbHgR9TkBTieTEeo6qC2NO80-_YLUuRHG7Z2KUhcJkcgBXJz49TveTWfD/exec';
 
 // MODIFICADO: Función auxiliar pura. Recibe el modo explícitamente.
 function getWebAppUrl(modo) {
