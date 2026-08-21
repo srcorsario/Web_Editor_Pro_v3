@@ -5,16 +5,26 @@
 
 /**
  * Separa el nombre principal de los detalles/uvas usando el separador '//'
- * @param {String} texto 
- * @returns {Object} { nombre: String, uvas: String }
+ * MODIFICADO: además de nombre/uvas (compatibilidad con el campo dedicado de uva de los
+ * vinos, que sigue leyendo solo la primera pareja "//.../ /"), ahora también devuelve
+ * "opciones": el array COMPLETO de palabras entre "//.../ /" en orden (sabores, ingredientes
+ * intercambiables...), usado por la rueda de "Opciones del plato" en abrirEditor(). Los
+ * índices IMPARES del split (1, 3, 5...) son siempre opciones; los PARES son el nombre y el
+ * texto de relleno entre opciones (", ", " - "...), que se descarta — a propósito no se
+ * filtran los trozos vacíos ANTES de separar, para no desplazar esa paridad.
+ * @param {String} texto
+ * @returns {Object} { nombre: String, uvas: String, opciones: String[] }
  */
 function desglosarNombre(texto) {
-    if (!texto) return { nombre: "", uvas: "" };
+    if (!texto) return { nombre: "", uvas: "", opciones: [] };
     const partes = texto.split('//');
-    return {
-        nombre: partes[0] ? partes[0].trim() : "",
-        uvas: partes[1] ? partes[1].trim() : ""
-    };
+    const nombre = partes[0] ? partes[0].trim() : "";
+    const opciones = [];
+    for (let i = 1; i < partes.length; i += 2) {
+        const tok = partes[i] ? partes[i].trim() : "";
+        if (tok !== "") opciones.push(tok);
+    }
+    return { nombre, uvas: opciones[0] || "", opciones };
 }
 
 /**

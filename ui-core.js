@@ -219,6 +219,7 @@ export const UICore = {
         const idxCarpeta = findExactIdx('CARPETA');
         const idxImagen = findExactIdx('ARCHIVO_FOTO');
         const idxAlergenos = findExactIdx('ALERGENOS_COD');
+        const idxOpcionesInactivas = findExactIdx('OPCIONES_INACTIVAS');
 
         if (idxId === -1) return window.UI.log("[Error Crítico] No se encuentra la columna 'ID'.");
 
@@ -246,7 +247,8 @@ export const UICore = {
                 activa: valActiva,
                 carpeta: idxCarpeta !== -1 ? (row[idxCarpeta] || "") : "",
                 archivo_foto: idxImagen !== -1 ? (row[idxImagen] || "") : "",
-                alergenos_cod: idxAlergenos !== -1 ? (row[idxAlergenos] || "") : ""
+                alergenos_cod: idxAlergenos !== -1 ? (row[idxAlergenos] || "") : "",
+                opciones_inactivas: idxOpcionesInactivas !== -1 ? (row[idxOpcionesInactivas] || "") : ""
             };
 
             stateContainer.headers.forEach((h, i) => {

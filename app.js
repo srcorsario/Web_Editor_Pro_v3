@@ -36,23 +36,26 @@ let opcionesENActuales = [];
 // a mostrarse ni con la rueda ⚙️ ni al crear un plato nuevo. Los nombres
 // coinciden exactamente con los que ya usas en la columna Alergenos_Cod y con
 // los 16 iconos que ya tienes en imagenes/alergenos/.
+// MODIFICADO: antes era "EMOJI NOMBRE" (p.ej. "🌾 GLUTEN") — ahora que abrirEditor() pinta
+// cada botón con el icono real de imagenes/alergenos/<CODIGO>.webp (el mismo que usa la web
+// pública) en vez de un emoji, la lista pasa a ser solo los códigos.
 const ALERGENOS_LISTA = [
-    "🌾 GLUTEN",
-    "🦐 CRUSTACEO",
-    "🥚 HUEVO",
-    "🐟 PESCADO",
-    "🥜 CACAHUETE",
-    "🫘 SOJA",
-    "🥛 LACTOSA",
-    "🌰 FRUTOSCASCARA",
-    "🥬 APIO",
-    "🟡 MOSTAZA",
-    "◽ SESAMO",
-    "🧪 SULFITOS",
-    "🫛 ALTRAMUCES",
-    "🐚 MOLUSCO",
-    "🥦 VEGETARIANO",
-    "🌱 VEGANO"
+    "GLUTEN",
+    "CRUSTACEO",
+    "HUEVO",
+    "PESCADO",
+    "CACAHUETE",
+    "SOJA",
+    "LACTOSA",
+    "FRUTOSCASCARA",
+    "APIO",
+    "MOSTAZA",
+    "SESAMO",
+    "SULFITOS",
+    "ALTRAMUCES",
+    "MOLUSCO",
+    "VEGETARIANO",
+    "VEGANO"
 ];
 
 // CORREGIDO: esta constante también faltaba por completo (no estaba definida
@@ -123,11 +126,13 @@ async function cargar(retryCount = 0) {
             if (!isNaN(id)) {
                 let item = {
                     id: id,
-                    precio: c[1] || "0.00", 
+                    precio: c[1] || "0.00",
                     activa: (c[2] || "").trim().toUpperCase() === "SI",
                     carpeta: c[4] || "",
                     imagen: c[5] || "",
-                    alergenos: superLimpiar(c[6])
+                    alergenos: superLimpiar(c[6]),
+                    // NUEVO: posiciones desactivadas de "Opciones del plato" (ver languages.js).
+                    opcionesInactivas: superLimpiar(c[window.IDX_OPCIONES_INACTIVAS] || "")
                 };
                 
                 if (window.IDIOMAS_ORDEN && window.IDIOMAS_CSV_INDICES) {
@@ -376,17 +381,44 @@ function abrirEditor(id, esNuevo = false) {
     const alergenosGrid = document.getElementById('alergenos-grid');
     if (alergenosGrid) {
         const actuales = (p.alergenos || "").split(',').map(s => s.trim().toUpperCase()).filter(a => a.length > 0).map(a => a.split(" ").pop());
+        // MODIFICADO: en vez de un emoji, cada botón pinta el icono real de
+        // imagenes/alergenos/<CODIGO>.webp (el mismo que usa la web pública), para
+        // reconocerlo de un vistazo al activar/desactivar. El código para guardar ya no se
+        // lee del texto del botón — va en data-code (ver aplicarCambiosPlato()).
+        const botonAlergeno = (codigo, sel) => `<div class="alergeno-btn ${sel ? 'selected' : ''}" data-code="${codigo}" onclick="this.classList.toggle('selected')"><img src="${PATH_ALERGENOS}${codigo}.webp" alt="" loading="lazy" onerror="this.style.display='none'"><span>${codigo}</span></div>`;
         let alergenosHtml = "";
         if (esVino) {
             const sel = actuales.includes("SULFITOS") || actuales.includes("SULFITO");
-            alergenosHtml = `<div class="alergeno-btn ${sel ? 'selected' : ''}" onclick="this.classList.toggle('selected')">🧪 SULFITOS</div>`;
+            alergenosHtml = botonAlergeno("SULFITOS", sel);
         } else {
-            alergenosHtml = ALERGENOS_LISTA.map(a => {
-                const sel = actuales.some(act => act.includes(a.split(" ").pop()));
-                return `<div class="alergeno-btn ${sel ? 'selected' : ''}" onclick="this.classList.toggle('selected')">${a}</div>`;
+            alergenosHtml = ALERGENOS_LISTA.map(codigo => {
+                const sel = actuales.some(act => act.includes(codigo));
+                return botonAlergeno(codigo, sel);
             }).join('');
         }
         alergenosGrid.innerHTML = alergenosHtml;
+    }
+
+    // NUEVO: rueda de "Opciones del plato" — una palabra entre "//.../ /" del Nombre_ES por
+    // botón (sabores, ingredientes intercambiables...), para activar/desactivar sin tener que
+    // editar el texto. No se muestra para vinos (que ya tienen su propio campo dedicado de
+    // uva) ni cuando el plato no tiene ninguna opción detectada.
+    const contenedorOpciones = document.getElementById('contenedor-opciones-plato');
+    if (contenedorOpciones) {
+        const opcionesDetectadas = dataEs.opciones || [];
+        if (!esVino && opcionesDetectadas.length > 0) {
+            const inactivasActuales = (p.opcionesInactivas || "").split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
+            const opcionesHtml = opcionesDetectadas.map((opcion, idx) => {
+                const pos = idx + 1;
+                const activo = !inactivasActuales.includes(pos);
+                return `<div class="opcion-btn ${activo ? 'selected' : ''}" data-pos="${pos}" onclick="this.classList.toggle('selected')">${opcion}</div>`;
+            }).join('');
+            contenedorOpciones.innerHTML = `<div class="input-group"><label class="label-seccion">Opciones del Plato (activar/desactivar)</label><div class="opciones-grid">${opcionesHtml}</div></div>`;
+            contenedorOpciones.style.display = "";
+        } else {
+            contenedorOpciones.innerHTML = "";
+            contenedorOpciones.style.display = "none";
+        }
     }
     
     const containerCroquetas = document.getElementById('contenedor-croquetas');
@@ -688,27 +720,47 @@ function aplicarCambiosPlato() {
     if (window.IDIOMAS_ORDEN) {
         window.IDIOMAS_ORDEN.forEach(l => {
             let nom = superLimpiar(document.getElementById(`edit-${l}`)?.value || "");
-            const inputUva = document.getElementById(`edit-${l}-uvas`);
-            const uvas = (inputUva && inputUva.style.display !== "none") ? superLimpiar(inputUva.value) : "";
-            
             if (esVino) nom = formatWineName(nom);
-            p[l] = uvas ? `${nom} // ${uvas}` : nom;
+
+            if (esVino) {
+                // Vinos: sin cambios — un único detalle/uva editable por su propio campo.
+                const inputUva = document.getElementById(`edit-${l}-uvas`);
+                const uvas = (inputUva && inputUva.style.display !== "none") ? superLimpiar(inputUva.value) : "";
+                p[l] = uvas ? `${nom} // ${uvas}` : nom;
+            } else {
+                // MODIFICADO: el resto de platos puede tener VARIAS opciones entre "//.../ /"
+                // (ver "Opciones del Plato"), que aquí no se editan por texto — solo se
+                // activan/desactivan (eso vive aparte, en p.opcionesInactivas). Por eso se
+                // conserva tal cual el texto original desde la primera "//" en adelante, y
+                // solo se sustituye el nombre (lo que va ANTES de la primera "//"). Antes esto
+                // se reconstruía como "nombre // uvas" con el campo de uva (oculto y vacío
+                // para platos normales), lo que BORRABA silenciosamente cualquier opción ya
+                // escrita a mano en la hoja en cuanto se pulsaba "Aplicar Cambios".
+                const original = p[l] || "";
+                const idxSlash = original.indexOf('//');
+                const sufijoOpciones = idxSlash !== -1 ? original.substring(idxSlash) : "";
+                p[l] = sufijoOpciones ? `${nom} ${sufijoOpciones}` : nom;
+            }
         });
     }
-    
+
     let preVal = document.getElementById('edit-precio').value || "0.00";
     p.precio = parseFloat(preVal).toFixed(2);
     if(isNaN(p.precio)) p.precio = "0.00";
-    
+
     p.imagen = superLimpiar(document.getElementById('edit-imagen').value);
-    
+
     const selectedAlergenos = document.querySelectorAll('.alergeno-btn.selected');
-    p.alergenos = Array.from(selectedAlergenos).map(el => {
-        let rawText = el.innerText.trim().toUpperCase();
-        let spaceIdx = rawText.indexOf(' ');
-        return spaceIdx !== -1 ? rawText.substring(spaceIdx + 1).trim() : rawText;
-    }).join(', ');
-    
+    p.alergenos = Array.from(selectedAlergenos).map(el => el.dataset.code || "").filter(c => c).join(', ');
+
+    // NUEVO: guarda las posiciones (1-based) de las "Opciones del Plato" que se dejaron
+    // DESACTIVADAS (no seleccionadas) — el texto de las opciones en sí no se toca, ver arriba.
+    const botonesOpciones = document.querySelectorAll('.opcion-btn');
+    p.opcionesInactivas = Array.from(botonesOpciones)
+        .filter(el => !el.classList.contains('selected'))
+        .map(el => el.dataset.pos)
+        .join(',');
+
     window.hayCambiosSinGuardar = true;
     cerrarModal('modal-editor');
     renderizar();
@@ -755,14 +807,15 @@ function prepararNuevoPlato(baseId, folder) {
         return; 
     } 
 
-    datosTempNuevo = { 
-        id: nuevoId, 
-        precio: "0.00", 
-        activa: true, 
-        carpeta: folder, 
-        imagen: "", 
-        alergenos: "" 
-    }; 
+    datosTempNuevo = {
+        id: nuevoId,
+        precio: "0.00",
+        activa: true,
+        carpeta: folder,
+        imagen: "",
+        alergenos: "",
+        opcionesInactivas: ""
+    };
     
     if (baseId >= 12200 && baseId <= 12299) datosTempNuevo.imagen = "croquetasvegetarianas01.webp"; 
     else if (baseId >= 12100 && baseId <= 12199) datosTempNuevo.imagen = "croquetas01.webp"; 
@@ -794,7 +847,7 @@ async function enviarAlExcel() {
     sessionStorage.setItem('optState_' + modo, JSON.stringify(window.optimisticState[modo]));
     
     const payload = datosLocales.map(p => {
-        let obj = { id: p.id, precio: p.precio, activa: p.activa ? 'si' : 'no', carpeta: p.carpeta, imagen: p.imagen, alergenos: p.alergenos };
+        let obj = { id: p.id, precio: p.precio, activa: p.activa ? 'si' : 'no', carpeta: p.carpeta, imagen: p.imagen, alergenos: p.alergenos, opciones_inactivas: p.opcionesInactivas || "" };
         if (window.IDIOMAS_ORDEN) {
             window.IDIOMAS_ORDEN.forEach(l => { obj[`nombre_${l}`] = p[l] || ""; });
         }

@@ -436,6 +436,40 @@ input:checked + .slider-switch:before { transform: translateX(18px); }
 .alergeno-btn:hover { background: #fdfefe; border-color: #bbb; }
 .alergeno-btn.selected { background: var(--primario); color: white; border-color: var(--primario); box-shadow: 0 2px 5px rgba(230, 126, 34, 0.3); }
 
+/* NUEVO: icono real (imagenes/alergenos/<CODIGO>.webp) en vez de emoji — mismo icono que ya
+   se ve en la web pública, para reconocerlo de un vistazo al activar/desactivar. */
+.alergeno-btn img { width: 20px; height: 20px; object-fit: contain; flex-shrink: 0; }
+
+/* NUEVO: rueda de "Opciones del plato" (sabores/ingredientes activables entre "//.../ /") —
+   mismo look que los botones de alérgenos, para que se reconozca como el mismo tipo de control. */
+.opciones-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(115px, 1fr));
+    gap: 6px;
+    margin-top: 5px;
+    max-height: 30vh;
+    overflow-y: auto;
+}
+.opcion-btn {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 8px 6px;
+    font-size: 0.7rem;
+    text-align: center;
+    cursor: pointer;
+    background: #fff;
+    font-weight: 600;
+    color: var(--texto);
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.opcion-btn:hover { background: #fdfefe; border-color: #bbb; }
+.opcion-btn.selected { background: var(--verde, #27ae60); color: white; border-color: var(--verde, #27ae60); box-shadow: 0 2px 5px rgba(39, 174, 96, 0.3); }
+
 .btn-traductor-magico { width: 100%; padding: 12px; background: #9b59b6; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin: 10px 0; }
 .btn-traductor-magico:disabled { background: #bdc3c7; cursor: not-allowed; }
 
