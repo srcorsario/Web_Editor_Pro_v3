@@ -1,7 +1,7 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '2.5.0'; // NUEVO: interruptor de activar/desactivar pestaña completa (categoriasDeshabilitadas, cargarEstadoCategorias, toggleCategoriaPestana)
+window.APP_VERSIONS.app = '2.6.0'; // NUEVO: interruptores GLOBALES de fotos/info (barra "Ajustes generales" sobre el acordeón), reutilizando categoriasDeshabilitadas/toggleCategoriaPestana con ids fijos "fotos"/"info"
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
@@ -279,6 +279,33 @@ function renderizar() {
     // interruptor de cada pestaña.
     const modoActual = window.currentMode || 'restaurante001';
 
+    // NUEVO: barra "Ajustes generales" (interruptores de fotos/info para TODA la web del
+    // restaurante actual, no por categoría). Usa el mismo mecanismo que las pestañas —misma
+    // hoja "Categorias", misma función toggleCategoriaPestana()— solo que con un id fijo
+    // ("fotos" / "info") en vez de cat.pestanaId. Se repinta en cada renderizar() para que
+    // refleje siempre el restaurante activo al cambiar de pestaña del editor.
+    const ajustesBar = document.getElementById('ajustes-generales-bar');
+    if (ajustesBar) {
+        const fotosActivas = !categoriasDeshabilitadas[modoActual].has('fotos');
+        const infoActiva = !categoriasDeshabilitadas[modoActual].has('info');
+        ajustesBar.innerHTML = `
+            <span class="ajustes-generales-titulo">Ajustes generales de la web:</span>
+            <div class="ajustes-generales-item">
+                <label class="switch-container" title="Mostrar/ocultar el icono de fotos (galería) en toda la web">
+                    <input type="checkbox" ${fotosActivas ? 'checked' : ''} onchange="toggleCategoriaPestana('fotos', this.checked, this)">
+                    <span class="slider-switch"></span>
+                </label>
+                <span class="ajustes-generales-label">📸 Fotos</span>
+            </div>
+            <div class="ajustes-generales-item">
+                <label class="switch-container" title="Mostrar/ocultar el icono de info en toda la web">
+                    <input type="checkbox" ${infoActiva ? 'checked' : ''} onchange="toggleCategoriaPestana('info', this.checked, this)">
+                    <span class="slider-switch"></span>
+                </label>
+                <span class="ajustes-generales-label">ℹ️ Info</span>
+            </div>`;
+    }
+
     estructuraActual.forEach(cat => {
         const platos = datosLocales.filter(p => p.id >= cat.id && p.id <= (cat.id + cat.rango));
         if (platos.length === 0) return;
@@ -361,7 +388,8 @@ function toggleCategoria(catKey) {
 }
 window.toggleCategoria = toggleCategoria;
 
-// NUEVO: activa/desactiva una pestaña completa en la web pública. A diferencia del interruptor
+// NUEVO: activa/desactiva un "flag" en la hoja "Categorias" (una pestaña completa, o uno de
+// los ajustes generales "fotos"/"info" — mismo mecanismo, solo cambia el id). A diferencia del interruptor
 // "Activa" de cada plato (que solo se guarda al pulsar el botón grande "Guardar"), este se
 // guarda AL INSTANTE — es una hoja aparte ("Categorias") y no tiene nada que ver con el resto
 // de cambios pendientes de datosLocales, así que no tiene sentido hacerlo esperar al guardado

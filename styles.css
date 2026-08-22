@@ -299,6 +299,17 @@ body {
    se deforme si el nombre de la categoría es largo. */
 .switch-pestana { flex-shrink: 0; transform: scale(0.8); }
 
+/* NUEVO: barra "Ajustes generales" — interruptores de fotos/info para TODA la web (no por
+   categoría), fija encima del acordeón de secciones. Reutiliza .switch-container/.slider-switch. */
+.ajustes-generales-bar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 18px;
+    background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 8px;
+    padding: 10px 14px; margin-bottom: 14px;
+}
+.ajustes-generales-titulo { font-size: 0.8rem; font-weight: 700; color: #555; }
+.ajustes-generales-item { display: flex; align-items: center; gap: 8px; }
+.ajustes-generales-label { font-size: 0.85rem; font-weight: 600; color: #444; }
+
 /* NUEVO: contenido colapsable de cada categoría (efecto acordeón). Colapsada por defecto
    (max-height:0 + overflow hidden), se despliega al añadir la clase .expandida. El tope de
    max-height es generoso a propósito para no cortar categorías largas al expandir. */
