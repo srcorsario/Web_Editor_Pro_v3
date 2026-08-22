@@ -1,11 +1,17 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '2.4.9'; // CONFIRMADO funcionando (diagnóstico visual verificado): repartirEspacioSobrante() se ejecuta y aplica correctamente. Quitado el texto de diagnóstico temporal de la v2.4.8
+window.APP_VERSIONS.app = '2.5.0'; // NUEVO: interruptor de activar/desactivar pestaña completa (categoriasDeshabilitadas, cargarEstadoCategorias, toggleCategoriaPestana)
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
 window.hayCambiosSinGuardar = false;
+
+// NUEVO: estado en memoria de qué pestañas (categorías de nivel superior) están desactivadas
+// en la web pública, por restaurante. Se guarda como Set de pestanaId (ver estructuras.js).
+// Se carga desde la hoja "Categorias" del backend (cargarEstadoCategorias) al hacer cargar();
+// una pestaña ausente de este Set se considera ACTIVA por defecto.
+const categoriasDeshabilitadas = { restaurante001: new Set(), restaurante002: new Set() };
 
 // MODIFICADO: Estado de consistencia segregado por restaurante (Abstract Keys)
 window.optimisticState = {
@@ -76,6 +82,32 @@ function getCsvUrlSafe() {
     const modoActual = window.currentMode || 'restaurante001';
     if (typeof window.getCsvUrl === 'function') return window.getCsvUrl(modoActual);
     return '';
+}
+
+// NUEVO: lee el estado activa/inactiva de las pestañas (hoja "Categorias" del backend, ver
+// Código.gs) para el modo indicado. Usa el endpoint EN VIVO (Apps Script, no el CSV publicado
+// y cacheado) porque esta hoja es nueva y no tiene ruta de "publicar en la web" propia. Si
+// falla, se deja el Set tal cual estaba (todas activas por defecto la primera vez) — no debe
+// romper la carga normal de platos.
+async function cargarEstadoCategorias(modo) {
+    try {
+        const url = (typeof window.getWebAppUrl === 'function') ? window.getWebAppUrl(modo) : '';
+        if (!url) return;
+        const resp = await fetch(url + '?accion=categorias&zx=' + Date.now(), { cache: "no-store" });
+        const text = await resp.text();
+        const filas = text.split(/\r?\n/).filter(f => f.trim() !== "");
+        const deshabilitadas = new Set();
+        filas.forEach((f, i) => {
+            if (i === 0) return; // cabecera "ID,Activa"
+            const c = f.split(',');
+            const id = (c[0] || '').trim();
+            const activa = (c[1] || '').trim().toUpperCase();
+            if (id && activa === 'NO') deshabilitadas.add(id);
+        });
+        categoriasDeshabilitadas[modo] = deshabilitadas;
+    } catch (e) {
+        console.warn(`[Editor] No se pudo leer el estado de pestañas (${modo}):`, e.message);
+    }
 }
 
 async function cargar(retryCount = 0) {
@@ -175,9 +207,14 @@ async function cargar(retryCount = 0) {
             statusCarga.style.display = "none";
         }
         
+        // NUEVO: estado de pestañas activas/inactivas, ANTES de renderizar, para que el
+        // interruptor de cada cabecera de acordeón nazca ya con el estado real (si esto
+        // fallara, cargarEstadoCategorias ya deja el Set tal cual estaba y no bloquea nada).
+        await cargarEstadoCategorias(modo);
+
         window.hayCambiosSinGuardar = false;
         renderizar();
-        generarMenuAgrupado(); 
+        generarMenuAgrupado();
     } catch (e) { 
         console.error("[Editor] Error cargando:", e);
         const statusCarga = document.getElementById('status-carga');
@@ -238,6 +275,10 @@ function renderizar() {
     const estructuraActual = getEstructuraActual();
     if (!estructuraActual) return;
 
+    // NUEVO: modo actual, para poder consultar categoriasDeshabilitadas[modo] al pintar el
+    // interruptor de cada pestaña.
+    const modoActual = window.currentMode || 'restaurante001';
+
     estructuraActual.forEach(cat => {
         const platos = datosLocales.filter(p => p.id >= cat.id && p.id <= (cat.id + cat.rango));
         if (platos.length === 0) return;
@@ -250,11 +291,28 @@ function renderizar() {
         const catKey = String(cat.id);
         const expandida = categoriasExpandidas[catKey] === true;
 
+        // NUEVO: interruptor de "mostrar/ocultar esta pestaña en la web pública", en la misma
+        // línea del título del acordeón (visible aunque esté colapsado). Solo se pinta si la
+        // categoría tiene pestanaId (ver estructuras.js) — algunas, como "Guarniciones" en
+        // Roland Garros, no tienen pestaña propia en la web pública y no llevan interruptor.
+        // El stopPropagation en el <label> evita que pulsar el interruptor también
+        // abra/cierre el acordeón (el título entero tiene su propio onclick).
+        let htmlSwitchPestana = "";
+        if (cat.pestanaId) {
+            const pestanaActiva = !categoriasDeshabilitadas[modoActual].has(cat.pestanaId);
+            htmlSwitchPestana = `
+                <label class="switch-container switch-pestana" onclick="event.stopPropagation()" title="Mostrar/ocultar esta sección en la web">
+                    <input type="checkbox" ${pestanaActiva ? 'checked' : ''} onchange="toggleCategoriaPestana('${cat.pestanaId}', this.checked, this)">
+                    <span class="slider-switch"></span>
+                </label>`;
+        }
+
         h += `<div class="categoria-tarjeta">
             <div class="categoria-titulo categoria-titulo-clicable" onclick="toggleCategoria('${catKey}')">
                 <span class="categoria-flecha" id="categoria-flecha-${catKey}">${expandida ? '▼' : '▶'}</span>
                 ${cat.name}
                 <span class="categoria-contador">${platos.length}</span>
+                ${htmlSwitchPestana}
             </div>
             <div class="categoria-contenido${expandida ? ' expandida' : ''}" id="categoria-contenido-${catKey}">`;
         platos.forEach((p) => {
@@ -302,6 +360,44 @@ function toggleCategoria(catKey) {
     if (flecha) flecha.innerText = categoriasExpandidas[catKey] ? '▼' : '▶';
 }
 window.toggleCategoria = toggleCategoria;
+
+// NUEVO: activa/desactiva una pestaña completa en la web pública. A diferencia del interruptor
+// "Activa" de cada plato (que solo se guarda al pulsar el botón grande "Guardar"), este se
+// guarda AL INSTANTE — es una hoja aparte ("Categorias") y no tiene nada que ver con el resto
+// de cambios pendientes de datosLocales, así que no tiene sentido hacerlo esperar al guardado
+// general. Optimista: cambia el estado en memoria ya, y si el guardado fallara, revierte el
+// interruptor visualmente y avisa.
+async function toggleCategoriaPestana(pestanaId, activa, checkboxEl) {
+    const modo = window.currentMode || 'restaurante001';
+
+    if (activa) categoriasDeshabilitadas[modo].delete(pestanaId);
+    else categoriasDeshabilitadas[modo].add(pestanaId);
+
+    try {
+        const url = getWebAppUrlSafe();
+        if (!url) throw new Error('Sin URL de Apps Script configurada.');
+
+        await fetch(url + '?accion=categorias', {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: pestanaId, activa: activa })
+        });
+
+        if (typeof UI !== 'undefined' && typeof UI.log === 'function') {
+            UI.log(`[Pestañas] "${pestanaId}" ${activa ? 'activada' : 'desactivada'} en ${getModoAlias(modo)}.`);
+        }
+    } catch (e) {
+        console.error('[Editor] Error al guardar el estado de la pestaña:', e);
+        alert('No se pudo guardar el cambio de esta pestaña. Revisa la conexión e inténtalo de nuevo.');
+
+        // Revertir: tanto el estado en memoria como el interruptor visual
+        if (activa) categoriasDeshabilitadas[modo].add(pestanaId);
+        else categoriasDeshabilitadas[modo].delete(pestanaId);
+        if (checkboxEl) checkboxEl.checked = !activa;
+    }
+}
+window.toggleCategoriaPestana = toggleCategoriaPestana;
 
 function moverPlato(id, direccion) {
     const idx = datosLocales.findIndex(x => x.id === id);
