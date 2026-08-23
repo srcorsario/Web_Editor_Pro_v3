@@ -1,7 +1,7 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '2.9.0'; // NUEVO: botón "Eliminar Plato" en el editor (solo para platos existentes) — pide PASSWORD_ELIMINAR_PLATO (config.js) cada vez, ver abrirModalEliminarPlato()/confirmarEliminarPlato()
+window.APP_VERSIONS.app = '2.10.0'; // CORREGIDO: esCroqueta/esCroquetaVeg (abrirEditor, actualizarNombreCroquetas, prepararNuevoPlato) ya comprueban currentMode vía esRangoCroquetasRG() — antes el rango de ID 12100-12299 activaba la lógica de croquetas también en Entrantes/Ensaladas de US Open, heredado de la plantilla de Roland Garros
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
@@ -507,15 +507,28 @@ function moverPlato(id, direccion) {
     renderizar(); 
 }
 
+// CORREGIDO (heredado de copiar la plantilla de Roland Garros a US Open): el rango de IDs
+// 12100-12299 solo significa "Croquetas"/"Croquetas Veg." en Roland Garros — en US Open esos
+// mismos IDs son "Entrantes"/"Ensaladas" (ver estructuras.js, sub de "Sugerencias" en cada
+// carta). Antes esCroqueta/esCroquetaVeg miraban solo el ID sin comprobar el restaurante activo,
+// así que crear un plato en Entrantes o Ensaladas de US Open activaba por error la rueda de
+// "Sabores de Croquetas" y precargaba la imagen de croquetas. Centralizado aquí para no repetir
+// el chequeo de currentMode en los 4 sitios que lo necesitan (abrirEditor,
+// actualizarNombreCroquetas, prepararNuevoPlato).
+function esRangoCroquetasRG(id) {
+    const modo = window.currentMode || 'restaurante001';
+    return modo === 'restaurante001' && id >= 12100 && id <= 12299;
+}
+
 function abrirEditor(id, esNuevo = false) {
     let p = esNuevo ? datosTempNuevo : datosLocales.find(x => x.id === id);
-    if (!p) return; 
-    
+    if (!p) return;
+
     esNuevoPlato = esNuevo;
     platoEditandoId = id;
     const esVino = (id >= 13000);
-    const esCroqueta = (id >= 12100 && id <= 12299);
-    const esCroquetaVeg = (id >= 12200 && id <= 12299);
+    const esCroqueta = esRangoCroquetasRG(id);
+    const esCroquetaVeg = esCroqueta && id >= 12200;
     
     const labelUvas = document.getElementById('label-uvas');
     if (labelUvas) labelUvas.innerText = esVino ? "Nombres y Detalles del Plato / Vino (Uvas)" : "Nombres y Detalles del Plato";
@@ -657,8 +670,10 @@ function abrirEditor(id, esNuevo = false) {
     if (modalEditor) modalEditor.style.display = 'block';
 }
 
-function actualizarNombreCroquetas() { 
-    const esCroquetaVeg = (platoEditandoId >= 12200 && platoEditandoId <= 12299); 
+function actualizarNombreCroquetas() {
+    // CORREGIDO: mismo problema que en abrirEditor() — sin el chequeo de currentMode dentro de
+    // esRangoCroquetasRG(), esto se disparaba también para IDs de Entrantes/Ensaladas en US Open.
+    const esCroquetaVeg = esRangoCroquetasRG(platoEditandoId) && platoEditandoId >= 12200;
     const seleccionadas = Array.from(document.querySelectorAll('.croqueta-btn.selected')).map(el => el.innerText.trim()); 
     
     if (seleccionadas.length === 0) { 
@@ -1011,8 +1026,11 @@ function prepararNuevoPlato(baseId, folder) {
         opcionesInactivas: ""
     };
     
-    if (baseId >= 12200 && baseId <= 12299) datosTempNuevo.imagen = "croquetasvegetarianas01.webp"; 
-    else if (baseId >= 12100 && baseId <= 12199) datosTempNuevo.imagen = "croquetas01.webp"; 
+    // CORREGIDO: mismo problema que en abrirEditor() — antes precargaba la imagen de croquetas
+    // para cualquier ID 12100-12299 sin importar el restaurante, así que un plato nuevo en
+    // Entrantes/Ensaladas de US Open salía con la foto de croquetas puesta por defecto.
+    if (esRangoCroquetasRG(baseId) && baseId >= 12200) datosTempNuevo.imagen = "croquetasvegetarianas01.webp";
+    else if (esRangoCroquetasRG(baseId) && baseId <= 12199) datosTempNuevo.imagen = "croquetas01.webp";
     
     if (window.IDIOMAS_ORDEN) { 
         window.IDIOMAS_ORDEN.forEach(l => { datosTempNuevo[l] = ""; }); 
