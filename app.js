@@ -1,7 +1,7 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '2.6.0'; // NUEVO: interruptores GLOBALES de fotos/info (barra "Ajustes generales" sobre el acordeón), reutilizando categoriasDeshabilitadas/toggleCategoriaPestana con ids fijos "fotos"/"info"
+window.APP_VERSIONS.app = '2.7.0'; // NUEVO: acordeón anidado de subcategorías dentro de renderizar() para categorías con subAcordeon:true (ej. "Sugerencias"), vía renderPlatoItemHtml() + subcategoriasExpandidas/toggleSubcategoria()
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
@@ -269,6 +269,36 @@ window.cancelarModoOptimista = function() {
     if (window.currentMode === modo && timerDiv) timerDiv.style.display = 'none';
 };
 
+// NUEVO: HTML de una fila de plato, extraído de renderizar() para poder reutilizarlo tanto en
+// la lista plana de siempre como dentro del acordeón anidado de subcategorías (ver
+// cat.subAcordeon más abajo). Comportamiento idéntico al de antes, solo movido a función.
+function renderPlatoItemHtml(p) {
+    let htmlImagenPC = p.imagen ? `<span style="margin-right: 5px;">📷</span>` : "";
+    let htmlCarpetaPC = p.carpeta ? `<span class="tag-carpeta">${p.carpeta}</span>` : "";
+    const nombreLimpio = desglosarNombre(p.es).nombre;
+
+    return `<div class="plato-item">
+        <div class="plato-orden-btns">
+            <button class="btn-orden" onclick="moverPlato(${p.id}, 'subir')">▲</button>
+            <button class="btn-orden" onclick="moverPlato(${p.id}, 'bajar')">▼</button>
+        </div>
+        <div class="plato-info">
+            <span class="plato-nombre">${nombreLimpio}</span>
+            <div style="font-size: 0.7rem; color: #7f8c8d; margin-top: 4px; display: flex; gap: 10px; align-items: center;">${htmlCarpetaPC} ${htmlImagenPC}</div>
+        </div>
+        <div class="plato-meta-footer">
+            <div><small>ID ${p.id} | ${p.precio}€</small></div>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <button class="btn-config" onclick="abrirEditor(${p.id})">⚙️</button>
+                <label class="switch-container">
+                    <input type="checkbox" ${p.activa ? 'checked' : ''} onchange="toggleActivo(${p.id}, this.checked)">
+                    <span class="slider-switch"></span>
+                </label>
+            </div>
+        </div>
+    </div>`;
+}
+
 function renderizar() {
     let h = "";
     datosLocales.sort((a, b) => a.id - b.id);
@@ -342,32 +372,48 @@ function renderizar() {
                 ${htmlSwitchPestana}
             </div>
             <div class="categoria-contenido${expandida ? ' expandida' : ''}" id="categoria-contenido-${catKey}">`;
-        platos.forEach((p) => {
-            let htmlImagenPC = p.imagen ? `<span style="margin-right: 5px;">📷</span>` : "";
-            let htmlCarpetaPC = p.carpeta ? `<span class="tag-carpeta">${p.carpeta}</span>` : "";
-            const nombreLimpio = desglosarNombre(p.es).nombre;
-            
-            h += `<div class="plato-item">
-                <div class="plato-orden-btns">
-                    <button class="btn-orden" onclick="moverPlato(${p.id}, 'subir')">▲</button>
-                    <button class="btn-orden" onclick="moverPlato(${p.id}, 'bajar')">▼</button>
-                </div>
-                <div class="plato-info">
-                    <span class="plato-nombre">${nombreLimpio}</span>
-                    <div style="font-size: 0.7rem; color: #7f8c8d; margin-top: 4px; display: flex; gap: 10px; align-items: center;">${htmlCarpetaPC} ${htmlImagenPC}</div>
-                </div>
-                <div class="plato-meta-footer">
-                    <div><small>ID ${p.id} | ${p.precio}€</small></div>
-                    <div style="display: flex; align-items: center; gap: 15px;">
-                        <button class="btn-config" onclick="abrirEditor(${p.id})">⚙️</button>
-                        <label class="switch-container">
-                            <input type="checkbox" ${p.activa ? 'checked' : ''} onchange="toggleActivo(${p.id}, this.checked)">
-                            <span class="slider-switch"></span>
-                        </label>
+
+        // NUEVO: acordeón anidado por subcategoría — solo para las categorías marcadas con
+        // subAcordeon:true en estructuras.js (de momento, "Sugerencias" en ambas cartas, que
+        // ya acumula muchos platos y se beneficia de agruparlos por tipo). El resto de
+        // categorías sigue mostrando la lista plana de siempre, sin cambios.
+        if (cat.subAcordeon && cat.sub && cat.sub.length > 0) {
+            // Mismo criterio de rango que prepararNuevoPlato(): cada subcategoría cubre desde
+            // su id hasta su "max" explícito, o hasta id+99 por defecto si no lo tiene.
+            const grupos = cat.sub.map(s => ({
+                key: String(s.id),
+                name: s.name,
+                min: s.id,
+                max: s.max || (s.id + 99),
+                platos: []
+            }));
+            const otros = [];
+            platos.forEach(p => {
+                const grupo = grupos.find(g => p.id >= g.min && p.id <= g.max);
+                if (grupo) grupo.platos.push(p); else otros.push(p);
+            });
+            // Por si algún plato queda fuera de todos los rangos definidos (hueco entre
+            // subcategorías) — para que nunca desaparezca de la vista, aunque no encaje.
+            if (otros.length > 0) grupos.push({ key: 'otros', name: 'Otros', platos: otros });
+
+            grupos.forEach(g => {
+                if (g.platos.length === 0) return;
+                const subKey = `${catKey}-${g.key}`;
+                const subExpandida = subcategoriasExpandidas[subKey] === true;
+                h += `<div class="subcategoria-tarjeta">
+                    <div class="subcategoria-titulo subcategoria-titulo-clicable" onclick="toggleSubcategoria('${subKey}')">
+                        <span class="subcategoria-flecha" id="subcategoria-flecha-${subKey}">${subExpandida ? '▼' : '▶'}</span>
+                        ${g.name}
+                        <span class="subcategoria-contador">${g.platos.length}</span>
                     </div>
-                </div>
-            </div>`;
-        });
+                    <div class="subcategoria-contenido${subExpandida ? ' expandida' : ''}" id="subcategoria-contenido-${subKey}">`;
+                g.platos.forEach(p => { h += renderPlatoItemHtml(p); });
+                h += `</div></div>`;
+            });
+        } else {
+            platos.forEach(p => { h += renderPlatoItemHtml(p); });
+        }
+
         h += `</div></div>`;
     });
     
@@ -387,6 +433,20 @@ function toggleCategoria(catKey) {
     if (flecha) flecha.innerText = categoriasExpandidas[catKey] ? '▼' : '▶';
 }
 window.toggleCategoria = toggleCategoria;
+
+// NUEVO: mismo mecanismo que categoriasExpandidas/toggleCategoria pero para el segundo nivel
+// del acordeón (subcategorías dentro de una categoría con subAcordeon:true, ver renderizar()).
+// Clave compuesta "<catId>-<subId>" para no chocar entre categorías distintas.
+const subcategoriasExpandidas = {};
+
+function toggleSubcategoria(subKey) {
+    subcategoriasExpandidas[subKey] = !subcategoriasExpandidas[subKey];
+    const contenido = document.getElementById('subcategoria-contenido-' + subKey);
+    const flecha = document.getElementById('subcategoria-flecha-' + subKey);
+    if (contenido) contenido.classList.toggle('expandida', subcategoriasExpandidas[subKey]);
+    if (flecha) flecha.innerText = subcategoriasExpandidas[subKey] ? '▼' : '▶';
+}
+window.toggleSubcategoria = toggleSubcategoria;
 
 // NUEVO: activa/desactiva un "flag" en la hoja "Categorias" (una pestaña completa, o uno de
 // los ajustes generales "fotos"/"info" — mismo mecanismo, solo cambia el id). A diferencia del interruptor

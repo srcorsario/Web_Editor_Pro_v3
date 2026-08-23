@@ -318,6 +318,30 @@ body {
 }
 .categoria-contenido.expandida { max-height: 6000px; }
 
+/* NUEVO: segundo nivel de acordeón, anidado dentro de .categoria-contenido, para las
+   categorías con muchos platos que se agrupan por subcategoría (ver cat.subAcordeon en
+   estructuras.js / renderizar() en app.js — de momento "Sugerencias"). Mismo patrón visual
+   que .categoria-*, pero más compacto y con menos contraste para que se note el anidado. */
+.subcategoria-tarjeta {
+    margin: 10px 12px; border: 1px solid #e6e6e6; border-radius: 8px; overflow: hidden;
+}
+.subcategoria-titulo {
+    background: #f4f5f7; color: #2c3e50; padding: 9px 12px;
+    font-weight: 700; text-transform: uppercase; font-size: 0.72rem;
+}
+.subcategoria-titulo-clicable {
+    display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;
+}
+.subcategoria-flecha { font-size: 0.65rem; transition: transform 0.2s ease; display: inline-block; width: 10px; }
+.subcategoria-contador {
+    margin-left: auto; background: rgba(0,0,0,0.08); border-radius: 10px;
+    padding: 1px 8px; font-size: 0.65rem; font-weight: 600;
+}
+.subcategoria-contenido {
+    max-height: 0; overflow: hidden; transition: max-height 0.25s ease;
+}
+.subcategoria-contenido.expandida { max-height: 6000px; }
+
 .plato-item { display: flex; padding: 12px; border-bottom: 1px solid #f1f2f6; gap: 10px; align-items: center; }
 .plato-info { flex: 1; min-width: 0; }
 .plato-nombre { 

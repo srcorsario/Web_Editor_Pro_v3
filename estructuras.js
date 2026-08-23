@@ -1,6 +1,6 @@
 // --- estructuras.js ---
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.estructuras = '3.2.0'; // NUEVO: añadido pestanaId (mapeo a categoriesList de cada web pública) para el interruptor de activar/desactivar pestaña
+window.APP_VERSIONS.estructuras = '3.3.0'; // NUEVO: añadido subAcordeon (true) a "Sugerencias" en ambas cartas — activa el acordeón anidado de subcategorías en el Editor (app.js/renderizar) para no perder de vista los platos a medida que crecen
 
 // =================================================================================
 // CARTA 01 - ROLAND GARROS (restaurante001)
@@ -13,7 +13,7 @@ window.APP_VERSIONS.estructuras = '3.2.0'; // NUEVO: añadido pestanaId (mapeo a
 // más abajo, que en la web pública de RG forma parte de la pestaña "5- Principales".
 const ESTRUCTURA_RESTAURANTE001 = [
     // --- RANGO 12000-12999: SUGERENCIAS DEL CHEF ---
-    { id: 12100, name: "Sugerencias", rango: 999, pestanaId: '12', sub: [{id: 12100, name: "Croquetas", folder: "entrantes"},{id: 12200, name: "Croquetas Veg.", folder: "entrantes"},{id: 12300, name: "Entrantes", folder: "entrantes"},{id: 12400, name: "Pasta", folder: "pasta"},{id: 12500, name: "Arroz", folder: "arroz"},{id: 12700, name: "Pescado", folder: "pescado"},{id: 12800, name: "Carne", folder: "carne"},{id: 12900, name: "Postres", folder: "postres"}]},
+    { id: 12100, name: "Sugerencias", rango: 999, pestanaId: '12', subAcordeon: true, sub: [{id: 12100, name: "Croquetas", folder: "entrantes"},{id: 12200, name: "Croquetas Veg.", folder: "entrantes"},{id: 12300, name: "Entrantes", folder: "entrantes"},{id: 12400, name: "Pasta", folder: "pasta"},{id: 12500, name: "Arroz", folder: "arroz"},{id: 12700, name: "Pescado", folder: "pescado"},{id: 12800, name: "Carne", folder: "carne"},{id: 12900, name: "Postres", folder: "postres"}]},
     // --- RANGO 1000-1999: ENTRANTES ---
     { id: 1000, name: "1- Entrantes", rango: 999, pestanaId: '1', sub: [{id: 1000, name: "Entrantes", folder: "entrantes"},{id: 1100, name: "Pan", folder: "entrantes"}]},
     // --- RANGO 2000-2999: ENSALADAS ---
@@ -86,7 +86,7 @@ const ESTRUCTURA_RESTAURANTE002 = [
     // La web pública agrupa esto en 4 bloques (Entrantes / Principales / Postres / Vino, ver
     // script.js de la web US Open), pero aquí se listan por separado para poder asignar la
     // carpeta de imagen correcta a cada tipo de plato al crearlo desde el editor.
-    { id: 12100, name: "Sugerencias", rango: 999, pestanaId: 'sugerencias', sub: [
+    { id: 12100, name: "Sugerencias", rango: 999, pestanaId: 'sugerencias', subAcordeon: true, sub: [
         {id: 12100, name: "Entrantes", folder: "entrantes"},
         {id: 12200, name: "Ensaladas", folder: "ensaladas"},
         {id: 12300, name: "Pokes", folder: "pokes"},
