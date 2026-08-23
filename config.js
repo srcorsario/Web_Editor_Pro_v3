@@ -1,7 +1,7 @@
 // --- config.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.config = '2.2.0-DOS-FASES'; // Incrementado por integración de lotes independientes de IA
+window.APP_VERSIONS.config = '2.3.0'; // NUEVO: PASSWORD_ELIMINAR_PLATO — contraseña que pide el editor antes de borrar un plato de verdad
 
 // =====================================================================
 // NUEVO: SISTEMA DE ENABLE/DISABLE DE RESTAURANTES (Desacoplamiento Visual)
@@ -141,3 +141,14 @@ const QR_TIPO_DEFAULT_RESTAURANTE002 = 'none';
 // NUEVO: CONFIGURACIÓN DE TIEMPOS DEL SISTEMA
 // =====================================================================
 const CONSISTENCY_WINDOW_MS = 180000; // 3 minutos seguro que no te dejas nada?
+
+// =====================================================================
+// NUEVO: CONTRASEÑA PARA ELIMINAR UN PLATO
+// =====================================================================
+// El editor pide esta contraseña cada vez que se confirma el borrado de un plato (ver
+// abrirModalEliminarPlato()/confirmarEliminarPlato() en app.js) — nunca se recuerda de un
+// borrado al siguiente, hay que volver a escribirla cada vez. Es una barrera pensada para
+// evitar que alguien sin autorización borre un plato sin querer o sin permiso, NO una medida
+// de seguridad real: al ser un archivo de texto que carga el navegador, cualquiera con acceso
+// al código fuente puede llegar a leerla. Para cambiarla basta con editar el texto de abajo.
+const PASSWORD_ELIMINAR_PLATO = 'RG2026';

@@ -225,7 +225,28 @@
                     <div class="modal-acciones-footer">
                         <button class="btn-modal-aceptar" onclick="aplicarCambiosPlato()">✅ Aplicar Cambios</button>
                         <button class="btn-modal-cancelar" onclick="cerrarModal('modal-editor')">Cancelar</button>
+                        <!-- NUEVO: solo visible para un plato ya existente (abrirEditor() la oculta al
+                             crear uno nuevo) — pide contraseña antes de borrar, ver modal-eliminar-plato -->
+                        <button id="btn-eliminar-plato" class="btn-modal-eliminar" onclick="abrirModalEliminarPlato()" style="display:none;">🗑️ Eliminar Plato</button>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- NUEVO: confirmación con contraseña antes de eliminar un plato (ver
+             abrirModalEliminarPlato()/confirmarEliminarPlato() en app.js). La contraseña se
+             pide siempre, cada vez — no se recuerda de un borrado al siguiente. -->
+        <div id="modal-eliminar-plato" class="modal">
+            <div class="modal-content" style="max-width: 400px; text-align: center; padding: 30px;">
+                <h3 style="margin-top:0; margin-bottom: 10px; color: var(--rojo);">⚠️ Eliminar plato</h3>
+                <p style="color: #666; margin-bottom: 5px;">Vas a eliminar de forma permanente:</p>
+                <p id="texto-plato-a-eliminar" style="font-weight: 700; margin-bottom: 20px;"></p>
+                <p style="color: #666; font-size: 0.85rem; margin-bottom: 15px;">Introduce la contraseña para confirmar. Esta acción no se puede deshacer.</p>
+                <input type="password" id="password-eliminar-plato" class="input-estandar" placeholder="Contraseña" autocomplete="off" onkeydown="if(event.key==='Enter') confirmarEliminarPlato()">
+                <p id="error-password-eliminar" style="color: var(--rojo); font-size: 0.8rem; margin: 8px 0 0; display: none;">❌ Contraseña incorrecta.</p>
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button class="btn-modal-eliminar" style="margin:0;" onclick="confirmarEliminarPlato()">🗑️ Eliminar definitivamente</button>
+                    <button class="btn-modal-cancelar" style="margin:0;" onclick="cerrarModalEliminarPlato()">Cancelar</button>
                 </div>
             </div>
         </div>

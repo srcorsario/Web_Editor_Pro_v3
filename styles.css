@@ -528,6 +528,12 @@ input:checked + .slider-switch:before { transform: translateX(18px); }
 .btn-modal-aceptar { background: var(--verde); color: white; padding: 15px; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; width: 100%; }
 .btn-modal-cancelar { background: #eee; color: var(--texto); padding: 12px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; width: 100%; }
 
+/* NUEVO: botón de eliminar plato — mismo tamaño/forma que los otros botones de modal, pero en
+   rojo (--rojo, el mismo tono que ya usa .btn-delete-key para las API Keys) para diferenciarlo
+   claramente de "Aplicar Cambios"/"Cancelar" y dejar claro que es una acción destructiva. */
+.btn-modal-eliminar { background: var(--rojo); color: white; padding: 12px; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; width: 100%; }
+.btn-modal-eliminar:hover { background: #c0392b; }
+
 /* --- ESTILOS: PANEL DE API KEYS --- */
 .api-keys-manager { margin-top: 15px; padding: 12px; background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 8px; text-align: left; }
 .api-keys-inputs { display: flex; gap: 8px; margin-bottom: 8px; }

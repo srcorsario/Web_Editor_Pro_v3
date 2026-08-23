@@ -1,7 +1,7 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '2.8.0'; // NUEVO: el contador de cada cabecera del acordeón (categoría y subcategoría) ahora muestra "activos/total" en vez de solo el total
+window.APP_VERSIONS.app = '2.9.0'; // NUEVO: botón "Eliminar Plato" en el editor (solo para platos existentes) — pide PASSWORD_ELIMINAR_PLATO (config.js) cada vez, ver abrirModalEliminarPlato()/confirmarEliminarPlato()
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
@@ -645,6 +645,11 @@ function abrirEditor(id, esNuevo = false) {
     // NUEVO: Llamada independiente a la función de requisitos
     comprobarRequisitosTraduccion();
 
+    // NUEVO: el botón "Eliminar Plato" solo tiene sentido para un plato que ya existe —
+    // al crear uno nuevo ("Añadir Nuevo Plato") todavía no hay nada que borrar.
+    const btnEliminar = document.getElementById('btn-eliminar-plato');
+    if (btnEliminar) btnEliminar.style.display = esNuevo ? 'none' : '';
+
     // CORREGIDO: faltaba mostrar el modal — antes se rellenaban los campos
     // pero el editor se quedaba oculto (display:none por CSS), así que tanto
     // la rueda de un plato existente como "Añadir Nuevo Plato" no hacían nada visible.
@@ -1083,10 +1088,68 @@ function abrirSelector() {
     if (modal) modal.style.display = 'block';
 }
 
-function cerrarModal(id) { 
-    const modal = document.getElementById(id); 
-    if (modal) modal.style.display = 'none'; 
-} 
+function cerrarModal(id) {
+    const modal = document.getElementById(id);
+    if (modal) modal.style.display = 'none';
+}
+
+// NUEVO: paso 1 de "Eliminar Plato" — cierra el editor y abre la modal de confirmación con
+// contraseña (ver PASSWORD_ELIMINAR_PLATO en config.js), mostrando el nombre del plato para
+// que quede claro cuál se va a borrar antes de escribir la contraseña.
+function abrirModalEliminarPlato() {
+    const p = datosLocales.find(x => x.id === platoEditandoId);
+    if (!p) return;
+
+    cerrarModal('modal-editor');
+
+    const nombreLimpio = desglosarNombre(p.es || "").nombre || `ID ${p.id}`;
+    const textoPlato = document.getElementById('texto-plato-a-eliminar');
+    if (textoPlato) textoPlato.innerText = `"${nombreLimpio}" (ID ${p.id})`;
+
+    const inputPassword = document.getElementById('password-eliminar-plato');
+    if (inputPassword) inputPassword.value = "";
+    const errorPassword = document.getElementById('error-password-eliminar');
+    if (errorPassword) errorPassword.style.display = 'none';
+
+    const modal = document.getElementById('modal-eliminar-plato');
+    if (modal) modal.style.display = 'block';
+    if (inputPassword) inputPassword.focus();
+}
+window.abrirModalEliminarPlato = abrirModalEliminarPlato;
+
+function cerrarModalEliminarPlato() {
+    cerrarModal('modal-eliminar-plato');
+}
+window.cerrarModalEliminarPlato = cerrarModalEliminarPlato;
+
+// NUEVO: paso 2 — comprueba la contraseña y, si es correcta, borra el plato de datosLocales de
+// verdad (splice, no un simple "activa:false"). El borrado se aplica en la web la próxima vez
+// que se pulse "GUARDAR CAMBIOS EN WEB", exactamente igual que el resto de cambios del editor
+// (activar/desactivar, reordenar, editar nombre/precio) — no hay una llamada de red aparte para
+// esto, por eso el aviso final recuerda pulsar Guardar. La contraseña NO se recuerda de un
+// borrado a otro: el permiso es solo para esa eliminación, hay que volver a escribirla cada vez.
+function confirmarEliminarPlato() {
+    const inputPassword = document.getElementById('password-eliminar-plato');
+    const errorPassword = document.getElementById('error-password-eliminar');
+    const passwordIntroducida = inputPassword ? inputPassword.value : "";
+
+    if (passwordIntroducida !== PASSWORD_ELIMINAR_PLATO) {
+        if (errorPassword) errorPassword.style.display = 'block';
+        if (inputPassword) { inputPassword.value = ""; inputPassword.focus(); }
+        return;
+    }
+
+    const idx = datosLocales.findIndex(x => x.id === platoEditandoId);
+    if (idx === -1) { cerrarModalEliminarPlato(); return; }
+
+    datosLocales.splice(idx, 1);
+    window.hayCambiosSinGuardar = true;
+
+    cerrarModalEliminarPlato();
+    renderizar();
+    alert('🗑️ Plato eliminado. Pulsa "GUARDAR CAMBIOS EN WEB" para que el borrado se aplique también en la web.');
+}
+window.confirmarEliminarPlato = confirmarEliminarPlato;
 
 function eliminarKeySeleccionada() { 
     const selectEl = document.getElementById('selectKeys'); 
