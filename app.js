@@ -1,7 +1,7 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '2.7.0'; // NUEVO: acordeón anidado de subcategorías dentro de renderizar() para categorías con subAcordeon:true (ej. "Sugerencias"), vía renderPlatoItemHtml() + subcategoriasExpandidas/toggleSubcategoria()
+window.APP_VERSIONS.app = '2.8.0'; // NUEVO: el contador de cada cabecera del acordeón (categoría y subcategoría) ahora muestra "activos/total" en vez de solo el total
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
@@ -364,11 +364,15 @@ function renderizar() {
                 </label>`;
         }
 
+        // NUEVO: contador "activos/total" (antes solo mostraba el total) — así se ve de un
+        // vistazo cuántos de los platos de la categoría están realmente encendidos en la web.
+        const activosCat = platos.filter(p => p.activa).length;
+
         h += `<div class="categoria-tarjeta">
             <div class="categoria-titulo categoria-titulo-clicable" onclick="toggleCategoria('${catKey}')">
                 <span class="categoria-flecha" id="categoria-flecha-${catKey}">${expandida ? '▼' : '▶'}</span>
                 ${cat.name}
-                <span class="categoria-contador">${platos.length}</span>
+                <span class="categoria-contador">${activosCat}/${platos.length}</span>
                 ${htmlSwitchPestana}
             </div>
             <div class="categoria-contenido${expandida ? ' expandida' : ''}" id="categoria-contenido-${catKey}">`;
@@ -400,11 +404,12 @@ function renderizar() {
                 if (g.platos.length === 0) return;
                 const subKey = `${catKey}-${g.key}`;
                 const subExpandida = subcategoriasExpandidas[subKey] === true;
+                const activosSub = g.platos.filter(p => p.activa).length;
                 h += `<div class="subcategoria-tarjeta">
                     <div class="subcategoria-titulo subcategoria-titulo-clicable" onclick="toggleSubcategoria('${subKey}')">
                         <span class="subcategoria-flecha" id="subcategoria-flecha-${subKey}">${subExpandida ? '▼' : '▶'}</span>
                         ${g.name}
-                        <span class="subcategoria-contador">${g.platos.length}</span>
+                        <span class="subcategoria-contador">${activosSub}/${g.platos.length}</span>
                     </div>
                     <div class="subcategoria-contenido${subExpandida ? ' expandida' : ''}" id="subcategoria-contenido-${subKey}">`;
                 g.platos.forEach(p => { h += renderPlatoItemHtml(p); });
