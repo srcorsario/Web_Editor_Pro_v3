@@ -736,27 +736,28 @@ async function generarTraduccionEN() {
     let ultimoError = ""; 
     let opciones = {};
     
-    while (!exito && intentos < keys.length) { 
-        try { 
-            const apiKey = keys[intentos]; 
-            const response = await fetch(`${GEMINI_ENDPOINT_URL}?key=${apiKey}`, { 
-                method: 'POST', 
-                headers: { 'Content-Type': 'application/json' }, 
+    while (!exito && intentos < keys.length) {
+        try {
+            const apiKey = keys[intentos];
+            if (typeof UI !== 'undefined' && typeof UI.log === 'function') UI.log(`[Info] Usando Key ${intentos + 1}/${keys.length}...`);
+            const response = await fetch(`${GEMINI_ENDPOINT_URL}?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ contents: [{ parts: [{ text: instruccion }] }], generationConfig: { maxOutputTokens: window.GEMINI_MAX_OUTPUT_TOKENS || 65536 } })
-            }); 
-            
-            const data = await response.json(); 
-            
-            if (!response.ok || data.error) { 
-                ultimoError = data.error?.message || "Error HTTP " + response.status; 
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || data.error) {
+                ultimoError = data.error?.message || "Error HTTP " + response.status;
                 if (data.error?.code === 429 || response.status === 429) await new Promise(r => setTimeout(r, 3000));
-                intentos++; 
-                continue; 
-            } 
-            
-            const txt = (typeof extraerTextoCompletoRespuesta === 'function') ? extraerTextoCompletoRespuesta(data.candidates?.[0]) : data.candidates?.[0]?.content?.parts?.[0]?.text; 
-            if (txt) { 
-                opciones = extraerJSON(txt); 
+                intentos++;
+                continue;
+            }
+
+            const txt = (typeof extraerTextoCompletoRespuesta === 'function') ? extraerTextoCompletoRespuesta(data.candidates?.[0]) : data.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (txt) {
+                opciones = extraerJSON(txt);
                 if (opciones.directa || opciones.gastronomica || opciones.corta) { 
                     exito = true; 
                 } else { 
@@ -858,17 +859,18 @@ async function ejecutarTraduccionAutomatica() {
     let intentos = 0; 
     let ultimoError = ""; 
     
-    while (!exito && intentos < keys.length) { 
-        try { 
-            const apiKey = keys[intentos]; 
-            const response = await fetch(`${GEMINI_ENDPOINT_URL}?key=${apiKey}`, { 
-                method: 'POST', 
-                headers: { 'Content-Type': 'application/json' }, 
+    while (!exito && intentos < keys.length) {
+        try {
+            const apiKey = keys[intentos];
+            if (typeof UI !== 'undefined' && typeof UI.log === 'function') UI.log(`[Info] Usando Key ${intentos + 1}/${keys.length}...`);
+            const response = await fetch(`${GEMINI_ENDPOINT_URL}?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ contents: [{ parts: [{ text: instruccion }] }], generationConfig: { maxOutputTokens: window.GEMINI_MAX_OUTPUT_TOKENS || 65536 } })
-            }); 
-            
-            const data = await response.json(); 
-            
+            });
+
+            const data = await response.json();
+
             if (!response.ok || data.error) { 
                 ultimoError = data.error?.message || "Error HTTP " + response.status; 
                 if (data.error?.code === 429 || response.status === 429) await new Promise(r => setTimeout(r, 3000));
@@ -1195,18 +1197,29 @@ function eliminarKeySeleccionada() {
 // HTML y esta función (leer #nuevaKey, guardarla con saveKey() de state.js y refrescar el
 // desplegable) no existía en ningún archivo, así que pulsar el botón no hacía nada. Ver también
 // eliminarKeySeleccionada() arriba, que sí existía pero tampoco estaba conectada a su botón.
+// MODIFICADO: admite pegar VARIAS keys de golpe (una por línea, o separadas por comas/punto y
+// coma) además de una sola — así se puede copiar y pegar directamente el contenido de un .txt con
+// varias keys en vez de añadirlas una a una. #nuevaKey pasó de <input> a <textarea> para que el
+// pegado multilínea se vea bien. saveKey() ya evita duplicados por su cuenta, así que si se pega
+// dos veces la misma key no pasa nada raro.
 function agregarKeyDesdeInput() {
     const inputKey = document.getElementById('nuevaKey');
-    const valor = inputKey ? inputKey.value.trim() : "";
-    if (!valor) {
-        alert("Pega antes una API Key de Gemini en el campo de texto.");
+    const textoBruto = inputKey ? inputKey.value : "";
+    const candidatas = textoBruto.split(/[\n\r,;]+/).map(k => k.trim()).filter(k => k.length > 0);
+    if (candidatas.length === 0) {
+        alert("Pega antes una o varias API Keys de Gemini en el campo de texto (una por línea, o separadas por comas).");
         return;
     }
-    if (typeof saveKey === 'function') saveKey(valor);
+    if (typeof saveKey !== 'function' || typeof getKeys !== 'function') return;
+    const antes = getKeys().length;
+    candidatas.forEach(k => saveKey(k));
+    const despues = getKeys().length;
+    const nuevasAnadidas = despues - antes;
+    const yaExistian = candidatas.length - nuevasAnadidas;
     if (inputKey) inputKey.value = "";
     if (typeof UI !== 'undefined' && typeof UI.actualizarListaKeys === 'function') {
         UI.actualizarListaKeys();
-        UI.log("[OK] API Key añadida.");
+        UI.log(`[OK] ${nuevasAnadidas} API Key(s) nueva(s) añadida(s)${yaExistian > 0 ? ` (${yaExistian} ya existían, no se duplicaron)` : ''}.`);
     }
 }
 

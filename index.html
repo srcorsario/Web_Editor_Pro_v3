@@ -46,8 +46,8 @@
             <div class="api-keys-manager" style="max-width: 500px; margin-top: 0;">
                 <label class="label-seccion">Gestión de API Keys Gemini</label>
                 <div class="api-keys-inputs">
-                    <input type="text" id="nuevaKey" placeholder="Pega tu Gemini Key aquí..." class="input-estandar" onkeydown="if(event.key==='Enter'){agregarKeyDesdeInput();}">
-                    <button id="addKeyBtn" class="btn-add-key" onclick="agregarKeyDesdeInput()">Añadir Key</button>
+                    <textarea id="nuevaKey" rows="2" placeholder="Pega aquí una Gemini Key, o varias de golpe (una por línea, o separadas por comas) — Ctrl+Enter para añadir" class="input-estandar" onkeydown="if((event.key==='Enter')&&(event.ctrlKey||event.metaKey)){agregarKeyDesdeInput();}"></textarea>
+                    <button id="addKeyBtn" class="btn-add-key" onclick="agregarKeyDesdeInput()">Añadir Key(s)</button>
                 </div>
                 <div class="api-keys-list">
                     <div id="contenedorSelectKeys" class="flex-1">

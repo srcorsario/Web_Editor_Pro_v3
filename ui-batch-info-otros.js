@@ -117,6 +117,8 @@ export const UIBatchInfoOtros = {
 
             while (!satisfecho && !procesoState.detenido && intentosLote < maxIntentosLote) {
                 try {
+                    // NUEVO: visibilidad de qué key se usa en CADA petición, no solo al rotar por error.
+                    window.UI.log(`[Info] Usando Key ${procesoState.currentKeyIndex + 1}/${listaClavesAPI.length} (fila(s) ${itemsLote.map(it => it.fila + 2).join(', ')})...`);
                     const callResponse = await fetch(`${window.GEMINI_ENDPOINT_URL_INFO_OTROS || 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent'}?key=${listaClavesAPI[procesoState.currentKeyIndex]}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: promptTraduccion }] }], generationConfig: { maxOutputTokens: window.GEMINI_MAX_OUTPUT_TOKENS || 65536 } }) });
 
                     const textResponse = await callResponse.text();

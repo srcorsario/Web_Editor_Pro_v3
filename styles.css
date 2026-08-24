@@ -542,8 +542,8 @@ input:checked + .slider-switch:before { transform: translateX(18px); }
 
 /* --- ESTILOS: PANEL DE API KEYS --- */
 .api-keys-manager { margin-top: 15px; padding: 12px; background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 8px; text-align: left; }
-.api-keys-inputs { display: flex; gap: 8px; margin-bottom: 8px; }
-.api-keys-inputs .input-estandar { margin-bottom: 0; font-size: 0.85rem; padding: 8px; }
+.api-keys-inputs { display: flex; gap: 8px; margin-bottom: 8px; align-items: flex-end; }
+.api-keys-inputs .input-estandar { margin-bottom: 0; font-size: 0.85rem; padding: 8px; resize: vertical; font-family: inherit; }
 .btn-add-key { background: var(--primario); color: white; border: none; border-radius: 6px; padding: 8px 15px; font-weight: bold; cursor: pointer; white-space: nowrap; transition: background 0.2s; }
 .btn-add-key:hover { background: #d35400; }
 .api-keys-list { display: flex; gap: 8px; align-items: center; }
