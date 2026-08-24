@@ -86,6 +86,23 @@ function calcularHashContenido(texto) {
     return (hash >>> 0).toString(16);
 }
 
+/**
+ * Concatena el texto de TODAS las "parts" de la respuesta de Gemini, no solo la primera.
+ * MOTIVO: en respuestas largas (p.ej. traducir un plato a 24-25 idiomas en una sola llamada),
+ * la API a veces reparte el texto generado en varias entradas dentro de content.parts[] en vez
+ * de devolverlo entero en parts[0]. Leer solo parts[0].text corta la respuesta a la mitad y
+ * provoca "JSON inválido" o "sin contenido" aunque finishReason sea "STOP" (la respuesta SÍ
+ * estaba completa, solo repartida en varias partes).
+ * @param {Object} candidato - candidates[0] de la respuesta de la API de Gemini (puede ser undefined)
+ * @returns {String|undefined} el texto completo concatenado, o undefined si no hay partes con texto
+ */
+function extraerTextoCompletoRespuesta(candidato) {
+    const partes = candidato && candidato.content && candidato.content.parts;
+    if (!Array.isArray(partes) || partes.length === 0) return undefined;
+    const texto = partes.map(p => (p && typeof p.text === 'string') ? p.text : '').join('');
+    return texto || undefined;
+}
+
 function extraerJSON(texto) {
     let limpio = texto.replace(/```json/g, '').replace(/```/g, '').trim();
     let braceCount = 0;

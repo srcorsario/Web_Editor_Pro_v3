@@ -69,14 +69,23 @@ function getCsvUrl(modo) {
 // =====================================================================
 // NUEVO: CONFIGURACIÓN DE INTELIGENCIA ARTIFICIAL (Gemini)
 // =====================================================================
-const GEMINI_ENDPOINT_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent"; // v1 estable — el usado siempre por el resto de llamadas del proyecto
-// NUEVO: endpoint propio SOLO para "Generar Info Platos Otros Idiomas" (ui-batch-info-otros.js).
-// Es v1beta en vez de v1 porque esa llamada usa thinkingConfig (desactiva el "thinking" de Gemini
-// 2.5 para ir más rápido y no perder presupuesto de tokens en razonamiento invisible), parámetro
-// que la API v1 estable no soporta ("Thinking is not enabled for api version v1"). El resto de
-// llamadas del proyecto (Fase 1, Fase 2, y los 2 flujos manuales de app.js) se quedan en v1 tal
-// cual siempre han estado, sin thinkingConfig, para no tocar nada que ya funcionaba.
-const GEMINI_ENDPOINT_URL_INFO_OTROS = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
+// MODIFICADO: pasado a v1beta + thinkingConfig:{thinkingBudget:0} en TODAS las llamadas (antes solo
+// "Generar Info Platos Otros Idiomas" lo tenía). Motivo: con muchos idiomas configurados (25 en
+// Roland Garros), Fase 1 (piloto/vino ES/EN) y sobre todo Fase 2 (traducir 1 nombre a los 25 idiomas
+// de golpe) podían agotar los 65536 tokens de salida en "pensamiento" invisible de Gemini 2.5 antes
+// de escribir la respuesta, devolviendo candidates[0].content.parts vacío ("La API no devolvió
+// contenido") en TODAS las keys por igual — no era un problema de cuota, sino de esta petición
+// concreta, así que rotar keys nunca lo arreglaba. Fase 3 ya usaba este mismo ajuste desde hace
+// tiempo por el mismo motivo (24 idiomas de golpe) y funciona con fiabilidad, así que se iguala el
+// resto de llamadas a ese comportamiento ya probado.
+// MODIFICADO: modelo actualizado de gemini-2.5-flash a gemini-3.6-flash. Google ha empezado a
+// devolver error 404 "This model models/gemini-2.5-flash is no longer available to new users"
+// en las keys de los proyectos de Google Cloud más recientes (las keys de proyectos antiguos
+// seguían funcionando con 2.5-flash con normalidad, solo daban 429 de cuota) — así que con
+// varias keys de proyectos de distintas antigüedades convivía un modelo que unas keys ya no
+// podían usar. gemini-3.6-flash es la versión estable/GA vigente a fecha de este cambio.
+const GEMINI_ENDPOINT_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent";
+const GEMINI_ENDPOINT_URL_INFO_OTROS = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent";
 
 // CONTROL DE LOTES INDEPENDIENTES PARA LA ARQUITECTURA DE DOS FASES
 const TRADUCCION_TAMANO_LOTE = 3;       // Lote para traducción masiva de nombres
@@ -94,6 +103,7 @@ const GEMINI_MAX_OUTPUT_TOKENS = 65536;
 
 // NUEVO: Exposición explícita en window para que ui.js (script type="module", con su propio
 // scope) pueda leer esta constante de forma fiable, igual que ya se hace con RESTAURANTES_CONFIG.
+window.GEMINI_ENDPOINT_URL = GEMINI_ENDPOINT_URL;
 window.GEMINI_ENDPOINT_URL_INFO_OTROS = GEMINI_ENDPOINT_URL_INFO_OTROS;
 window.TRADUCCION_TAMANO_LOTE = TRADUCCION_TAMANO_LOTE;
 window.INFO_EXTENDIDA_TAMANO_LOTE = INFO_EXTENDIDA_TAMANO_LOTE;

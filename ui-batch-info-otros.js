@@ -117,7 +117,7 @@ export const UIBatchInfoOtros = {
 
             while (!satisfecho && !procesoState.detenido && intentosLote < maxIntentosLote) {
                 try {
-                    const callResponse = await fetch(`${window.GEMINI_ENDPOINT_URL_INFO_OTROS || 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'}?key=${listaClavesAPI[procesoState.currentKeyIndex]}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: promptTraduccion }] }], generationConfig: { maxOutputTokens: window.GEMINI_MAX_OUTPUT_TOKENS || 65536, thinkingConfig: { thinkingBudget: 0 } } }) });
+                    const callResponse = await fetch(`${window.GEMINI_ENDPOINT_URL_INFO_OTROS || 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent'}?key=${listaClavesAPI[procesoState.currentKeyIndex]}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: promptTraduccion }] }], generationConfig: { maxOutputTokens: window.GEMINI_MAX_OUTPUT_TOKENS || 65536, thinkingConfig: { thinkingBudget: 0 } } }) });
 
                     const textResponse = await callResponse.text();
                     let respuestaJsonData;
@@ -158,7 +158,7 @@ export const UIBatchInfoOtros = {
 
                     const finishReason = respuestaJsonData.candidates?.[0]?.finishReason;
                     const safetyRatings = respuestaJsonData.candidates?.[0]?.safetyRatings;
-                    const textoLimpioIA = respuestaJsonData.candidates?.[0]?.content?.parts?.[0]?.text;
+                    const textoLimpioIA = (typeof window.extraerTextoCompletoRespuesta === 'function') ? window.extraerTextoCompletoRespuesta(respuestaJsonData.candidates?.[0]) : respuestaJsonData.candidates?.[0]?.content?.parts?.[0]?.text;
                     if (!textoLimpioIA) {
                         const detalleSeguridad = (safetyRatings && safetyRatings.length) ? ` | safetyRatings: ${JSON.stringify(safetyRatings)}` : '';
                         const numCandidatos = Array.isArray(respuestaJsonData.candidates) ? respuestaJsonData.candidates.length : 0;

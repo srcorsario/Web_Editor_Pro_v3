@@ -742,7 +742,7 @@ async function generarTraduccionEN() {
             const response = await fetch(`${GEMINI_ENDPOINT_URL}?key=${apiKey}`, { 
                 method: 'POST', 
                 headers: { 'Content-Type': 'application/json' }, 
-                body: JSON.stringify({ contents: [{ parts: [{ text: instruccion }] }], generationConfig: { maxOutputTokens: window.GEMINI_MAX_OUTPUT_TOKENS || 65536 } })
+                body: JSON.stringify({ contents: [{ parts: [{ text: instruccion }] }], generationConfig: { maxOutputTokens: window.GEMINI_MAX_OUTPUT_TOKENS || 65536, thinkingConfig: { thinkingBudget: 0 } } })
             }); 
             
             const data = await response.json(); 
@@ -754,7 +754,7 @@ async function generarTraduccionEN() {
                 continue; 
             } 
             
-            const txt = data.candidates?.[0]?.content?.parts?.[0]?.text; 
+            const txt = (typeof extraerTextoCompletoRespuesta === 'function') ? extraerTextoCompletoRespuesta(data.candidates?.[0]) : data.candidates?.[0]?.content?.parts?.[0]?.text; 
             if (txt) { 
                 opciones = extraerJSON(txt); 
                 if (opciones.directa || opciones.gastronomica || opciones.corta) { 
@@ -864,7 +864,7 @@ async function ejecutarTraduccionAutomatica() {
             const response = await fetch(`${GEMINI_ENDPOINT_URL}?key=${apiKey}`, { 
                 method: 'POST', 
                 headers: { 'Content-Type': 'application/json' }, 
-                body: JSON.stringify({ contents: [{ parts: [{ text: instruccion }] }], generationConfig: { maxOutputTokens: window.GEMINI_MAX_OUTPUT_TOKENS || 65536 } })
+                body: JSON.stringify({ contents: [{ parts: [{ text: instruccion }] }], generationConfig: { maxOutputTokens: window.GEMINI_MAX_OUTPUT_TOKENS || 65536, thinkingConfig: { thinkingBudget: 0 } } })
             }); 
             
             const data = await response.json(); 
@@ -876,7 +876,7 @@ async function ejecutarTraduccionAutomatica() {
                 continue; 
             } 
             
-            const txt = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            const txt = (typeof extraerTextoCompletoRespuesta === 'function') ? extraerTextoCompletoRespuesta(data.candidates?.[0]) : data.candidates?.[0]?.content?.parts?.[0]?.text;
             if (txt) {
                 const traducciones = extraerJSON(txt);
                 // CORREGIDO: Gemini a veces devuelve las claves de idioma en minúscula
