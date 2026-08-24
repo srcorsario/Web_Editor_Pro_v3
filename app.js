@@ -1178,17 +1178,36 @@ function confirmarEliminarPlato() {
 }
 window.confirmarEliminarPlato = confirmarEliminarPlato;
 
-function eliminarKeySeleccionada() { 
-    const selectEl = document.getElementById('selectKeys'); 
-    if (selectEl && selectEl.value) { 
-        deleteKey(selectEl.value); 
-        if (typeof UI !== 'undefined' && typeof UI.actualizarListaKeys === 'function') { 
-            UI.actualizarListaKeys(); 
+function eliminarKeySeleccionada() {
+    const selectEl = document.getElementById('selectKeys');
+    if (selectEl && selectEl.value) {
+        deleteKey(selectEl.value);
+        if (typeof UI !== 'undefined' && typeof UI.actualizarListaKeys === 'function') {
+            UI.actualizarListaKeys();
             UI.log("[OK] API Key eliminada del almacenamiento local.");
         }
-    } else { 
-        alert("No hay ninguna Key seleccionada para eliminar."); 
-    } 
+    } else {
+        alert("No hay ninguna Key seleccionada para eliminar.");
+    }
+}
+
+// NUEVO: faltaba por completo — el botón "Añadir Key" (#addKeyBtn) no tenía ningún onclick en el
+// HTML y esta función (leer #nuevaKey, guardarla con saveKey() de state.js y refrescar el
+// desplegable) no existía en ningún archivo, así que pulsar el botón no hacía nada. Ver también
+// eliminarKeySeleccionada() arriba, que sí existía pero tampoco estaba conectada a su botón.
+function agregarKeyDesdeInput() {
+    const inputKey = document.getElementById('nuevaKey');
+    const valor = inputKey ? inputKey.value.trim() : "";
+    if (!valor) {
+        alert("Pega antes una API Key de Gemini en el campo de texto.");
+        return;
+    }
+    if (typeof saveKey === 'function') saveKey(valor);
+    if (inputKey) inputKey.value = "";
+    if (typeof UI !== 'undefined' && typeof UI.actualizarListaKeys === 'function') {
+        UI.actualizarListaKeys();
+        UI.log("[OK] API Key añadida.");
+    }
 }
 
 // Auto-invocación inicial

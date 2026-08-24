@@ -46,14 +46,14 @@
             <div class="api-keys-manager" style="max-width: 500px; margin-top: 0;">
                 <label class="label-seccion">Gestión de API Keys Gemini</label>
                 <div class="api-keys-inputs">
-                    <input type="text" id="nuevaKey" placeholder="Pega tu Gemini Key aquí..." class="input-estandar">
-                    <button id="addKeyBtn" class="btn-add-key">Añadir Key</button>
+                    <input type="text" id="nuevaKey" placeholder="Pega tu Gemini Key aquí..." class="input-estandar" onkeydown="if(event.key==='Enter'){agregarKeyDesdeInput();}">
+                    <button id="addKeyBtn" class="btn-add-key" onclick="agregarKeyDesdeInput()">Añadir Key</button>
                 </div>
                 <div class="api-keys-list">
                     <div id="contenedorSelectKeys" class="flex-1">
                         <select id="selectKeys" class="select-keys"></select>
                     </div>
-                    <button id="btnEliminarKeySeleccionada" class="btn-delete-key" title="Eliminar key">✕</button>
+                    <button id="btnEliminarKeySeleccionada" class="btn-delete-key" title="Eliminar key" onclick="eliminarKeySeleccionada()">✕</button>
                 </div>
             </div>
         </div>
