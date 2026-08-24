@@ -84,6 +84,18 @@ function getCsvUrl(modo) {
 // seguían funcionando con 2.5-flash con normalidad, solo daban 429 de cuota) — así que con
 // varias keys de proyectos de distintas antigüedades convivía un modelo que unas keys ya no
 // podían usar. gemini-3.6-flash es la versión estable/GA vigente a fecha de este cambio.
+// MODIFICADO (2): se ha QUITADO thinkingConfig:{thinkingBudget:0} de generationConfig en TODAS
+// las llamadas. Ese campo era válido para gemini-2.5-flash pero gemini-3.6-flash lo rechaza con
+// error 400 "Request contains an invalid argument" — Gemini 3.x parece usar un mecanismo distinto
+// para controlar el "pensamiento" (algo tipo thinkingLevel en vez de thinkingBudget numérico), pero
+// no hay confirmación 100% fiable de su nombre/forma exactos en la documentación pública a fecha de
+// este cambio, y adivinarlo mal repetiría el mismo error 400 en TODAS las peticiones. Se prefiere
+// quitarlo sin más: Google anuncia gemini-3.6-flash como más eficiente en tokens de salida por
+// defecto que 2.5, así que no debería reproducir el problema original de "pensamiento invisible"
+// que motivó añadir este parámetro (ver comentario de arriba). Si vuelve a aparecer el síntoma
+// original ("La API no devolvió contenido" con finishReason MAX_TOKENS en los logs — ya visibles
+// gracias al diagnóstico ampliado de ui-batch-nombres.js/ui-batch-info.js/ui-batch-info-otros.js),
+// entonces sí merece la pena investigar el parámetro correcto de Gemini 3.x en vez de quitarlo.
 const GEMINI_ENDPOINT_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent";
 const GEMINI_ENDPOINT_URL_INFO_OTROS = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent";
 
