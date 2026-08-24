@@ -21,7 +21,8 @@ window.PROMPTS = {
     // Genera 3 opciones de traducción al inglés del nombre del plato/vino.
     // ---------------------------------------------------------
     opcionesEN: (textoCompletoEs, esVino) => `Actúa como un translator profesional de menús de restaurantes. Te paso un elemento en español: "${textoCompletoEs}".
-    ${esVino ? 'Es un vino. El separador "//" distingue el nombre del vino de la variedad de uva o detalles. Debes traducir ambas partes y mantener el separador "//" en el resultado. El nombre del vino debe ir en MAYÚSCULAS, pero el contenido entre paréntesis (como la D.O.) debe mantener su formato original.' : ''}
+    ${textoCompletoEs.includes('//') ? `El separador "//" distingue el nombre ${esVino ? 'del vino' : 'del plato'} de ${esVino ? 'la variedad de uva o detalles' : 'una segunda línea de ingredientes/opciones'} que le sigue. Debes traducir ambas partes y mantener el separador "//" en el resultado, en la misma posición.` : ''}
+    ${esVino ? 'El nombre del vino debe ir en MAYÚSCULAS, pero el contenido entre paréntesis (como la D.O.) debe mantener su formato original.' : ''}
     Necesito que me des EXACTAMENTE 3 opciones de traducción al inglés con diferentes enfoques para un menú:
     1. Traducción directa/literal.
     2. Traducción gastronómica/descriptiva (más elegante).
@@ -34,7 +35,8 @@ window.PROMPTS = {
     // Traduce el nombre del plato/vino (ES + EN de referencia) al resto de idiomas.
     // ---------------------------------------------------------
     autoTraduccionResto: (textoCompletoEs, textoCompletoEn, esVino, idiomasObjetivo) => `Actúa como un traductor experto de menús de restaurantes. Traduce el siguiente elemento en español: "${textoCompletoEs}" ${textoCompletoEn ? `y su texto en Inglés como referencia: "${textoCompletoEn}"` : ""}.
-    ${esVino ? 'Es un vino. El separador "//" distingue el nombre del vino de la variedad de uva o detalles. Debes traducir ambas partes y mantener el separador "//" en el resultado. El nombre del vino debe ir en MAYÚSCULAS, pero el contenido entre paréntesis (ej: EL COTO (D.O. Rioja)) debe mantener su formato original en todos los idiomas.' : ''}
+    ${textoCompletoEs.includes('//') ? `El separador "//" distingue el nombre ${esVino ? 'del vino' : 'del plato'} de ${esVino ? 'la variedad de uva o detalles' : 'una segunda línea de ingredientes/opciones'} que le sigue. Debes traducir ambas partes y mantener el separador "//" en el resultado, en la misma posición, en todos los idiomas.` : ''}
+    ${esVino ? 'El nombre del vino debe ir en MAYÚSCULAS, pero el contenido entre paréntesis (ej: EL COTO (D.O. Rioja)) debe mantener su formato original en todos los idiomas.' : ''}
 
 REGLA DE FIDELIDAD TERMINOLÓGICA (obligatoria): si el nombre en español usa un término específico de especie, corte o variedad (ej. "atún rojo" frente a atún blanco/bonito, "ternera" frente a buey/vacuno adulto, "gamba" frente a langostino), tradúcelo SIEMPRE por el término equivalente exacto en cada idioma de destino — nunca lo sustituyas por una especie, corte o variedad distinta aunque sea similar o más común en ese idioma. En concreto, "ternera" en esta carta es siempre carne roja de vacuno ADULTO (nunca ternera lechal/joven ni vaca vieja): tradúcela como "beef" en inglés, nunca como "veal".
 
@@ -53,7 +55,9 @@ Traduce a los siguientes idiomas (usa los códigos ISO proporcionados): ${idioma
     // ---------------------------------------------------------
     autoTraduccionRestoLote: (itemsArray, idiomasObjetivo) => `Actúa como un traductor experto de menús de restaurantes. Te paso una lista de ${itemsArray.length} elementos en español (con su texto en inglés de referencia cuando esté disponible). Traduce CADA UNO de ellos a los siguientes idiomas (usa los códigos ISO proporcionados): ${idiomasObjetivo.join(', ')}.
 
-Para los elementos marcados como [VINO]: el separador "//" distingue el nombre del vino de la variedad de uva o detalles. Debes traducir ambas partes y mantener el separador "//" en el resultado. El nombre del vino debe ir en MAYÚSCULAS, pero el contenido entre paréntesis (ej: EL COTO (D.O. Rioja)) debe mantener su formato original en todos los idiomas.
+Si el nombre de un elemento contiene el separador "//": distingue el nombre de una segunda parte que le sigue (en vinos, la variedad de uva o detalles; en platos, una segunda línea de ingredientes/opciones). Traduce ambas partes y mantén el separador "//" en el resultado, en la misma posición — esto aplica a CUALQUIER elemento que tenga "//" en su texto, sea plato o vino.
+
+Para los elementos marcados como [VINO], además: el nombre del vino debe ir en MAYÚSCULAS, pero el contenido entre paréntesis (ej: EL COTO (D.O. Rioja)) debe mantener su formato original en todos los idiomas.
 
 REGLA DE FIDELIDAD TERMINOLÓGICA (obligatoria, la más importante): si el nombre en español usa un término específico de especie, corte o variedad (ej. "atún rojo" frente a atún blanco/bonito, "ternera" frente a buey/vacuno adulto, "gamba" frente a langostino), tradúcelo SIEMPRE por el término equivalente exacto en cada idioma de destino — nunca lo sustituyas por una especie, corte o variedad distinta aunque sea similar o más habitual en ese idioma. Esto es especialmente crítico en pescados/mariscos y tipos de carne, donde confundir la especie es un error grave de carta. En concreto, "ternera" en esta carta es siempre carne roja de vacuno ADULTO (nunca ternera lechal/joven ni vaca vieja): tradúcela como "beef" en inglés, nunca como "veal".
 
