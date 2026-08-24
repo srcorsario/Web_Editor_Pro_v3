@@ -327,6 +327,8 @@ export const UICore = {
         if (btnRevisarConsistencia) btnRevisarConsistencia.onclick = () => window.UI.revisarConsistencia(stateContainer);
         const btnAuditarAlergenos = document.getElementById('btnAuditarAlergenos');
         if (btnAuditarAlergenos) btnAuditarAlergenos.onclick = () => window.UI.auditarAlergenos(stateContainer);
+        const btnAuditarSeparadores = document.getElementById('btnAuditarSeparadores');
+        if (btnAuditarSeparadores) btnAuditarSeparadores.onclick = () => window.UI.auditarSeparadores(stateContainer);
         const btnPausa = document.getElementById('btnPausa');
         if (btnPausa) btnPausa.onclick = () => { procesoState.pausado = !procesoState.pausado; btnPausa.innerText = procesoState.pausado ? "REANUDAR" : "PAUSAR"; window.UI.log(procesoState.pausado ? "[Info] Pausado." : "[Info] Reanudando..."); };
         const btnCancelar = document.getElementById('btnCancelar');
