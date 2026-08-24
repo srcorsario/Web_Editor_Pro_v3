@@ -11,9 +11,12 @@
 //
 // Qué comprueba: para cada fila cuyo NOMBRE_ES contiene "//" (plato con segunda
 // línea de ingredientes/opciones, o vino con variedad de uva), revisa cada
-// NOMBRE_<idioma> ya traducido (no vacío) y avisa si a ESA traducción le falta
-// el separador "//" — típicamente porque el modelo lo sustituyó por otro signo
-// de puntuación más "natural" en ese idioma.
+// NOMBRE_<idioma> ya traducido (no vacío) y avisa si el NÚMERO de opciones
+// "//...//" de esa traducción no coincide con el del español — típicamente
+// porque el modelo sustituyó "//" por otro signo de puntuación (0 opciones en
+// vez de las esperadas), o porque en un elemento con VARIAS opciones (p.ej.
+// "Mix de Gyozas //Pato// , //Langostino// , //Pollo//") solo tradujo la
+// primera y omitió el resto (menos opciones de las esperadas).
 //
 // Qué hace al detectar un desajuste: vacía SOLO la(s) celda(s) de idioma
 // afectada(s) de esa fila (no toda la fila, no el resto de idiomas que sí están
@@ -83,17 +86,27 @@ export const UIBatchAuditoriaSeparadores = {
             conSeparadorEnEs++;
 
             const idiomasAfectados = [];
+            const detalleAfectados = [];
             idiomasObjetivo.forEach(l => {
                 const idx = indicesObjetivo[l];
                 if (idx === -1) return;
                 const valor = (row[idx] || "").trim();
                 if (!valor) return; // aún no traducido: no es un fallo, es simplemente pendiente (lo cubre la Fase 2)
                 const desglosadoTraduccion = window.desglosarNombre(valor);
-                if (desglosadoTraduccion.opciones.length === 0) idiomasAfectados.push(l.toUpperCase());
+                // NUEVO: no basta con comprobar que haya AL MENOS una opción — en elementos con
+                // varias opciones (p.ej. una lista de sabores/rellenos, cada uno en su propio
+                // "//...//"), el modelo puede quedarse solo con la primera y omitir el resto sin
+                // que el separador "//" llegue a desaparecer del todo (opciones.length seguiría
+                // siendo > 0, solo que menor de lo esperado). Se compara el NÚMERO exacto de
+                // opciones contra el español para detectar también esa pérdida parcial.
+                if (desglosadoTraduccion.opciones.length !== desglosadoEs.opciones.length) {
+                    idiomasAfectados.push(l.toUpperCase());
+                    detalleAfectados.push(`${l.toUpperCase()} (${desglosadoTraduccion.opciones.length}/${desglosadoEs.opciones.length} opciones)`);
+                }
             });
 
             if (idiomasAfectados.length > 0) {
-                filasConDesajuste.push({ fila: i + 2, nombre: nombreEsActual, idiomasAfectados, indiceRow: i });
+                filasConDesajuste.push({ fila: i + 2, nombre: nombreEsActual, idiomasAfectados, detalleAfectados, indiceRow: i });
             }
         }
 
@@ -104,7 +117,7 @@ export const UIBatchAuditoriaSeparadores = {
         }
 
         filasConDesajuste.forEach(item => {
-            window.UI.log(`[Auditoría //] Fila ${item.fila} ("${item.nombre}"): falta el separador "//" en → ${item.idiomasAfectados.join(', ')}.`);
+            window.UI.log(`[Auditoría //] Fila ${item.fila} ("${item.nombre}"): número de opciones "//" incorrecto en → ${item.detalleAfectados.join(', ')}.`);
         });
 
         // Vaciar SOLO las celdas de idioma afectadas (no toda la fila) para que la Fase 2 las
