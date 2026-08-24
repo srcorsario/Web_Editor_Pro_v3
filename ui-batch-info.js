@@ -83,6 +83,16 @@ export const UIBatchInfo = {
 
         let platosCompletados = 0, vinosCompletados = 0, cuotaAgotada = false;
 
+        // NUEVO: cronometraje de lotes para poder mostrar cuánto tarda cada uno y una
+        // estimación aproximada del tiempo restante (Fase 1 completa: platos + vinos).
+        // Se comparte un único array de duraciones entre ambos sub-pasos (1a y 1b) porque
+        // usan el mismo prompt/lote de tamaño TAMANO_LOTE_INFO, así la media es más fiable
+        // cuantos más lotes lleve completados (no se reinicia al pasar de platos a vinos).
+        const duracionesLote = [];
+        const totalLotesPlatos = Math.ceil(pendientesPlatos.length / TAMANO_LOTE_INFO);
+        const totalLotesVinos = Math.ceil(pendientesVinos.length / TAMANO_LOTE_INFO);
+        const fmtDuracion = (typeof window.formatearDuracion === 'function') ? window.formatearDuracion : (s => `${Math.round(s)}s`);
+
         // ---------- Función interna reutilizada para procesar un lote (platos o vinos) ----------
         // Devuelve 'ok', 'cuota_agotada' (se han probado TODAS las keys disponibles y todas han
         // dado 429 sin ni un solo éxito de por medio -> seguir insistiendo es inútil, hay que
@@ -212,9 +222,17 @@ export const UIBatchInfo = {
             while (procesoState.pausado) await new Promise(resolve => setTimeout(resolve, 500));
 
             const indicesLote = pendientesPlatos.slice(lote, lote + TAMANO_LOTE_INFO);
-            window.UI.log(`[Piloto ES/EN - Lote ${Math.floor(lote / TAMANO_LOTE_INFO) + 1}/${Math.ceil(pendientesPlatos.length / TAMANO_LOTE_INFO)}] Procesando filas ${indicesLote.map(i => i + 2).join(', ')}...`);
+            const numeroLote = Math.floor(lote / TAMANO_LOTE_INFO) + 1;
+            window.UI.log(`[Piloto ES/EN - Lote ${numeroLote}/${totalLotesPlatos}] Procesando filas ${indicesLote.map(i => i + 2).join(', ')}...`);
+            const inicioLote = Date.now();
             const resultado = await procesarLoteInfo(indicesLote, false);
             if (resultado === 'cuota_agotada') { cuotaAgotada = true; break; }
+
+            const duracionLoteSeg = (Date.now() - inicioLote) / 1000;
+            duracionesLote.push(duracionLoteSeg);
+            const mediaSeg = duracionesLote.reduce((a, b) => a + b, 0) / duracionesLote.length;
+            const lotesRestantes = (totalLotesPlatos - numeroLote) + totalLotesVinos;
+            window.UI.log(`[Tiempo] Lote completado en ${fmtDuracion(duracionLoteSeg)} (media: ${fmtDuracion(mediaSeg)}/lote). Estimado restante (Paso 1 - platos y vinos): ~${fmtDuracion(mediaSeg * lotesRestantes)} (${lotesRestantes} lote(s)).`);
 
             if (typeof window.UI.renderTable === 'function') window.UI.renderTable();
             await new Promise(r => setTimeout(r, 1000));
@@ -226,9 +244,17 @@ export const UIBatchInfo = {
             while (procesoState.pausado) await new Promise(resolve => setTimeout(resolve, 500));
 
             const indicesLote = pendientesVinos.slice(lote, lote + TAMANO_LOTE_INFO);
-            window.UI.log(`[Vino - Lote ${Math.floor(lote / TAMANO_LOTE_INFO) + 1}/${Math.ceil(pendientesVinos.length / TAMANO_LOTE_INFO)}] Procesando filas ${indicesLote.map(i => i + 2).join(', ')}...`);
+            const numeroLote = Math.floor(lote / TAMANO_LOTE_INFO) + 1;
+            window.UI.log(`[Vino - Lote ${numeroLote}/${totalLotesVinos}] Procesando filas ${indicesLote.map(i => i + 2).join(', ')}...`);
+            const inicioLote = Date.now();
             const resultado = await procesarLoteInfo(indicesLote, true);
             if (resultado === 'cuota_agotada') { cuotaAgotada = true; break; }
+
+            const duracionLoteSeg = (Date.now() - inicioLote) / 1000;
+            duracionesLote.push(duracionLoteSeg);
+            const mediaSeg = duracionesLote.reduce((a, b) => a + b, 0) / duracionesLote.length;
+            const lotesRestantes = totalLotesVinos - numeroLote;
+            window.UI.log(`[Tiempo] Lote completado en ${fmtDuracion(duracionLoteSeg)} (media: ${fmtDuracion(mediaSeg)}/lote). Estimado restante (Paso 1 - vinos): ~${fmtDuracion(mediaSeg * lotesRestantes)} (${lotesRestantes} lote(s)).`);
 
             if (typeof window.UI.renderTable === 'function') window.UI.renderTable();
             await new Promise(r => setTimeout(r, 1000));

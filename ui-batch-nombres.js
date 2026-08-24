@@ -83,13 +83,17 @@ export const UIBatchNombres = {
         window.UI.log(`[Paso 2] Traduciendo nombres al resto de idiomas (${idiomasObjetivo.length} idiomas) en bloques de ${TAMANO_LOTE}. Platos pendientes: ${filasPendientes.length}.`);
 
         let platosCompletados = 0, cuotaAgotada = false;
+        const duracionesLote = []; // NUEVO: duración (s) de cada lote completado en ESTA tanda, para estimar lo que falta
 
         for (let lote = 0; lote < filasPendientes.length; lote += TAMANO_LOTE) {
             if (procesoState.detenido || cuotaAgotada) break;
             while (procesoState.pausado) await new Promise(resolve => setTimeout(resolve, 500));
 
+            const inicioLote = Date.now(); // NUEVO
+            const numeroLote = Math.floor(lote / TAMANO_LOTE) + 1;
+            const totalLotes = Math.ceil(filasPendientes.length / TAMANO_LOTE);
             const indicesLote = filasPendientes.slice(lote, lote + TAMANO_LOTE);
-            window.UI.log(`[Lote ${Math.floor(lote / TAMANO_LOTE) + 1}/${Math.ceil(filasPendientes.length / TAMANO_LOTE)}] Procesando filas ${indicesLote.map(i => i + 2).join(', ')}...`);
+            window.UI.log(`[Lote ${numeroLote}/${totalLotes}] Procesando filas ${indicesLote.map(i => i + 2).join(', ')}...`);
 
             // Preparar los datos de cada plato del lote (sin llamar aún a la IA)
             const itemsLote = indicesLote.map(i => {
@@ -203,6 +207,14 @@ export const UIBatchNombres = {
                         if (algunoAplicado) platosCompletados++;
                     });
                     satisfecho = true;
+                    // NUEVO: cuánto ha tardado este lote + estimación de lo que queda, a partir de
+                    // la media de los lotes ya completados en esta misma tanda.
+                    const duracionLoteSeg = (Date.now() - inicioLote) / 1000;
+                    duracionesLote.push(duracionLoteSeg);
+                    const mediaSeg = duracionesLote.reduce((a, b) => a + b, 0) / duracionesLote.length;
+                    const lotesRestantes = totalLotes - numeroLote;
+                    const fmt = (typeof window.formatearDuracion === 'function') ? window.formatearDuracion : (s => `${Math.round(s)}s`);
+                    window.UI.log(`[Tiempo] Lote ${numeroLote}/${totalLotes} completado en ${fmt(duracionLoteSeg)} (media: ${fmt(mediaSeg)}/lote). Estimado restante: ~${fmt(mediaSeg * lotesRestantes)} (${lotesRestantes} lote(s)).`);
                 } catch (err) {
                     limitesConsecutivos = 0; // un error que no es 429 rompe la racha de "cuota agotada"
                     window.UI.log(`[Error Traducción Nombres] Lote (filas ${itemsLote.map(it => it.fila + 2).join(', ')}): ${err.message}`);

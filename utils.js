@@ -103,6 +103,21 @@ function extraerTextoCompletoRespuesta(candidato) {
     return texto || undefined;
 }
 
+/**
+ * Formatea una duración en segundos a un texto legible tipo "1m 23s" o "45s".
+ * Usado por las Fases 1/2/3 para mostrar cuánto tarda cada lote de la IA y estimar,
+ * a partir de la media de los lotes ya completados en la tanda actual, cuánto falta.
+ * @param {Number} segundos
+ * @returns {String}
+ */
+function formatearDuracion(segundos) {
+    const s = Math.max(0, Math.round(segundos || 0));
+    const min = Math.floor(s / 60);
+    const seg = s % 60;
+    if (min <= 0) return `${seg}s`;
+    return `${min}m ${seg}s`;
+}
+
 function extraerJSON(texto) {
     let limpio = texto.replace(/```json/g, '').replace(/```/g, '').trim();
     let braceCount = 0;
