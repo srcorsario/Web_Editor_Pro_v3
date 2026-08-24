@@ -819,7 +819,16 @@
                 const esVino = (p.id === 12990 || p.id >= 13000);
                 let htmlNombreEs = "", htmlNombreEn = "";
                 if (esVino) htmlNombreEs = objEs.uvas ? `<span class="sugerencias-nombre-es">${objEs.nombre} <span class="sugerencias-detalles-uvas-inline">(${objEs.uvas})</span></span>` : `<span class="sugerencias-nombre-es">${objEs.nombre}</span>`;
-                else { htmlNombreEs = `<span class="sugerencias-nombre-es">${objEs.nombre}</span>`; htmlNombreEn = `<span class="sugerencias-nombre-en">${objEn.nombre}</span>`; }
+                else {
+                    // NUEVO: igual que ya se hacía con la uva del vino, si el plato tiene una
+                    // segunda línea tras "//" (ingredientes/opciones) también se muestra aquí,
+                    // entre paréntesis junto al nombre — antes solo se imprimía objEs.nombre/
+                    // objEn.nombre y ese detalle desaparecía por completo de la hoja impresa.
+                    const detalleEs = objEs.opciones.join(' // ');
+                    const detalleEn = objEn.opciones.join(' // ');
+                    htmlNombreEs = `<span class="sugerencias-nombre-es">${objEs.nombre}${detalleEs ? ` <span class="sugerencias-detalles-uvas-inline">(${detalleEs})</span>` : ''}</span>`;
+                    htmlNombreEn = `<span class="sugerencias-nombre-en">${objEn.nombre}${detalleEn ? ` <span class="sugerencias-detalles-uvas-inline">(${detalleEn})</span>` : ''}</span>`;
+                }
                 const precioFormateado = p.precio ? parseFloat(p.precio).toFixed(2) + '€' : '0.00€';
                 h += `<div class="sugerencias-plato"><div class="sugerencias-plato-nombres">${htmlNombreEs}${htmlNombreEn}${iconsHtml}</div><div class="sugerencias-puntos"></div><div class="sugerencias-precio">${precioFormateado}</div></div>`;
             });
