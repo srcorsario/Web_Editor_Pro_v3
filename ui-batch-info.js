@@ -128,8 +128,29 @@ export const UIBatchInfo = {
                         continue;
                     }
 
+                    // NUEVO: cualquier otro error explícito de la API (400/403/404/500...) se muestra
+                    // tal cual en vez de caer en el genérico "La API no devolvió contenido" (mismo
+                    // ajuste que ya tenía ui-batch-info-otros.js, ver Fase 3).
+                    if (respuestaJsonData.error) {
+                        throw new Error(`Error de la API (código ${respuestaJsonData.error.code || '?'}): ${respuestaJsonData.error.message || 'sin mensaje'}`);
+                    }
+
+                    // NUEVO: si Gemini bloqueó la respuesta por su filtro de seguridad, viene en
+                    // promptFeedback — se detecta explícitamente en vez de caer en el genérico
+                    // "sin contenido", igual que en ui-batch-info-otros.js.
+                    const blockReason = respuestaJsonData.promptFeedback?.blockReason;
+                    if (blockReason) {
+                        throw new Error(`Gemini bloqueó la respuesta por su filtro de seguridad (blockReason: ${blockReason}). Puede haber un término en algún plato de este lote que lo dispare — revísalo o repórtalo si parece un falso positivo.`);
+                    }
+
+                    const finishReason = respuestaJsonData.candidates?.[0]?.finishReason;
+                    const safetyRatings = respuestaJsonData.candidates?.[0]?.safetyRatings;
                     const textoLimpioIA = (typeof window.extraerTextoCompletoRespuesta === 'function') ? window.extraerTextoCompletoRespuesta(respuestaJsonData.candidates?.[0]) : respuestaJsonData.candidates?.[0]?.content?.parts?.[0]?.text;
-                    if (!textoLimpioIA) throw new Error("La API no devolvió contenido.");
+                    if (!textoLimpioIA) {
+                        const detalleSeguridad = (safetyRatings && safetyRatings.length) ? ` | safetyRatings: ${JSON.stringify(safetyRatings)}` : '';
+                        const numCandidatos = Array.isArray(respuestaJsonData.candidates) ? respuestaJsonData.candidates.length : 0;
+                        throw new Error(`La API no devolvió contenido (finishReason: ${finishReason || 'desconocido'}, nº candidatos: ${numCandidatos})${detalleSeguridad}.`);
+                    }
 
                     const jsonSanitizado = textoLimpioIA.replace(/```json/g, '').replace(/```/g, '').trim();
                     const resultadoLote = JSON.parse(jsonSanitizado);
