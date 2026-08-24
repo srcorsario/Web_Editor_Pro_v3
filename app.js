@@ -275,7 +275,15 @@ window.cancelarModoOptimista = function() {
 function renderPlatoItemHtml(p) {
     let htmlImagenPC = p.imagen ? `<span style="margin-right: 5px;">📷</span>` : "";
     let htmlCarpetaPC = p.carpeta ? `<span class="tag-carpeta">${p.carpeta}</span>` : "";
-    const nombreLimpio = desglosarNombre(p.es).nombre;
+    // NUEVO: además del nombre principal (antes del primer "//"), se muestra también lo que
+    // había tras los separadores "//" — la uva/detalle en vinos (id >= 13000), o las opciones
+    // (segunda línea de ingredientes/sabores intercambiables) en platos — que antes solo era
+    // visible abriendo el editor de cada elemento.
+    const esVino = (p.id >= 13000);
+    const desglosado = desglosarNombre(p.es);
+    const nombreLimpio = desglosado.nombre;
+    const detalle = esVino ? desglosado.uvas : desglosado.opciones.join(' // ');
+    const htmlDetalle = detalle ? `<span class="plato-detalle">${detalle}</span>` : "";
 
     return `<div class="plato-item">
         <div class="plato-orden-btns">
@@ -284,6 +292,7 @@ function renderPlatoItemHtml(p) {
         </div>
         <div class="plato-info">
             <span class="plato-nombre">${nombreLimpio}</span>
+            ${htmlDetalle}
             <div style="font-size: 0.7rem; color: #7f8c8d; margin-top: 4px; display: flex; gap: 10px; align-items: center;">${htmlCarpetaPC} ${htmlImagenPC}</div>
         </div>
         <div class="plato-meta-footer">

@@ -344,9 +344,15 @@ body {
 
 .plato-item { display: flex; padding: 12px; border-bottom: 1px solid #f1f2f6; gap: 10px; align-items: center; }
 .plato-info { flex: 1; min-width: 0; }
-.plato-nombre { 
-    font-weight: 600; font-size: 0.9rem; display: block; overflow: hidden; 
-    text-overflow: ellipsis; white-space: nowrap; 
+.plato-nombre {
+    font-weight: 600; font-size: 0.9rem; display: block; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap;
+}
+/* NUEVO: segunda línea con lo que va tras el/los separador/es "//" del nombre (uva del vino,
+   u opciones/ingredientes intercambiables del plato), antes solo visible dentro del editor. */
+.plato-detalle {
+    font-style: italic; font-size: 0.78rem; color: #7f8c8d; display: block; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap; margin-top: 1px;
 }
 
 .plato-meta-footer { display: flex; align-items: center; gap: 8px; flex-shrink: 0; min-width: 210px; justify-content: flex-end; }
@@ -825,13 +831,17 @@ input:checked + .slider-switch:before { transform: translateX(18px); }
         flex: 1;
         min-width: 0;
         display: flex;
-        align-items: center;
-        justify-content: space-between;
+        flex-direction: column;
     }
 
     .plato-nombre {
         font-size: 0.95rem;
         margin: 0;
+        padding-right: 10px;
+    }
+
+    .plato-detalle {
+        font-size: 0.75rem;
         padding-right: 10px;
     }
 
