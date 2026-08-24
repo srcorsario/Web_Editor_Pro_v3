@@ -14,6 +14,15 @@
 // IMPORTANTE: debe cargarse en el HTML ANTES que app.js y ui.js.
 // =========================================
 
+// NUEVO: regla compartida contra un fallo real visto en producción — al generar texto en
+// alemán (y potencialmente otros idiomas con comillas tipográficas propias: „", «», 「」...),
+// Gemini a veces usa esas comillas COMO SI fueran el delimitador de la cadena JSON en vez de
+// las comillas rectas ("), rompiendo el JSON aunque el contenido en sí esté bien formado
+// (finishReason STOP, respuesta completa — el fallo es puramente de sintaxis JSON). Se añade a
+// TODOS los prompts que piden salida JSON, no solo al que lo disparó (infoOtrosIdiomasLote),
+// porque cualquier prompt que genere texto en esos idiomas corre el mismo riesgo.
+const REGLA_COMILLAS_JSON = 'REGLA DE FORMATO JSON (obligatoria): usa SIEMPRE comillas dobles rectas (") como delimitador de cada cadena del JSON, en TODOS los idiomas de la respuesta — nunca uses comillas tipográficas o angulares propias de un idioma (p.ej. „ " " « » 「」) como delimitador de una cadena JSON, aunque sean las comillas habituales de ese idioma. Si necesitas citar un término dentro del texto, usa las comillas propias de ese idioma como texto normal DENTRO de la cadena (nunca sustituyendo el delimitador), y si necesitas usar comillas rectas dentro del texto, escápalas con barra invertida (\\").';
+
 window.PROMPTS = {
 
     // ---------------------------------------------------------
@@ -27,7 +36,8 @@ window.PROMPTS = {
     1. Traducción directa/literal.
     2. Traducción gastronómica/descriptiva (más elegante).
     3. Traducción corta/concisa (estilo menú).
-    Responde EXCLUSIVAMENTE con un objeto JSON válido. No incluyas texto fuera del JSON. Las comillas dobles dentro de las traducciones deben estar escapadas con barra invertida (\"). 
+    ${REGLA_COMILLAS_JSON}
+    Responde EXCLUSIVAMENTE con un objeto JSON válido. No incluyas texto fuera del JSON. Las comillas dobles dentro de las traducciones deben estar escapadas con barra invertida (\").
     Estructura exacta: {"directa": "...", "gastronomica": "...", "corta": "..."}`,
 
     // ---------------------------------------------------------
@@ -45,6 +55,7 @@ REGLA DE CONSISTENCIA CON EL INGLÉS DE REFERENCIA: si el texto en inglés ya ha
 REGLA DE TÉRMINOS TÉCNICOS/EXTRANJEROS (ej. AOJISO, AOVE, siglas, técnicas en otro idioma ya presentes en el nombre): mantenlos SIN traducir su significado en todos los idiomas que usan alfabeto latino (cirílico, griego, etc. incluidos: transcríbelos fonéticamente, no los sustituyas por su significado). Solo en idiomas sin alfabeto fonético equivalente claro (ej. chino, japonés, coreano, árabe) puedes optar por la transcripción fonética habitual del término en ese idioma; evita traducir su significado salvo que sea el término nativo real de ese idioma (p. ej. si el término ya es una palabra japonesa y traduces al japonés).
 
 Traduce a los siguientes idiomas (usa los códigos ISO proporcionados): ${idiomasObjetivo.join(', ')}.
+    ${REGLA_COMILLAS_JSON}
     Responde EXCLUSIVAMENTE con un objeto JSON válido. No incluyas texto fuera del JSON.
     Usa los códigos ISO EN MAYÚSCULAS como claves, tal cual se han listado arriba. Ejemplo de formato de respuesta esperado: {"DE": "Nombre // Uva", "FR": "Nom Français"}`,
 
@@ -69,6 +80,7 @@ REGLA DE TÉRMINOS TÉCNICOS/EXTRANJEROS (ej. AOJISO, AOVE, siglas, técnicas ya
 Elementos a traducir (el número al inicio de cada línea es su índice, empezando en 0):
 ${itemsArray.map((it, idx) => `${idx}. ${it.esVino ? '[VINO] ' : ''}ES: "${it.textoCompletoEs}"${it.textoCompletoEn ? ` | EN: "${it.textoCompletoEn}"` : ''}`).join('\n')}
 
+${REGLA_COMILLAS_JSON}
 Responde EXCLUSIVAMENTE con un objeto JSON válido, sin texto fuera del JSON ni markdown. La clave de primer nivel debe ser el índice numérico del elemento tal cual aparece arriba (como string), y dentro de cada uno, usa los códigos ISO en MAYÚSCULAS como claves.
 Estructura exacta esperada (ejemplo con 2 elementos y 2 idiomas): {"0": {"DE": "Nombre // Uva", "FR": "Nom // Cépage"}, "1": {"DE": "...", "FR": "..."}}`,
 
@@ -172,6 +184,7 @@ REGLA ESTRICTA DE ALÉRGENOS (q3 y r3) — se indica por plato en la lista de ab
 Platos a procesar (el número al inicio de cada línea es su índice, empezando en 0):
 ${itemsArray.map((it, idx) => `${idx}. ES: "${it.nombreEs}"${it.tieneAlergenos ? ` | Alérgenos de ESTE plato a mencionar en su q3/r3: ${it.alergenosValor}` : ' | Sin alérgenos registrados para este plato'}`).join('\n')}
 
+${REGLA_COMILLAS_JSON}
 Responde EXCLUSIVAMENTE con un objeto JSON válido, sin texto fuera del JSON ni markdown. La clave de primer nivel debe ser el índice numérico del plato tal cual aparece arriba (como string).
 Estructura exacta esperada (ejemplo con 2 platos):
 {
@@ -195,6 +208,7 @@ REGLAS OBLIGATORIAS:
 Vinos a procesar (el número al inicio de cada línea es su índice, empezando en 0):
 ${itemsArray.map((it, idx) => `${idx}. ES: "${it.nombreVino}"`).join('\n')}
 
+${REGLA_COMILLAS_JSON}
 Responde EXCLUSIVAMENTE con un objeto JSON válido, sin texto fuera del JSON ni markdown. La clave de primer nivel debe ser el índice numérico del vino tal cual aparece arriba (como string).
 Estructura exacta esperada (ejemplo con 2 vinos):
 {
@@ -226,6 +240,7 @@ REGLA DE CONSISTENCIA CON EL INGLÉS DE REFERENCIA (crítica): cuando la ficha e
 Elementos a traducir (el número al inicio de cada línea es su índice, empezando en 0; la ficha en español de cada uno va en JSON tras "ES:", y la de inglés (si existe) tras "EN (referencia):"):
 ${itemsArray.map((it, idx) => `${idx}. ${it.esVino ? '[VINO] ' : ''}ES: ${JSON.stringify(it.infoEs)}${it.infoEn ? ` | EN (referencia): ${JSON.stringify(it.infoEn)}` : ''}`).join('\n')}
 
+${REGLA_COMILLAS_JSON}
 Responde EXCLUSIVAMENTE con un objeto JSON válido, sin texto fuera del JSON ni markdown. La clave de primer nivel debe ser el índice numérico del elemento tal cual aparece arriba (como string), y dentro de cada uno, usa los códigos ISO en MAYÚSCULAS como claves de segundo nivel, cada una con el mismo objeto de claves que la ficha en español de ese elemento.
 Estructura exacta esperada (ejemplo con 1 elemento y 2 idiomas, ficha con desc+q1+r1+q2+r2):
 {"0": {"DE": {"desc": "...", "q1": "...", "r1": "...", "q2": "...", "r2": "..."}, "FR": {"desc": "...", "q1": "...", "r1": "...", "q2": "...", "r2": "..."}}}`
