@@ -32,9 +32,17 @@ try {
 
 let datosLocales = [];
 let platoEditandoId = null;
-let esNuevoPlato = false; 
-let datosTempNuevo = null; 
+let esNuevoPlato = false;
+let datosTempNuevo = null;
 let opcionesENActuales = [];
+// NUEVO: estado del modo "Plato con ingredientes" (checkbox #chk-modo-ingredientes) — ver
+// abrirEditor(), toggleModoIngredientes() y aplicarCambiosPlato(). modoIngredientesActivo
+// indica si el plato que se está editando ahora mismo usa la lista editable de
+// opciones/ingredientes en vez del campo de detalle simple (edit-es-uvas/edit-en-uvas).
+// ingredientesPlatoActual es esa lista de trabajo: [{ es, en, activo }, ...], en el mismo
+// orden/posición que espera Opciones_Inactivas (compartida por todos los idiomas).
+let modoIngredientesActivo = false;
+let ingredientesPlatoActual = [];
 
 // CORREGIDO: esta constante faltaba por completo (no estaba definida en ningún
 // archivo), lo que hacía que abrirEditor() lanzara "ALERGENOS_LISTA is not
@@ -539,29 +547,39 @@ function abrirEditor(id, esNuevo = false) {
     const esCroqueta = esRangoCroquetasRG(id);
     const esCroquetaVeg = esCroqueta && id >= 12200;
     
+    // MODIFICADO: el campo de "detalle" (antes solo visible para vinos, la variedad de uva)
+    // ahora se muestra también en platos normales — es la "segunda línea" de siempre, pero
+    // ahora editable como texto libre en vez de quedar fija con lo que trajera la hoja (antes
+    // aplicarCambiosPlato() la conservaba intacta pasara lo que pasara aquí). Para platos con
+    // VARIAS opciones intercambiables (Mix de Gyozas...) está además el modo "Plato con
+    // ingredientes" de más abajo, que sustituye este campo simple por una lista editable.
     const labelUvas = document.getElementById('label-uvas');
     if (labelUvas) labelUvas.innerText = esVino ? "Nombres y Detalles del Plato / Vino (Uvas)" : "Nombres y Detalles del Plato";
-    
+
     const dataEs = desglosarNombre(p['es'] || "");
     const editEs = document.getElementById('edit-es');
     if (editEs) editEs.value = esVino ? formatWineName(dataEs.nombre) : dataEs.nombre;
-    
-    const inputEsUvas = document.getElementById('edit-es-uvas');
-    if (inputEsUvas) {
-        inputEsUvas.value = dataEs.uvas;
-        inputEsUvas.style.display = esVino ? "block" : "none";
-    }
 
     const dataEn = desglosarNombre(p['en'] || "");
     const editEn = document.getElementById('edit-en');
     if (editEn) editEn.value = esVino ? formatWineName(dataEn.nombre) : dataEn.nombre;
-    
-    const inputEnUvas = document.getElementById('edit-en-uvas');
-    if (inputEnUvas) {
-        inputEnUvas.value = dataEn.uvas;
-        inputEnUvas.style.display = esVino ? "block" : "none";
-    }
-    
+
+    // NUEVO: modo "Plato con ingredientes" — arranca activado solo si el plato YA tenía más
+    // de una opción detectada entre "//.../ /" (p.ej. importado de la hoja con varias ya
+    // escritas a mano); con 0 o 1 opción arranca en modo simple (el caso normal), pero el
+    // usuario puede marcar la casilla en cualquier momento, tanto para uno ya existente como
+    // al crear uno nuevo. No se ofrece ni para vinos (tienen su propio campo de uva) ni para
+    // croquetas (tienen su propio selector de sabores dedicado, ver contenedor-croquetas).
+    modoIngredientesActivo = !esVino && !esCroqueta && (dataEs.opciones || []).length > 1;
+    ingredientesPlatoActual = construirListaIngredientes(dataEs.opciones || [], dataEn.opciones || [], p.opcionesInactivas || "");
+
+    const contenedorToggleIngredientes = document.getElementById('contenedor-toggle-ingredientes');
+    if (contenedorToggleIngredientes) contenedorToggleIngredientes.style.display = (!esVino && !esCroqueta) ? "" : "none";
+    const chkModoIngredientes = document.getElementById('chk-modo-ingredientes');
+    if (chkModoIngredientes) chkModoIngredientes.checked = modoIngredientesActivo;
+
+    aplicarVisibilidadModoIngredientes(dataEs.uvas, dataEn.uvas);
+
     const containerResto = document.getElementById('contenedor-resto-idiomas');
     if (containerResto && window.IDIOMAS_ORDEN) {
         let htmlRestoLangs = `<div class="langs-fluid-container">`;
@@ -575,7 +593,7 @@ function abrirEditor(id, esNuevo = false) {
                     <div class="lang-tag">${l.toUpperCase()}</div>
                     <div style="flex:1">
                         <input id="edit-${l}" class="input-estandar input-nombre-corto" placeholder="Nombre en ${labelIdioma}" value="${esVino ? formatWineName(dataLang.nombre) : dataLang.nombre}">
-                        <input id="edit-${l}-uvas" class="input-estandar input-uvas" placeholder="Detalles / Grapes (${labelIdioma})" value="${dataLang.uvas}" style="display: ${esVino ? 'block' : 'none'}">
+                        <input id="edit-${l}-uvas" class="input-estandar input-uvas" placeholder="Detalle / Detail (${labelIdioma})" value="${dataLang.uvas}" style="display: ${modoIngredientesActivo ? 'none' : 'block'}">
                     </div>
                 </div>`;
         });
@@ -610,28 +628,10 @@ function abrirEditor(id, esNuevo = false) {
         alergenosGrid.innerHTML = alergenosHtml;
     }
 
-    // NUEVO: rueda de "Opciones del plato" — una palabra entre "//.../ /" del Nombre_ES por
-    // botón (sabores, ingredientes intercambiables...), para activar/desactivar sin tener que
-    // editar el texto. No se muestra para vinos (que ya tienen su propio campo dedicado de
-    // uva) ni cuando el plato no tiene ninguna opción detectada.
-    const contenedorOpciones = document.getElementById('contenedor-opciones-plato');
-    if (contenedorOpciones) {
-        const opcionesDetectadas = dataEs.opciones || [];
-        if (!esVino && opcionesDetectadas.length > 0) {
-            const inactivasActuales = (p.opcionesInactivas || "").split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
-            const opcionesHtml = opcionesDetectadas.map((opcion, idx) => {
-                const pos = idx + 1;
-                const activo = !inactivasActuales.includes(pos);
-                return `<div class="opcion-btn ${activo ? 'selected' : ''}" data-pos="${pos}" onclick="this.classList.toggle('selected')">${opcion}</div>`;
-            }).join('');
-            contenedorOpciones.innerHTML = `<div class="input-group"><label class="label-seccion">Opciones del Plato (activar/desactivar)</label><div class="opciones-grid">${opcionesHtml}</div></div>`;
-            contenedorOpciones.style.display = "";
-        } else {
-            contenedorOpciones.innerHTML = "";
-            contenedorOpciones.style.display = "none";
-        }
-    }
-    
+    // La rueda de solo activar/desactivar de antes se sustituyó por la lista editable de
+    // ingredientes — ver aplicarVisibilidadModoIngredientes()/renderIngredientesPlato() más
+    // arriba, ya invocada para este plato.
+
     const containerCroquetas = document.getElementById('contenedor-croquetas');
     if (containerCroquetas) {
         let croquetasHtml = "";
@@ -677,6 +677,99 @@ function abrirEditor(id, esNuevo = false) {
     // la rueda de un plato existente como "Añadir Nuevo Plato" no hacían nada visible.
     const modalEditor = document.getElementById('modal-editor');
     if (modalEditor) modalEditor.style.display = 'block';
+}
+
+// NUEVO: construye la lista de trabajo de "ingredientes/opciones" a partir de los arrays ya
+// separados de ES y EN (ver desglosarNombre en utils.js) y de las posiciones desactivadas
+// guardadas. Si ES y EN tienen distinto número de opciones (traducción desincronizada — ver
+// ui-batch-auditoria-separadores.js, que existe justo para detectar esto) se usa el mayor de
+// los dos y se deja vacío el lado que falte; renderIngredientesPlato() resalta esa fila para
+// que se note a simple vista que le falta la traducción.
+function construirListaIngredientes(opcionesEs, opcionesEn, opcionesInactivasStr) {
+    const inactivas = (opcionesInactivasStr || "").split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
+    const total = Math.max(opcionesEs.length, opcionesEn.length);
+    const lista = [];
+    for (let i = 0; i < total; i++) {
+        lista.push({
+            es: opcionesEs[i] || "",
+            en: opcionesEn[i] || "",
+            activo: !inactivas.includes(i + 1)
+        });
+    }
+    return lista;
+}
+
+// NUEVO: casilla "Plato con ingredientes" (onchange en index.html) — alterna entre el campo
+// de detalle simple (edit-es-uvas/edit-en-uvas) y la lista editable de opciones.
+function toggleModoIngredientes() {
+    const chk = document.getElementById('chk-modo-ingredientes');
+    modoIngredientesActivo = !!(chk && chk.checked);
+
+    // Al ENCENDER el modo con la lista todavía vacía (plato nuevo, o uno que solo tenía el
+    // campo simple relleno), se arranca con lo que hubiera en ese campo como primera opción,
+    // para no perder lo ya escrito al cambiar de modo.
+    if (modoIngredientesActivo && ingredientesPlatoActual.length === 0) {
+        const esActual = superLimpiar(document.getElementById('edit-es-uvas')?.value || "");
+        const enActual = superLimpiar(document.getElementById('edit-en-uvas')?.value || "");
+        if (esActual || enActual) ingredientesPlatoActual.push({ es: esActual, en: enActual, activo: true });
+    }
+
+    aplicarVisibilidadModoIngredientes();
+}
+
+// NUEVO: muestra/oculta el campo de detalle simple (ES/EN/resto de idiomas) frente a la
+// lista de ingredientes, según el modo actual, y (re)pinta la lista si toca. esUvasInicial /
+// enUvasInicial solo se usan la primera vez que se abre el editor, para rellenar el campo
+// simple; en repintados posteriores (tras marcar/desmarcar la casilla) no se tocan los
+// valores que el usuario ya haya escrito.
+function aplicarVisibilidadModoIngredientes(esUvasInicial, enUvasInicial) {
+    const inputEsUvas = document.getElementById('edit-es-uvas');
+    const inputEnUvas = document.getElementById('edit-en-uvas');
+    const contenedorOpciones = document.getElementById('contenedor-opciones-plato');
+
+    if (inputEsUvas) {
+        if (esUvasInicial !== undefined) inputEsUvas.value = esUvasInicial;
+        inputEsUvas.style.display = modoIngredientesActivo ? "none" : "block";
+    }
+    if (inputEnUvas) {
+        if (enUvasInicial !== undefined) inputEnUvas.value = enUvasInicial;
+        inputEnUvas.style.display = modoIngredientesActivo ? "none" : "block";
+    }
+
+    // Los campos de detalle del resto de idiomas (generados en abrirEditor(), ver
+    // contenedor-resto-idiomas) tampoco tienen sentido en modo ingredientes: ese modo solo
+    // gestiona ES/EN a mano; el resto se traduce con el botón "Auto-Traducir" como siempre.
+    document.querySelectorAll('.input-uvas[id^="edit-"][id$="-uvas"]').forEach(el => {
+        if (el === inputEsUvas || el === inputEnUvas) return;
+        el.style.display = modoIngredientesActivo ? "none" : "block";
+    });
+
+    if (contenedorOpciones) {
+        contenedorOpciones.style.display = modoIngredientesActivo ? "" : "none";
+        if (modoIngredientesActivo) renderIngredientesPlato();
+    }
+}
+
+// NUEVO: pinta la lista editable de ingredientes/opciones (modo "Plato con ingredientes").
+// Cada fila tiene texto ES, texto EN, un interruptor activo/inactivo (mismo criterio que la
+// rueda de antes: si está inactivo, la web pública no lo muestra) y un botón para eliminar la
+// fila entera. "➕ Añadir opción" al final crea una fila vacía nueva.
+function renderIngredientesPlato() {
+    const contenedor = document.getElementById('contenedor-opciones-plato');
+    if (!contenedor) return;
+
+    const filasHtml = ingredientesPlatoActual.map((ing, idx) => `
+        <div class="ingrediente-fila">
+            <input class="input-estandar input-ingrediente" placeholder="Español (ej: Pato)" value="${(ing.es || "").replace(/"/g, '&quot;')}" oninput="ingredientesPlatoActual[${idx}].es = this.value">
+            <input class="input-estandar input-ingrediente ${!ing.en ? 'input-ingrediente-vacio' : ''}" placeholder="Inglés (ej: Duck)" value="${(ing.en || "").replace(/"/g, '&quot;')}" oninput="ingredientesPlatoActual[${idx}].en = this.value">
+            <div class="ingrediente-activo-toggle ${ing.activo ? 'selected' : ''}" title="${ing.activo ? 'Visible en la web (clic para ocultar)' : 'Oculto en la web (clic para mostrar)'}" onclick="ingredientesPlatoActual[${idx}].activo = !ingredientesPlatoActual[${idx}].activo; renderIngredientesPlato()">${ing.activo ? '👁️' : '🚫'}</div>
+            <button type="button" class="btn-eliminar-ingrediente" title="Eliminar esta opción" onclick="ingredientesPlatoActual.splice(${idx}, 1); renderIngredientesPlato()">🗑️</button>
+        </div>`).join('');
+
+    contenedor.innerHTML = `
+        <label class="label-seccion">Opciones / Ingredientes del Plato</label>
+        <div class="ingredientes-lista">${filasHtml || '<p class="ingredientes-vacio">Todavía no hay opciones — añade la primera abajo.</p>'}</div>
+        <button type="button" class="btn-add-ingrediente" onclick="ingredientesPlatoActual.push({es:'', en:'', activo:true}); renderIngredientesPlato()">➕ Añadir opción</button>`;
 }
 
 function actualizarNombreCroquetas() {
@@ -937,6 +1030,10 @@ function aplicarCambiosPlato() {
     
     const esVino = (platoEditandoId >= 13000);
 
+    // NUEVO: nº de opciones que tenía ES ANTES de este guardado — para saber, una vez
+    // reconstruido, si el modo ingredientes ha añadido o quitado alguna (ver más abajo).
+    const opcionesEsAntes = esVino ? 0 : desglosarNombre(p['es'] || "").opciones.length;
+
     if (window.IDIOMAS_ORDEN) {
         window.IDIOMAS_ORDEN.forEach(l => {
             let nom = superLimpiar(document.getElementById(`edit-${l}`)?.value || "");
@@ -947,21 +1044,49 @@ function aplicarCambiosPlato() {
                 const inputUva = document.getElementById(`edit-${l}-uvas`);
                 const uvas = (inputUva && inputUva.style.display !== "none") ? superLimpiar(inputUva.value) : "";
                 p[l] = uvas ? `${nom} // ${uvas}` : nom;
+            } else if (modoIngredientesActivo && (l === 'es' || l === 'en')) {
+                // NUEVO: modo "Plato con ingredientes" — ES/EN se reconstruyen desde la lista
+                // editable (ingredientesPlatoActual), en el mismo formato "//opcion// , //opcion//"
+                // que ya leen la web pública y desglosarNombre() (ver utils.js). Se descartan
+                // las filas totalmente vacías (sin texto ni en ES ni en EN).
+                const filasValidas = ingredientesPlatoActual.filter(ing => superLimpiar(ing.es || "") !== "" || superLimpiar(ing.en || "") !== "");
+                const opciones = filasValidas.map(ing => superLimpiar((l === 'es' ? ing.es : ing.en) || ""));
+                const sufijoOpciones = opciones.length > 0 ? ` //${opciones.join('// , //')}//` : "";
+                p[l] = sufijoOpciones ? `${nom}${sufijoOpciones}` : nom;
+            } else if (l === 'es' || l === 'en') {
+                // MODIFICADO: modo simple — campo de detalle único, ahora editable para
+                // cualquier plato (antes solo para vinos). Mismo criterio que el vino de
+                // arriba: si hay texto en el campo, se guarda como "nombre // detalle".
+                const inputUva = document.getElementById(`edit-${l}-uvas`);
+                const detalle = (inputUva && inputUva.style.display !== "none") ? superLimpiar(inputUva.value) : "";
+                p[l] = detalle ? `${nom} // ${detalle}` : nom;
             } else {
-                // MODIFICADO: el resto de platos puede tener VARIAS opciones entre "//.../ /"
-                // (ver "Opciones del Plato"), que aquí no se editan por texto — solo se
-                // activan/desactivan (eso vive aparte, en p.opcionesInactivas). Por eso se
-                // conserva tal cual el texto original desde la primera "//" en adelante, y
-                // solo se sustituye el nombre (lo que va ANTES de la primera "//"). Antes esto
-                // se reconstruía como "nombre // uvas" con el campo de uva (oculto y vacío
-                // para platos normales), lo que BORRABA silenciosamente cualquier opción ya
-                // escrita a mano en la hoja en cuanto se pulsaba "Aplicar Cambios".
+                // Resto de idiomas: se sustituye el nombre (lo que va ANTES de la primera
+                // "//"); el sufijo "//..." que ya tuviera (traducido por IA) se conserva tal
+                // cual aquí — se invalida aparte, más abajo, solo si el nº de opciones de ES
+                // ha cambiado con este guardado.
                 const original = p[l] || "";
                 const idxSlash = original.indexOf('//');
                 const sufijoOpciones = idxSlash !== -1 ? original.substring(idxSlash) : "";
                 p[l] = sufijoOpciones ? `${nom} ${sufijoOpciones}` : nom;
             }
         });
+    }
+
+    // NUEVO: si el modo ingredientes ha cambiado el Nº de opciones de ES respecto a lo que
+    // había al abrir el editor, el resto de idiomas (traducidos por IA, no tocados arriba) se
+    // queda con un nº de opciones desalineado — y Opciones_Inactivas es por POSICIÓN,
+    // compartida entre TODOS los idiomas. Se vacían esas celdas para que la Fase 2 de
+    // traducción por lotes (o el botón "Auditar Separadores // Ahora") las regenere ya
+    // alineadas, en vez de dejar en la web una traducción con las opciones descolocadas.
+    if (!esVino && window.IDIOMAS_ORDEN) {
+        const opcionesEsAhora = desglosarNombre(p['es'] || "").opciones.length;
+        if (opcionesEsAhora !== opcionesEsAntes) {
+            window.IDIOMAS_ORDEN.forEach(l => {
+                if (l === 'es' || l === 'en') return;
+                if ((p[l] || "").indexOf('//') !== -1) p[l] = "";
+            });
+        }
     }
 
     let preVal = document.getElementById('edit-precio').value || "0.00";
@@ -973,13 +1098,21 @@ function aplicarCambiosPlato() {
     const selectedAlergenos = document.querySelectorAll('.alergeno-btn.selected');
     p.alergenos = Array.from(selectedAlergenos).map(el => el.dataset.code || "").filter(c => c).join(', ');
 
-    // NUEVO: guarda las posiciones (1-based) de las "Opciones del Plato" que se dejaron
-    // DESACTIVADAS (no seleccionadas) — el texto de las opciones en sí no se toca, ver arriba.
-    const botonesOpciones = document.querySelectorAll('.opcion-btn');
-    p.opcionesInactivas = Array.from(botonesOpciones)
-        .filter(el => !el.classList.contains('selected'))
-        .map(el => el.dataset.pos)
-        .join(',');
+    // MODIFICADO: las posiciones (1-based) que quedan DESACTIVADAS ahora salen de la lista
+    // editable de ingredientes (ingredientesPlatoActual) en vez de leerse de los botones
+    // .opcion-btn de la rueda antigua (ya no existe) — mismo formato de salida que antes
+    // ("1,3,5..."), y en el mismo orden que las opciones que se acaban de guardar arriba
+    // (filas totalmente vacías descartadas, igual que arriba).
+    if (modoIngredientesActivo) {
+        const filasValidas = ingredientesPlatoActual.filter(ing => superLimpiar(ing.es || "") !== "" || superLimpiar(ing.en || "") !== "");
+        p.opcionesInactivas = filasValidas
+            .map((ing, idx) => ({ pos: idx + 1, activo: ing.activo }))
+            .filter(o => !o.activo)
+            .map(o => o.pos)
+            .join(',');
+    } else {
+        p.opcionesInactivas = "";
+    }
 
     window.hayCambiosSinGuardar = true;
     cerrarModal('modal-editor');
