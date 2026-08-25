@@ -447,6 +447,23 @@ input:checked + .slider-switch:before { transform: translateX(18px); }
 .input-nombre-corto { padding: 8px 10px; font-size: 0.9rem; max-height: 38px; }
 .input-uvas { background: #fff9f4; border: 1px dashed var(--primario); margin-top: 4px; font-size: 0.8rem; padding: 6px 10px; }
 
+/* NUEVO: modo "Plato con ingredientes" (checkbox + lista editable de opciones) — ver
+   toggleModoIngredientes()/renderIngredientesPlato() en app.js. */
+.checkbox-label-ingredientes { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; font-weight: 600; color: var(--texto); cursor: pointer; padding: 8px 0; }
+.checkbox-label-ingredientes input[type="checkbox"] { width: 16px; height: 16px; flex-shrink: 0; cursor: pointer; }
+
+.ingredientes-lista { display: flex; flex-direction: column; gap: 8px; max-height: 40vh; overflow-y: auto; margin-bottom: 10px; }
+.ingrediente-fila { display: flex; align-items: center; gap: 6px; }
+.input-ingrediente { flex: 1; margin-bottom: 0 !important; padding: 8px 10px; font-size: 0.85rem; }
+.input-ingrediente-vacio { border-color: var(--rojo, #e74c3c); background: #fff5f5; }
+.ingrediente-activo-toggle { flex-shrink: 0; width: 34px; height: 34px; border-radius: 8px; border: 1px solid #ddd; background: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1rem; transition: background 0.2s, border-color 0.2s; }
+.ingrediente-activo-toggle.selected { background: var(--verde, #27ae60); border-color: var(--verde, #27ae60); }
+.btn-eliminar-ingrediente { flex-shrink: 0; width: 34px; height: 34px; border-radius: 8px; border: none; background: #fdecea; color: var(--rojo, #e74c3c); cursor: pointer; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+.btn-eliminar-ingrediente:hover { background: #f8d7d3; }
+.btn-add-ingrediente { width: 100%; padding: 9px; background: #eef7f0; color: var(--verde, #27ae60); border: 1px dashed var(--verde, #27ae60); border-radius: 8px; font-weight: 700; font-size: 0.82rem; cursor: pointer; transition: background 0.2s; }
+.btn-add-ingrediente:hover { background: #e0f2e5; }
+.ingredientes-vacio { font-size: 0.8rem; color: #888; font-style: italic; margin: 4px 0 10px; }
+
 .panel-control-precio { display: flex; gap: 12px; width: 100%; align-items: flex-start; margin-bottom: 15px; }
 .input-precio-super-mini { flex: 0 0 90px !important; }
 .input-precio-mini { text-align: center; font-weight: bold; padding: 8px; }
