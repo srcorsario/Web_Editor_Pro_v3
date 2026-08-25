@@ -187,13 +187,27 @@
                     <div class="input-group">
                         <label id="label-uvas" class="label-seccion">Nombres y Detalles del Plato</label>
                         <input id="edit-es" class="input-estandar" placeholder="Nombre en Español">
-                        <input id="edit-es-uvas" class="input-estandar input-uvas" placeholder="Detalles / Uvas (Español)" style="display: none;">
+                        <input id="edit-es-uvas" class="input-estandar input-uvas" placeholder="Detalle extra (Español) — ej: con salsa de trufa">
                     </div>
                     <div class="input-group">
                         <button id="btn-generar-en" class="btn-traducir-en" onclick="generarTraduccionEN()">🇬🇧 Generar opciones en Inglés con IA</button>
                         <input id="edit-en" class="input-estandar" placeholder="Nombre en Inglés">
-                        <input id="edit-en-uvas" class="input-estandar input-uvas" placeholder="Detalles / Uvas (Inglés)" style="display: none;">
+                        <input id="edit-en-uvas" class="input-estandar input-uvas" placeholder="Detalle extra (Inglés)">
                     </div>
+
+                    <!-- NUEVO: modo "Plato con ingredientes" — alternativa al campo de detalle
+                         simple de arriba, para platos con VARIAS opciones intercambiables
+                         activables por separado (p.ej. "Mix de Gyozas: Pato / Langostino /
+                         Pollo"). abrirEditor()/toggleModoIngredientes() en app.js muestran u
+                         ocultan esto según el tipo de plato y el estado de la casilla. -->
+                    <div class="input-group" id="contenedor-toggle-ingredientes" style="display:none;">
+                        <label class="checkbox-label-ingredientes">
+                            <input type="checkbox" id="chk-modo-ingredientes" onchange="toggleModoIngredientes()">
+                            🧾 Plato con varias opciones/ingredientes activables (ej: Mix de Gyozas)
+                        </label>
+                    </div>
+                    <div class="input-group" id="contenedor-opciones-plato" style="display:none;"></div>
+
                     <button id="btn-autotraducir" class="btn-traductor-magico" onclick="ejecutarTraduccionAutomatica()" disabled>✨ Auto-Traducir resto de idiomas con Gemini</button>
                     <div class="input-group">
                         <label class="label-seccion">Resto de Idiomas</label>
@@ -218,10 +232,6 @@
                         <label class="label-seccion">Alérgenos</label>
                         <div id="alergenos-grid" class="alergenos-grid"></div>
                     </div>
-                    <!-- NUEVO: rueda de "Opciones del plato" (activar/desactivar sabores o
-                         ingredientes detectados entre "//.../ /") — abrirEditor() rellena y
-                         muestra/oculta este contenedor según el plato. -->
-                    <div id="contenedor-opciones-plato" style="display:none;"></div>
                     <div id="contenedor-croquetas"></div>
                     <div class="modal-acciones-footer">
                         <button class="btn-modal-aceptar" onclick="aplicarCambiosPlato()">✅ Aplicar Cambios</button>
