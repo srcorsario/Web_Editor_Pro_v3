@@ -103,10 +103,21 @@ export const UIBatchNombres = {
                 const carpetaValor = indiceCarpeta !== -1 ? (row[indiceCarpeta] || "").trim().toLowerCase() : "";
                 const esVino = carpetaValor === 'vinos';
 
-                const desglosadoEs = (typeof window.desglosarNombre === 'function') ? window.desglosarNombre(nombreEs) : { nombre: nombreEs, uvas: "" };
-                const desglosadoEn = (typeof window.desglosarNombre === 'function') ? window.desglosarNombre(nombreEn) : { nombre: nombreEn, uvas: "" };
-                const textoCompletoEs = (desglosadoEs.nombre + (desglosadoEs.uvas ? ' // ' + desglosadoEs.uvas : '')).replace(/"/g, "'");
-                const textoCompletoEn = (desglosadoEn.nombre + (desglosadoEn.uvas ? ' // ' + desglosadoEn.uvas : '')).replace(/"/g, "'");
+                // CORREGIDO (bug real en producción): platos con VARIAS opciones entre
+                // "//.../ /" (p.ej. "Mix de Gyozas //Pato// , //Langostino// , //Pollo//")
+                // nunca se traducían bien porque aquí se reconstruía el texto a mano con
+                // "desglosadoEs.uvas" — que es SOLO la primera opción (ver desglosarNombre en
+                // utils.js) — así que el texto que llegaba a la IA ya venía truncado a "Mix de
+                // Gyozas // Pato" ANTES de que el prompt pudiera hacer nada: por mucho que la
+                // instrucción le pida "contar los //", si el original recibido ya solo tiene
+                // uno, no hay nada que contar. Se usa reconstruirNombreConOpciones() (misma
+                // utils.js), que sí conserva TODAS las opciones con el formato
+                // "//opcion// , //opcion//" que espera desglosarNombre() al releerlo.
+                const desglosadoEs = (typeof window.desglosarNombre === 'function') ? window.desglosarNombre(nombreEs) : { nombre: nombreEs, uvas: "", opciones: [] };
+                const desglosadoEn = (typeof window.desglosarNombre === 'function') ? window.desglosarNombre(nombreEn) : { nombre: nombreEn, uvas: "", opciones: [] };
+                const reconstruir = (typeof window.reconstruirNombreConOpciones === 'function') ? window.reconstruirNombreConOpciones : (d => d.opciones.length > 0 ? `${d.nombre} //${d.opciones.join('// , //')}//` : d.nombre);
+                const textoCompletoEs = reconstruir(desglosadoEs).replace(/"/g, "'");
+                const textoCompletoEn = reconstruir(desglosadoEn).replace(/"/g, "'");
 
                 return { fila: i, row, esVino, textoCompletoEs, textoCompletoEn };
             }).filter(it => it.textoCompletoEs);
@@ -192,10 +203,17 @@ export const UIBatchNombres = {
                             const lUpper = l.toUpperCase();
                             const valorTraducido = traducciones[lUpper] || traducciones[l];
                             if (!valorTraducido) return;
-                            const desglosadoTraduccion = (typeof window.desglosarNombre === 'function') ? window.desglosarNombre(valorTraducido) : { nombre: valorTraducido, uvas: "" };
+                            // CORREGIDO: mismo bug que al construir el texto de entrada (ver
+                            // arriba) pero en sentido inverso — aunque la IA devolviera las 3
+                            // opciones bien traducidas, aquí se guardaba solo
+                            // "desglosadoTraduccion.uvas" (la primera), perdiendo las demás al
+                            // escribir la fila. Se reconstruye con TODAS las opciones que haya
+                            // devuelto la IA para este idioma.
+                            const desglosadoTraduccion = (typeof window.desglosarNombre === 'function') ? window.desglosarNombre(valorTraducido) : { nombre: valorTraducido, uvas: "", opciones: [] };
                             let nombreFinal = desglosadoTraduccion.nombre;
                             if (it.esVino && typeof window.formatWineName === 'function') nombreFinal = window.formatWineName(nombreFinal);
-                            it.row[indicesObjetivo[l]] = desglosadoTraduccion.uvas ? `${nombreFinal} // ${desglosadoTraduccion.uvas}` : nombreFinal;
+                            const reconstruirDestino = (typeof window.reconstruirNombreConOpciones === 'function') ? window.reconstruirNombreConOpciones : (d => d.opciones.length > 0 ? `${d.nombre} //${d.opciones.join('// , //')}//` : d.nombre);
+                            it.row[indicesObjetivo[l]] = reconstruirDestino({ nombre: nombreFinal, opciones: desglosadoTraduccion.opciones });
                             algunoAplicado = true;
                         });
                         // NUEVO: al completar (o confirmar) los nombres de esta fila, se anota la
