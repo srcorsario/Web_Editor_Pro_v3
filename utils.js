@@ -28,6 +28,29 @@ function desglosarNombre(texto) {
 }
 
 /**
+ * NUEVO: inversa de desglosarNombre() — reconstruye "Nombre //opcion// , //opcion//..." a
+ * partir de { nombre, opciones }, en el mismo formato que ya esperan desglosarNombre() al
+ * releerlo, la web pública (processName/generateItemHtml) y el editor.
+ *
+ * IMPORTANTE — bug real que motivó esta función: en varios sitios del proyecto se
+ * reconstruía el texto a mano como `nombre + ' // ' + desglosado.uvas`. Pero ".uvas" es
+ * SOLO la PRIMERA opción (ver desglosarNombre arriba) — para un plato con varias opciones
+ * (p.ej. "Mix de Gyozas //Pato// , //Langostino// , //Pollo//") esa reconstrucción a mano
+ * descartaba silenciosamente todo menos "Pato" ANTES de que ese texto llegara a ningún
+ * sitio (incluida la IA al traducir — por mucho que el prompt cuente los "//", si el texto
+ * que recibe ya viene truncado a una sola opción no hay nada que contar). Usa SIEMPRE esta
+ * función en vez de reconstruir con ".uvas" a mano.
+ * @param {{nombre: String, opciones: String[]}} desglosado
+ * @returns {String}
+ */
+function reconstruirNombreConOpciones(desglosado) {
+    const nombre = (desglosado && desglosado.nombre) || "";
+    const opciones = (desglosado && desglosado.opciones) || [];
+    if (opciones.length === 0) return nombre;
+    return `${nombre} //${opciones.join('// , //')}//`;
+}
+
+/**
  * Limpia comillas dobles redundantes típicas de exportaciones CSV
  * @param {String} texto 
  * @returns {String}
