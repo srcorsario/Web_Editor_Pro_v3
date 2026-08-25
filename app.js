@@ -804,23 +804,53 @@ function comprobarRequisitosTraduccion() {
     if (btnAuto) btnAuto.disabled = !esValido; 
 } 
 
-async function generarTraduccionEN() { 
-    const nombreEs = document.getElementById('edit-es').value.trim(); 
-    const esVino = (platoEditandoId >= 13000); 
-    const uvasEs = esVino ? document.getElementById('edit-es-uvas').value.trim() : "";
-     
+// CORREGIDO: antes estas dos funciones (generarTraduccionEN y ejecutarTraduccionAutomatica,
+// más abajo) solo incluían el detalle/opciones del plato al traducir SI ERA VINO
+// (uvasEs/uvasEn se forzaban a "" para cualquier plato normal) — así que el detalle escrito a
+// mano en modo simple, o las opciones del modo "Plato con ingredientes", nunca llegaban a la
+// IA con los botones individuales de traducción, aunque sí se guardaran bien al pulsar
+// "Aplicar Cambios". Además, para no repetir el mismo bug de "solo la primera opción" que
+// tenía ui-batch-nombres.js, esto usa reconstruirNombreConOpciones() (utils.js) en vez de
+// reconstruir el texto a mano.
+function construirTextoCompletoParaTraducir(l) {
+    const esVino = (platoEditandoId >= 13000);
+    const nom = (document.getElementById(`edit-${l}`)?.value || "").trim();
+
+    if (esVino) {
+        const detalle = (document.getElementById(`edit-${l}-uvas`)?.value || "").trim();
+        return detalle ? `${nom} // ${detalle}` : nom;
+    }
+    if (modoIngredientesActivo) {
+        const filasValidas = ingredientesPlatoActual.filter(ing => superLimpiar(ing.es || "") !== "" || superLimpiar(ing.en || "") !== "");
+        const opciones = filasValidas.map(ing => superLimpiar((l === 'es' ? ing.es : ing.en) || ""));
+        // Si este idioma concreto no tiene NADA todavía (ni nombre ni ninguna opción — típico
+        // de EN antes de generarlo por primera vez), se devuelve "" en vez de un texto con
+        // huecos vacíos entre "//" (p.ej. " //// , ////"), para que el "¿hay texto en inglés
+        // de referencia?" de los prompts (ver prompts.js) siga funcionando igual que antes.
+        const hayContenido = nom !== "" || opciones.some(o => o !== "");
+        if (!hayContenido) return "";
+        return reconstruirNombreConOpciones({ nombre: nom, opciones });
+    }
+    const detalle = (document.getElementById(`edit-${l}-uvas`)?.value || "").trim();
+    return detalle ? `${nom} // ${detalle}` : nom;
+}
+
+async function generarTraduccionEN() {
+    const nombreEs = document.getElementById('edit-es').value.trim();
+    const esVino = (platoEditandoId >= 13000);
+
     if (!nombreEs) { alert("❌ Debes introducir primero el nombre en Español."); return; }
 
-    let keys = []; 
-    if (typeof getKeys === 'function') keys = getKeys(); 
+    let keys = [];
+    if (typeof getKeys === 'function') keys = getKeys();
     if (keys.length === 0) { alert("❌ No hay API Keys de Gemini configuradas."); return; }
-    
-    const btn = document.getElementById('btn-generar-en'); 
-    const originalText = btn.innerText; 
-    btn.innerText = "🇬🇧 Generando opciones..."; 
-    btn.disabled = true; 
 
-    const textoCompletoEs = (nombreEs + (uvasEs ? ' // ' + uvasEs : '')).replace(/"/g, "'");
+    const btn = document.getElementById('btn-generar-en');
+    const originalText = btn.innerText;
+    btn.innerText = "🇬🇧 Generando opciones...";
+    btn.disabled = true;
+
+    const textoCompletoEs = construirTextoCompletoParaTraducir('es').replace(/"/g, "'");
     // Prompt centralizado en prompts.js (window.PROMPTS.opcionesEN)
     const instruccion = window.PROMPTS.opcionesEN(textoCompletoEs, esVino);
     
@@ -931,18 +961,14 @@ async function ejecutarTraduccionAutomatica() {
     btn.innerText = "✨ Traduciendo con Gemini 2.5..."; 
     btn.disabled = true; 
     
-    const nombreEs = document.getElementById('edit-es').value.trim(); 
-    const nombreEn = document.getElementById('edit-en').value.trim(); 
-    const esVino = (platoEditandoId >= 13000); 
-    const uvasEs = esVino ? document.getElementById('edit-es-uvas').value.trim() : ""; 
-    const uvasEn = esVino ? document.getElementById('edit-en-uvas').value.trim() : ""; 
-    
-    let keys = []; 
-    if (typeof getKeys === 'function') keys = getKeys(); 
-    if (keys.length === 0) { alert("❌ No hay API Keys de Gemini configuradas."); btn.innerText = originalText; btn.disabled = false; return; } 
-    
-    const textoCompletoEs = (nombreEs + (uvasEs ? ' // ' + uvasEs : '')).replace(/"/g, "'");
-    const textoCompletoEn = (nombreEn + (uvasEn ? ' // ' + uvasEn : '')).replace(/"/g, "'");
+    const esVino = (platoEditandoId >= 13000);
+
+    let keys = [];
+    if (typeof getKeys === 'function') keys = getKeys();
+    if (keys.length === 0) { alert("❌ No hay API Keys de Gemini configuradas."); btn.innerText = originalText; btn.disabled = false; return; }
+
+    const textoCompletoEs = construirTextoCompletoParaTraducir('es').replace(/"/g, "'");
+    const textoCompletoEn = construirTextoCompletoParaTraducir('en').replace(/"/g, "'");
     const idiomasObjetivo = window.IDIOMAS_ORDEN ? window.IDIOMAS_ORDEN.filter(l => l !== 'es' && l !== 'en').map(l => l.toUpperCase()) : [];
     
     // Prompt centralizado en prompts.js (window.PROMPTS.autoTraduccionResto)
