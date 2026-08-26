@@ -80,20 +80,42 @@ export const UIBatchNombres = {
             if (faltaAlgunIdioma) filasPendientes.push(i);
         }
 
-        window.UI.log(`[Paso 2] Traduciendo nombres al resto de idiomas (${idiomasObjetivo.length} idiomas) en bloques de ${TAMANO_LOTE}. Platos pendientes: ${filasPendientes.length}.`);
+        // NUEVO: paralelización (misma técnica aplicada ya al Paso 3 el 26 de agosto): varios
+        // "trabajadores" en vuelo a la vez, cada uno con su propia API key, en vez de una petición
+        // secuencial rotando de key solo al chocar un 429.
+        const CONCURRENCIA = Math.max(1, Math.min(
+            listaClavesAPI.length,
+            (typeof window.TRADUCCION_CONCURRENCIA === 'number' && window.TRADUCCION_CONCURRENCIA > 0) ? window.TRADUCCION_CONCURRENCIA : listaClavesAPI.length
+        ));
+        window.UI.log(`[Paso 2] Traduciendo nombres al resto de idiomas (${idiomasObjetivo.length} idiomas) en bloques de ${TAMANO_LOTE}, con ${CONCURRENCIA} petición(es) en paralelo. Platos pendientes: ${filasPendientes.length}.`);
 
-        let platosCompletados = 0, cuotaAgotada = false;
-        const duracionesLote = []; // NUEVO: duración (s) de cada lote completado en ESTA tanda, para estimar lo que falta
+        let platosCompletados = 0, cuotaAgotada = false, lotesCompletados = 0;
+        const duracionesLote = []; // duración (s) de cada lote completado en ESTA tanda, para estimar lo que falta
+        // clavesEnCooldown = keys que dieron 429 en SU ÚLTIMO uso (se limpia sola en su siguiente
+        // éxito); si en un momento dado TODAS están en cooldown a la vez, se asume cuota agotada.
+        const clavesEnCooldown = new Set();
 
+        const loteChunks = [];
         for (let lote = 0; lote < filasPendientes.length; lote += TAMANO_LOTE) {
-            if (procesoState.detenido || cuotaAgotada) break;
-            while (procesoState.pausado) await new Promise(resolve => setTimeout(resolve, 500));
+            loteChunks.push(filasPendientes.slice(lote, lote + TAMANO_LOTE));
+        }
+        const totalLotes = loteChunks.length;
+        let siguienteIndiceLote = 0; // "puntero" a la cola; ++ es atómico en JS (sin await de por medio)
 
-            const inicioLote = Date.now(); // NUEVO
-            const numeroLote = Math.floor(lote / TAMANO_LOTE) + 1;
-            const totalLotes = Math.ceil(filasPendientes.length / TAMANO_LOTE);
-            const indicesLote = filasPendientes.slice(lote, lote + TAMANO_LOTE);
-            window.UI.log(`[Lote ${numeroLote}/${totalLotes}] Procesando filas ${indicesLote.map(i => i + 2).join(', ')}...`);
+        const trabajador = async (idTrabajador) => {
+            let miKeyIndex = idTrabajador % listaClavesAPI.length; // key inicial propia de este trabajador
+            while (true) {
+                if (procesoState.detenido || cuotaAgotada) return;
+                while (procesoState.pausado) await new Promise(resolve => setTimeout(resolve, 500));
+                if (procesoState.detenido || cuotaAgotada) return;
+
+                const miIndiceLote = siguienteIndiceLote++;
+                if (miIndiceLote >= loteChunks.length) return; // cola vacía: este trabajador termina
+
+                const inicioLote = Date.now();
+                const numeroLote = miIndiceLote + 1;
+                const indicesLote = loteChunks[miIndiceLote];
+                window.UI.log(`[Lote ${numeroLote}/${totalLotes}] Procesando filas ${indicesLote.map(i => i + 2).join(', ')}...`);
 
             // Preparar los datos de cada plato del lote (sin llamar aún a la IA)
             const itemsLote = indicesLote.map(i => {
@@ -122,7 +144,7 @@ export const UIBatchNombres = {
                 return { fila: i, row, esVino, textoCompletoEs, textoCompletoEn };
             }).filter(it => it.textoCompletoEs);
 
-            if (itemsLote.length === 0) continue;
+            if (itemsLote.length === 0) { lotesCompletados++; continue; }
 
             // CORREGIDO: una única llamada a Gemini para TODO el lote (antes se hacía una llamada
             // por plato en paralelo, lo que multiplicaba el consumo de cuota/tokens por 3 en vez de
@@ -131,16 +153,26 @@ export const UIBatchNombres = {
 
             let satisfecho = false;
             let intentosLote = 0;
-            let limitesConsecutivos = 0; // contador de 429 seguidos SIN ningún éxito entre medio
             const maxIntentosLote = Math.max(3, listaClavesAPI.length * 2);
 
             while (!satisfecho && !procesoState.detenido && intentosLote < maxIntentosLote) {
+                // Si mi key actual está en cooldown, busco la siguiente que no lo esté.
+                let vueltas = 0;
+                while (clavesEnCooldown.has(miKeyIndex) && vueltas < listaClavesAPI.length) {
+                    miKeyIndex = (miKeyIndex + 1) % listaClavesAPI.length;
+                    vueltas++;
+                }
+                if (clavesEnCooldown.size >= listaClavesAPI.length) {
+                    window.UI.log(`[Error Crítico] Cuota de Gemini agotada en TODAS las keys disponibles (${listaClavesAPI.length}). Deteniendo el proceso para no malgastar más peticiones.`);
+                    cuotaAgotada = true;
+                    return;
+                }
                 try {
                     // NUEVO: visibilidad de qué key se usa en CADA petición, no solo cuando hay que
                     // rotar por error — antes solo se veía "Rotando Key" en el log, así que si todo
                     // iba bien no había forma de saber si se estaban llegando a usar las keys nuevas.
-                    window.UI.log(`[Info] Usando Key ${procesoState.currentKeyIndex + 1}/${listaClavesAPI.length} (fila(s) ${itemsLote.map(it => it.fila + 2).join(', ')})...`);
-                    const callResponse = await fetch(`${window.GEMINI_ENDPOINT_URL || 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent'}?key=${listaClavesAPI[procesoState.currentKeyIndex]}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: promptTraduccion }] }], generationConfig: { maxOutputTokens: window.GEMINI_MAX_OUTPUT_TOKENS || 65536 } }) });
+                    window.UI.log(`[Info] Usando Key ${miKeyIndex + 1}/${listaClavesAPI.length} (fila(s) ${itemsLote.map(it => it.fila + 2).join(', ')})...`);
+                    const callResponse = await fetch(`${window.GEMINI_ENDPOINT_URL || 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent'}?key=${listaClavesAPI[miKeyIndex]}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: promptTraduccion }] }], generationConfig: { maxOutputTokens: window.GEMINI_MAX_OUTPUT_TOKENS || 65536, thinkingConfig: { thinkingLevel: window.GEMINI_THINKING_LEVEL || "medium" } } }) });
 
                     const textResponse = await callResponse.text();
                     let respuestaJsonData;
@@ -151,14 +183,10 @@ export const UIBatchNombres = {
                     }
 
                     if (respuestaJsonData.error?.code === 429) {
-                        procesoState.currentKeyIndex = (procesoState.currentKeyIndex + 1) % listaClavesAPI.length;
-                        limitesConsecutivos++;
-                        if (limitesConsecutivos >= listaClavesAPI.length) {
-                            window.UI.log(`[Error Crítico] Cuota de Gemini agotada en TODAS las keys disponibles (${listaClavesAPI.length}). Deteniendo el proceso para no malgastar más peticiones.`);
-                            cuotaAgotada = true;
-                            break;
-                        }
-                        window.UI.log(`[Aviso] Límite superado en el lote (filas ${itemsLote.map(it => it.fila + 2).join(', ')}). Rotando Key (${limitesConsecutivos}/${listaClavesAPI.length})...`);
+                        clavesEnCooldown.add(miKeyIndex);
+                        const keyAnterior = miKeyIndex;
+                        miKeyIndex = (miKeyIndex + 1) % listaClavesAPI.length;
+                        window.UI.log(`[Aviso] Límite superado en el lote (filas ${itemsLote.map(it => it.fila + 2).join(', ')}, Key ${keyAnterior + 1}). Rotando Key (${clavesEnCooldown.size}/${listaClavesAPI.length} en cooldown)...`);
                         await new Promise(r => setTimeout(r, 4000));
                         intentosLote++;
                         continue;
@@ -225,27 +253,32 @@ export const UIBatchNombres = {
                         if (algunoAplicado) platosCompletados++;
                     });
                     satisfecho = true;
-                    // NUEVO: cuánto ha tardado este lote + estimación de lo que queda, a partir de
-                    // la media de los lotes ya completados en esta misma tanda.
+                    clavesEnCooldown.delete(miKeyIndex); // esta key acaba de responder bien
+                    // NUEVO: cuánto ha tardado este lote + estimación de lo que queda (dividida entre
+                    // la concurrencia, porque ahora varios lotes avanzan reloj-en-mano a la vez).
                     const duracionLoteSeg = (Date.now() - inicioLote) / 1000;
                     duracionesLote.push(duracionLoteSeg);
                     const mediaSeg = duracionesLote.reduce((a, b) => a + b, 0) / duracionesLote.length;
-                    const lotesRestantes = totalLotes - numeroLote;
+                    lotesCompletados++;
+                    const lotesRestantes = totalLotes - lotesCompletados;
                     const fmt = (typeof window.formatearDuracion === 'function') ? window.formatearDuracion : (s => `${Math.round(s)}s`);
-                    window.UI.log(`[Tiempo] Lote ${numeroLote}/${totalLotes} completado en ${fmt(duracionLoteSeg)} (media: ${fmt(mediaSeg)}/lote). Estimado restante: ~${fmt(mediaSeg * lotesRestantes)} (${lotesRestantes} lote(s)).`);
+                    window.UI.log(`[Tiempo] Lote ${numeroLote}/${totalLotes} completado en ${fmt(duracionLoteSeg)} (media: ${fmt(mediaSeg)}/lote, ${lotesCompletados}/${totalLotes} hechos). Estimado restante: ~${fmt((mediaSeg * lotesRestantes) / CONCURRENCIA)} (${lotesRestantes} lote(s), ${CONCURRENCIA} en paralelo).`);
                 } catch (err) {
-                    limitesConsecutivos = 0; // un error que no es 429 rompe la racha de "cuota agotada"
                     window.UI.log(`[Error Traducción Nombres] Lote (filas ${itemsLote.map(it => it.fila + 2).join(', ')}): ${err.message}`);
                     await new Promise(r => setTimeout(r, 3000));
-                    procesoState.currentKeyIndex = (procesoState.currentKeyIndex + 1) % listaClavesAPI.length;
+                    miKeyIndex = (miKeyIndex + 1) % listaClavesAPI.length;
                     intentosLote++;
                 }
             }
 
-            if (cuotaAgotada) break;
-            if (typeof window.UI.renderTable === 'function') window.UI.renderTable();
-            await new Promise(r => setTimeout(r, 1000));
-        }
+                if (cuotaAgotada) return;
+                if (!satisfecho) lotesCompletados++; // se agotaron los intentos: contamos el hueco para que el ETA no se quede colgado
+                if (typeof window.UI.renderTable === 'function') window.UI.renderTable();
+                await new Promise(r => setTimeout(r, 300)); // pequeño respiro por trabajador, más corto que antes porque ya hay varios en paralelo
+            }
+        };
+
+        await Promise.all(Array.from({ length: Math.min(CONCURRENCIA, Math.max(1, loteChunks.length)) }, (_, idTrabajador) => trabajador(idTrabajador)));
 
         const totalPendiente = filasPendientes.length - platosCompletados;
         if (cuotaAgotada) {

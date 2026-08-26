@@ -79,9 +79,21 @@ export const UIBatchInfo = {
             if (esVino) pendientesVinos.push(i); else pendientesPlatos.push(i);
         }
 
-        window.UI.log(`[Info] Pendientes: ${pendientesPlatos.length} platos, ${pendientesVinos.length} vinos. Lotes de ${TAMANO_LOTE_INFO}.`);
-
         let platosCompletados = 0, vinosCompletados = 0, cuotaAgotada = false;
+
+        // NUEVO: paralelización (misma técnica que ya se aplicó al Paso 3 en ui-batch-info-otros.js
+        // el 26 de agosto): varios "trabajadores" en vuelo a la vez, cada uno con su propia API key,
+        // en vez de una petición secuencial rotando de key solo al chocar un 429.
+        // clavesEnCooldown = keys que dieron 429 en SU ÚLTIMO uso (se limpia sola en su siguiente
+        // éxito); si en un momento dado TODAS están en cooldown a la vez, se asume cuota agotada de
+        // verdad y se para todo. Se comparte entre las dos fases (platos y vinos).
+        const clavesEnCooldown = new Set();
+        const CONCURRENCIA = Math.max(1, Math.min(
+            listaClavesAPI.length,
+            (typeof window.INFO_EXTENDIDA_CONCURRENCIA === 'number' && window.INFO_EXTENDIDA_CONCURRENCIA > 0) ? window.INFO_EXTENDIDA_CONCURRENCIA : listaClavesAPI.length
+        ));
+
+        window.UI.log(`[Info] Pendientes: ${pendientesPlatos.length} platos, ${pendientesVinos.length} vinos. Lotes de ${TAMANO_LOTE_INFO}, con ${CONCURRENCIA} petición(es) en paralelo.`);
 
         // NUEVO: cronometraje de lotes para poder mostrar cuánto tarda cada uno y una
         // estimación aproximada del tiempo restante (Fase 1 completa: platos + vinos).
@@ -94,10 +106,13 @@ export const UIBatchInfo = {
         const fmtDuracion = (typeof window.formatearDuracion === 'function') ? window.formatearDuracion : (s => `${Math.round(s)}s`);
 
         // ---------- Función interna reutilizada para procesar un lote (platos o vinos) ----------
-        // Devuelve 'ok', 'cuota_agotada' (se han probado TODAS las keys disponibles y todas han
-        // dado 429 sin ni un solo éxito de por medio -> seguir insistiendo es inútil, hay que
-        // parar el proceso entero en vez de machacar el resto de lotes contra la misma pared) o 'error'.
-        const procesarLoteInfo = async (indicesLote, esVino) => {
+        // keyState = { index } es la key PROPIA del trabajador que llama a esta función (ya no se
+        // usa procesoState.currentKeyIndex, compartido, para evitar que dos trabajadores en paralelo
+        // se pisen la misma key a la vez).
+        // Devuelve 'ok', 'cuota_agotada' (todas las keys están en cooldown a la vez -> seguir
+        // insistiendo es inútil, hay que parar el proceso entero en vez de machacar el resto de
+        // lotes contra la misma pared) o 'error'.
+        const procesarLoteInfo = async (indicesLote, esVino, keyState) => {
             const items = indicesLote.map(i => {
                 const row = activeStateContainer.csvData[i];
                 const nombreEs = row[indiceCastellanoBase] || "";
@@ -110,14 +125,23 @@ export const UIBatchInfo = {
 
             let satisfecho = false;
             let intentosLote = 0;
-            let limitesConsecutivos = 0; // contador de 429 seguidos SIN ningún éxito entre medio
             const maxIntentosLote = Math.max(3, listaClavesAPI.length * 2);
 
             while (!satisfecho && !procesoState.detenido && intentosLote < maxIntentosLote) {
+                // Si mi key actual está en cooldown, busco la siguiente que no lo esté.
+                let vueltas = 0;
+                while (clavesEnCooldown.has(keyState.index) && vueltas < listaClavesAPI.length) {
+                    keyState.index = (keyState.index + 1) % listaClavesAPI.length;
+                    vueltas++;
+                }
+                if (clavesEnCooldown.size >= listaClavesAPI.length) {
+                    window.UI.log(`[Error Crítico] Cuota de Gemini agotada en TODAS las keys disponibles (${listaClavesAPI.length}). Deteniendo el proceso para no malgastar más peticiones.`);
+                    return 'cuota_agotada';
+                }
                 try {
                     // NUEVO: visibilidad de qué key se usa en CADA petición, no solo al rotar por error.
-                    window.UI.log(`[Info] Usando Key ${procesoState.currentKeyIndex + 1}/${listaClavesAPI.length} (fila(s) ${items.map(it => it.fila + 2).join(', ')})...`);
-                    const callResponse = await fetch(`${window.GEMINI_ENDPOINT_URL || 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent'}?key=${listaClavesAPI[procesoState.currentKeyIndex]}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: promptLote }] }], generationConfig: { maxOutputTokens: window.GEMINI_MAX_OUTPUT_TOKENS || 65536 } }) });
+                    window.UI.log(`[Info] Usando Key ${keyState.index + 1}/${listaClavesAPI.length} (fila(s) ${items.map(it => it.fila + 2).join(', ')})...`);
+                    const callResponse = await fetch(`${window.GEMINI_ENDPOINT_URL || 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent'}?key=${listaClavesAPI[keyState.index]}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: promptLote }] }], generationConfig: { maxOutputTokens: window.GEMINI_MAX_OUTPUT_TOKENS || 65536, thinkingConfig: { thinkingLevel: window.GEMINI_THINKING_LEVEL || "medium" } } }) });
 
                     const textResponse = await callResponse.text();
                     let respuestaJsonData;
@@ -128,13 +152,10 @@ export const UIBatchInfo = {
                     }
 
                     if (respuestaJsonData.error?.code === 429) {
-                        procesoState.currentKeyIndex = (procesoState.currentKeyIndex + 1) % listaClavesAPI.length;
-                        limitesConsecutivos++;
-                        if (limitesConsecutivos >= listaClavesAPI.length) {
-                            window.UI.log(`[Error Crítico] Cuota de Gemini agotada en TODAS las keys disponibles (${listaClavesAPI.length}). Deteniendo el proceso para no malgastar más peticiones.`);
-                            return 'cuota_agotada';
-                        }
-                        window.UI.log(`[Aviso] Límite superado en el lote (filas ${items.map(it => it.fila + 2).join(', ')}). Rotando Key (${limitesConsecutivos}/${listaClavesAPI.length})...`);
+                        clavesEnCooldown.add(keyState.index);
+                        const keyAnterior = keyState.index;
+                        keyState.index = (keyState.index + 1) % listaClavesAPI.length;
+                        window.UI.log(`[Aviso] Límite superado en el lote (filas ${items.map(it => it.fila + 2).join(', ')}, Key ${keyAnterior + 1}). Rotando Key (${clavesEnCooldown.size}/${listaClavesAPI.length} en cooldown)...`);
                         await new Promise(r => setTimeout(r, 4000));
                         intentosLote++;
                         continue;
@@ -206,59 +227,61 @@ export const UIBatchInfo = {
                     satisfecho = true;
                     return algunoAplicado ? 'ok' : 'error';
                 } catch (err) {
-                    limitesConsecutivos = 0; // un error que no es 429 rompe la racha de "cuota agotada"
                     window.UI.log(`[Error ${esVino ? 'Vino' : 'Piloto'} Lote] Filas ${items.map(it => it.fila + 2).join(', ')}: ${err.message}`);
                     await new Promise(r => setTimeout(r, 3000));
-                    procesoState.currentKeyIndex = (procesoState.currentKeyIndex + 1) % listaClavesAPI.length;
+                    keyState.index = (keyState.index + 1) % listaClavesAPI.length;
                     intentosLote++;
                 }
             }
             return satisfecho ? 'ok' : 'error';
         };
 
-        // ---------- Fase 1a: platos ----------
-        for (let lote = 0; lote < pendientesPlatos.length && !cuotaAgotada; lote += TAMANO_LOTE_INFO) {
-            if (procesoState.detenido) break;
-            while (procesoState.pausado) await new Promise(resolve => setTimeout(resolve, 500));
+        // ---------- Ejecuta una fase (platos o vinos) con varios trabajadores en paralelo,
+        // cada uno con su propia key, tirando de una cola compartida de lotes hasta vaciarla. ----------
+        const ejecutarFaseParalela = async (indicesPendientes, esVino, etiquetaFase, totalLotesFase, totalLotesOtraFase) => {
+            if (cuotaAgotada || procesoState.detenido) return;
+            const loteChunks = [];
+            for (let lote = 0; lote < indicesPendientes.length; lote += TAMANO_LOTE_INFO) {
+                loteChunks.push(indicesPendientes.slice(lote, lote + TAMANO_LOTE_INFO));
+            }
+            let siguienteIndiceLote = 0; // "puntero" a la cola; ++ es atómico en JS (sin await de por medio)
+            let lotesCompletadosFase = 0;
 
-            const indicesLote = pendientesPlatos.slice(lote, lote + TAMANO_LOTE_INFO);
-            const numeroLote = Math.floor(lote / TAMANO_LOTE_INFO) + 1;
-            window.UI.log(`[Piloto ES/EN - Lote ${numeroLote}/${totalLotesPlatos}] Procesando filas ${indicesLote.map(i => i + 2).join(', ')}...`);
-            const inicioLote = Date.now();
-            const resultado = await procesarLoteInfo(indicesLote, false);
-            if (resultado === 'cuota_agotada') { cuotaAgotada = true; break; }
+            const trabajador = async (idTrabajador) => {
+                const keyState = { index: idTrabajador % listaClavesAPI.length }; // key inicial propia de este trabajador
+                while (true) {
+                    if (procesoState.detenido || cuotaAgotada) return;
+                    while (procesoState.pausado) await new Promise(resolve => setTimeout(resolve, 500));
+                    if (procesoState.detenido || cuotaAgotada) return;
 
-            const duracionLoteSeg = (Date.now() - inicioLote) / 1000;
-            duracionesLote.push(duracionLoteSeg);
-            const mediaSeg = duracionesLote.reduce((a, b) => a + b, 0) / duracionesLote.length;
-            const lotesRestantes = (totalLotesPlatos - numeroLote) + totalLotesVinos;
-            window.UI.log(`[Tiempo] Lote completado en ${fmtDuracion(duracionLoteSeg)} (media: ${fmtDuracion(mediaSeg)}/lote). Estimado restante (Paso 1 - platos y vinos): ~${fmtDuracion(mediaSeg * lotesRestantes)} (${lotesRestantes} lote(s)).`);
+                    const miIndiceLote = siguienteIndiceLote++;
+                    if (miIndiceLote >= loteChunks.length) return; // cola vacía: este trabajador termina
 
-            if (typeof window.UI.renderTable === 'function') window.UI.renderTable();
-            await new Promise(r => setTimeout(r, 1000));
-        }
+                    const indicesLote = loteChunks[miIndiceLote];
+                    const numeroLote = miIndiceLote + 1;
+                    window.UI.log(`[${etiquetaFase} - Lote ${numeroLote}/${totalLotesFase}] Procesando filas ${indicesLote.map(i => i + 2).join(', ')}...`);
+                    const inicioLote = Date.now();
+                    const resultado = await procesarLoteInfo(indicesLote, esVino, keyState);
+                    if (resultado === 'cuota_agotada') { cuotaAgotada = true; return; }
 
-        // ---------- Fase 1b: vinos ----------
-        for (let lote = 0; lote < pendientesVinos.length && !cuotaAgotada; lote += TAMANO_LOTE_INFO) {
-            if (procesoState.detenido) break;
-            while (procesoState.pausado) await new Promise(resolve => setTimeout(resolve, 500));
+                    const duracionLoteSeg = (Date.now() - inicioLote) / 1000;
+                    duracionesLote.push(duracionLoteSeg);
+                    const mediaSeg = duracionesLote.reduce((a, b) => a + b, 0) / duracionesLote.length;
+                    lotesCompletadosFase++;
+                    const lotesRestantes = (totalLotesFase - lotesCompletadosFase) + totalLotesOtraFase;
+                    window.UI.log(`[Tiempo] Lote ${etiquetaFase} completado en ${fmtDuracion(duracionLoteSeg)} (media: ${fmtDuracion(mediaSeg)}/lote, ${lotesCompletadosFase}/${totalLotesFase} de esta fase). Estimado restante (Paso 1 completo): ~${fmtDuracion((mediaSeg * lotesRestantes) / CONCURRENCIA)} (${lotesRestantes} lote(s), ${CONCURRENCIA} en paralelo).`);
 
-            const indicesLote = pendientesVinos.slice(lote, lote + TAMANO_LOTE_INFO);
-            const numeroLote = Math.floor(lote / TAMANO_LOTE_INFO) + 1;
-            window.UI.log(`[Vino - Lote ${numeroLote}/${totalLotesVinos}] Procesando filas ${indicesLote.map(i => i + 2).join(', ')}...`);
-            const inicioLote = Date.now();
-            const resultado = await procesarLoteInfo(indicesLote, true);
-            if (resultado === 'cuota_agotada') { cuotaAgotada = true; break; }
+                    if (typeof window.UI.renderTable === 'function') window.UI.renderTable();
+                    await new Promise(r => setTimeout(r, 300)); // pequeño respiro por trabajador, más corto que antes porque ya hay varios en paralelo
+                }
+            };
 
-            const duracionLoteSeg = (Date.now() - inicioLote) / 1000;
-            duracionesLote.push(duracionLoteSeg);
-            const mediaSeg = duracionesLote.reduce((a, b) => a + b, 0) / duracionesLote.length;
-            const lotesRestantes = totalLotesVinos - numeroLote;
-            window.UI.log(`[Tiempo] Lote completado en ${fmtDuracion(duracionLoteSeg)} (media: ${fmtDuracion(mediaSeg)}/lote). Estimado restante (Paso 1 - vinos): ~${fmtDuracion(mediaSeg * lotesRestantes)} (${lotesRestantes} lote(s)).`);
+            await Promise.all(Array.from({ length: Math.min(CONCURRENCIA, Math.max(1, loteChunks.length)) }, (_, idTrabajador) => trabajador(idTrabajador)));
+        };
 
-            if (typeof window.UI.renderTable === 'function') window.UI.renderTable();
-            await new Promise(r => setTimeout(r, 1000));
-        }
+        // ---------- Fase 1a: platos, luego Fase 1b: vinos (cada una totalmente paralelizada por dentro) ----------
+        await ejecutarFaseParalela(pendientesPlatos, false, 'Piloto ES/EN', totalLotesPlatos, totalLotesVinos);
+        await ejecutarFaseParalela(pendientesVinos, true, 'Vino', totalLotesVinos, 0);
 
         const totalPendiente = (pendientesPlatos.length - platosCompletados) + (pendientesVinos.length - vinosCompletados);
         if (cuotaAgotada) {

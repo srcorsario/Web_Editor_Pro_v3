@@ -96,6 +96,18 @@ function getCsvUrl(modo) {
 // original ("La API no devolvió contenido" con finishReason MAX_TOKENS en los logs — ya visibles
 // gracias al diagnóstico ampliado de ui-batch-nombres.js/ui-batch-info.js/ui-batch-info-otros.js),
 // entonces sí merece la pena investigar el parámetro correcto de Gemini 3.x en vez de quitarlo.
+// MODIFICADO (3): confirmado el parámetro correcto de Gemini 3.x en la documentación oficial
+// (ai.google.dev/gemini-api/docs/generate-content/thinking, 26 agosto): es
+// generationConfig.thinkingConfig.thinkingLevel (string: "minimal"|"low"|"medium"|"high"), NO
+// thinkingBudget. Si se omite, el valor por defecto en Gemini 3 Flash es "high" — el máximo
+// razonamiento posible en CADA petición, lo cual explicaba los ~1-2 min por plato observados en
+// "Generar Info Platos Otros Idiomas" (ese tiempo es "pensamiento" invisible antes de escribir el
+// JSON, no la escritura en sí). Se añade explícitamente en GEMINI_THINKING_LEVEL y se pasa en las
+// 5 llamadas a Gemini del proyecto (app.js x2, ui-batch-nombres.js, ui-batch-info.js,
+// ui-batch-info-otros.js). Puesto a "medium" (no "low"/"minimal") a petición del usuario: quiere
+// conservar más margen de razonamiento que el mínimo, dado que son tareas de traducción con reglas
+// de fidelidad terminológica (ternera=beef, etc.) que sí se benefician de algo de razonamiento.
+const GEMINI_THINKING_LEVEL = "medium";
 const GEMINI_ENDPOINT_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent";
 const GEMINI_ENDPOINT_URL_INFO_OTROS = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent";
 
@@ -112,14 +124,31 @@ const INFO_OTROS_IDIOMAS_TAMANO_LOTE = 1;
 // lotes con muchos idiomas — causaba respuestas truncadas y errores de "JSON inválido/no encontrado").
 // Esto SÍ es compatible con v1 y v1beta por igual, así que se mantiene en todas las llamadas.
 const GEMINI_MAX_OUTPUT_TOKENS = 65536;
+// NUEVO: nº de peticiones a Gemini en paralelo (una key distinta cada una) para "Generar Info
+// Platos Otros Idiomas" — antes se procesaba un plato a la vez aunque hubiera varias keys
+// cargadas, y solo se rotaba de key al chocar con un 429. Por defecto usa TODAS las keys
+// disponibles en paralelo; se puede forzar un número menor cambiando este valor si al probarlo
+// se ve que Google empieza a dar más 429 por ir "todas las keys a la vez".
+const INFO_OTROS_IDIOMAS_CONCURRENCIA = null; // null = usar el nº de keys cargadas
+// NUEVO: mismo mecanismo de concurrencia que arriba, aplicado también al Paso 1 ("Generar Info
+// Platos ES/EN", fases piloto+vino) y al Paso 2 ("Traducir nombres a todos los idiomas"). Antes
+// solo el Paso 3 estaba paralelizado; se añade aquí para cuando alguna vez haga falta regenerar
+// muchos platos desde cero en estos dos pasos también (con pocos pendientes, como en las pruebas
+// de esta sesión, la diferencia apenas se nota).
+const INFO_EXTENDIDA_CONCURRENCIA = null; // Paso 1 (ES/EN) — null = usar el nº de keys cargadas
+const TRADUCCION_CONCURRENCIA = null;     // Paso 2 (nombres) — null = usar el nº de keys cargadas
 
 // NUEVO: Exposición explícita en window para que ui.js (script type="module", con su propio
 // scope) pueda leer esta constante de forma fiable, igual que ya se hace con RESTAURANTES_CONFIG.
 window.GEMINI_ENDPOINT_URL = GEMINI_ENDPOINT_URL;
 window.GEMINI_ENDPOINT_URL_INFO_OTROS = GEMINI_ENDPOINT_URL_INFO_OTROS;
+window.GEMINI_THINKING_LEVEL = GEMINI_THINKING_LEVEL;
 window.TRADUCCION_TAMANO_LOTE = TRADUCCION_TAMANO_LOTE;
 window.INFO_EXTENDIDA_TAMANO_LOTE = INFO_EXTENDIDA_TAMANO_LOTE;
 window.INFO_OTROS_IDIOMAS_TAMANO_LOTE = INFO_OTROS_IDIOMAS_TAMANO_LOTE;
+window.INFO_OTROS_IDIOMAS_CONCURRENCIA = INFO_OTROS_IDIOMAS_CONCURRENCIA;
+window.INFO_EXTENDIDA_CONCURRENCIA = INFO_EXTENDIDA_CONCURRENCIA;
+window.TRADUCCION_CONCURRENCIA = TRADUCCION_CONCURRENCIA;
 window.GEMINI_MAX_OUTPUT_TOKENS = GEMINI_MAX_OUTPUT_TOKENS;
 
 
