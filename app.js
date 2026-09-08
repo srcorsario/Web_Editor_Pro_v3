@@ -355,7 +355,12 @@ function renderizar() {
 
     estructuraActual.forEach(cat => {
         const platos = datosLocales.filter(p => p.id >= cat.id && p.id <= (cat.id + cat.rango));
-        if (platos.length === 0) return;
+        // NUEVO (8 septiembre): "cat.sinPlatos" -- categorías que a propósito no tienen (ni
+        // tendrán) platos reales, como "Alérgenos e Intolerancias" (página de contenido fijo en
+        // la web pública, ver estructuras.js). Sin este flag, la línea de abajo las ocultaría
+        // del acordeón por no tener ningún plato, y su interruptor de activar/desactivar sería
+        // imposible de encontrar.
+        if (platos.length === 0 && !cat.sinPlatos) return;
 
         // NUEVO: efecto acordeón — cada categoría empieza compactada (colapsada) y se
         // despliega al pulsar su título. El estado expandido/colapsado se guarda en
@@ -385,11 +390,15 @@ function renderizar() {
         // vistazo cuántos de los platos de la categoría están realmente encendidos en la web.
         const activosCat = platos.filter(p => p.activa).length;
 
+        // NUEVO: el contador "activos/total" no tiene sentido en una categoría "sinPlatos" sin
+        // ningún plato real (siempre sería "0/0") -- se omite en ese caso.
+        const htmlContador = (platos.length > 0 || !cat.sinPlatos) ? `<span class="categoria-contador">${activosCat}/${platos.length}</span>` : "";
+
         h += `<div class="categoria-tarjeta">
             <div class="categoria-titulo categoria-titulo-clicable" onclick="toggleCategoria('${catKey}')">
                 <span class="categoria-flecha" id="categoria-flecha-${catKey}">${expandida ? '▼' : '▶'}</span>
                 ${cat.name}
-                <span class="categoria-contador">${activosCat}/${platos.length}</span>
+                ${htmlContador}
                 ${htmlSwitchPestana}
             </div>
             <div class="categoria-contenido${expandida ? ' expandida' : ''}" id="categoria-contenido-${catKey}">`;
@@ -432,6 +441,12 @@ function renderizar() {
                 g.platos.forEach(p => { h += renderPlatoItemHtml(p); });
                 h += `</div></div>`;
             });
+        } else if (platos.length === 0 && cat.sinPlatos) {
+            // NUEVO: mensaje explicativo en vez de una lista vacía -- esta categoría es a
+            // propósito "sinPlatos" (página de contenido fijo en la web pública, ver
+            // estructuras.js), así que no hay nada que listar aquí, solo el interruptor de
+            // activar/desactivar de arriba.
+            h += `<p style="padding: 12px 6px; color: #7f8c8d; font-size: 0.85rem;">Esta sección no tiene platos que gestionar: es una página de contenido fijo en la web pública. Usa el interruptor de arriba para mostrarla u ocultarla.</p>`;
         } else {
             platos.forEach(p => { h += renderPlatoItemHtml(p); });
         }

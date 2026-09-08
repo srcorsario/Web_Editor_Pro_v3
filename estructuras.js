@@ -64,7 +64,14 @@ const ESTRUCTURA_RESTAURANTE001 = [
     { id: 13400, name: "13.4- Cavas & Champagne", rango: 1099, pestanaId: '134', sub: [
         {id: 13400, name: "Botellas", folder: "vinos", max: 13449},
         {id: 13450, name: "Copas", folder: "vinos", max: 13459 }
-    ]}
+    ]},
+    // --- ALÉRGENOS E INTOLERANCIAS --- (nueva pestaña, 8 septiembre, última de todas). A
+    // diferencia del resto NO tiene platos reales -- es una página fija de contenido en la web
+    // pública (leyenda de iconos + aviso, ver script.js/generateAlergenosPageHtml del repo
+    // "web"). Rango de ID sin usar (15001-15099, por encima del 14499 al que llega Cavas más
+    // arriba) solo para que el acordeón pueda mostrarla con su interruptor; "sinPlatos:true" es
+    // lo que de verdad evita que app.js/renderizar() la oculte por no tener platos.
+    { id: 15001, name: "Alérgenos e Intolerancias", rango: 98, pestanaId: 'alergenos', folder: "alergenos", sinPlatos: true }
 ];
 
 
@@ -165,7 +172,15 @@ const ESTRUCTURA_RESTAURANTE002 = [
     { id: 13400, name: "13.4- Cavas & Champagne", rango: 1099, pestanaId: '134', sub: [
         { id: 13400, name: "Botellas", folder: "vinos", max: 13449 },
         { id: 13450, name: "Copas", folder: "vinos", max: 13459 }
-    ]}
+    ]},
+    // --- ALÉRGENOS E INTOLERANCIAS --- (nueva pestaña, 8 septiembre, última de todas). A
+    // diferencia del resto NO tiene platos reales -- es una página fija de contenido en la web
+    // pública (leyenda de iconos + aviso, ver script.js/generateAlergenosPageHtml del repo
+    // "usopenmain"). Rango de ID sin usar (15001-15099, por encima del 14499 al que llega Cavas
+    // más arriba) solo para que el acordeón pueda mostrarla con su interruptor;
+    // "sinPlatos:true" es lo que de verdad evita que app.js/renderizar() la oculte por no tener
+    // platos.
+    { id: 15001, name: "Alérgenos e Intolerancias", rango: 98, pestanaId: 'alergenos', folder: "alergenos", sinPlatos: true }
 ];
 
 // =================================================================================
