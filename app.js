@@ -44,6 +44,15 @@ let opcionesENActuales = [];
 let modoIngredientesActivo = false;
 let ingredientesPlatoActual = [];
 
+// NUEVO: generación automática de "Info" (descripción + preguntas/respuestas) al crear/editar
+// un plato — ver aplicarCambiosPlato(), generarInfoAutomaticaPlato() y enviarAlExcel() más
+// abajo. platosPendientesInfoAlGuardar guarda los IDs de platos NUEVOS cuya Info todavía no se
+// puede generar (su fila no existe aún en la hoja) hasta que se pulse "GUARDAR CAMBIOS EN WEB".
+// window.platosGenerandoInfo es el Set de IDs con una generación en curso AHORA MISMO, usado
+// solo para pintar el aviso "🤖 generando…" en renderPlatoItemHtml().
+let platosPendientesInfoAlGuardar = [];
+window.platosGenerandoInfo = window.platosGenerandoInfo || new Set();
+
 // CORREGIDO: esta constante faltaba por completo (no estaba definida en ningún
 // archivo), lo que hacía que abrirEditor() lanzara "ALERGENOS_LISTA is not
 // defined" y se detuviera a mitad de camino — por eso el modal nunca llegaba
@@ -157,12 +166,27 @@ async function cargar(retryCount = 0) {
         
         const filas = text.split(/\r?\n/).filter(f => f.trim() !== "");
         datosLocales = [];
-        
+
+        // NUEVO: a diferencia de las columnas NOMBRE_* (posición fija, ver IDIOMAS_CSV_INDICES
+        // en languages.js), las columnas INFO_* son dinámicas — Código.gs solo las crea a
+        // medida que hacen falta, así que su posición varía. Se localizan por NOMBRE leyendo la
+        // fila de cabeceras (fila 0), igual que ya hace el "Ajustes Expertos" (stateContainer)
+        // con su propio CSV. Solo se usan para decidir si ya hay Info generada (y su huella de
+        // cambio) antes de disparar la generación automática — ver aplicarCambiosPlato().
+        const cabecerasCsv = filas.length > 0 ? filas[0].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(h => superLimpiar(h)) : [];
+        const idxInfoPorIdioma = {};
+        if (window.IDIOMAS_ORDEN) {
+            window.IDIOMAS_ORDEN.forEach(lang => {
+                idxInfoPorIdioma[lang] = cabecerasCsv.findIndex(h => h && h.toUpperCase() === ('INFO_' + lang.toUpperCase()));
+            });
+        }
+        const idxInfoHashFicha = cabecerasCsv.findIndex(h => h && h.toUpperCase() === 'INFO_HASH_FICHA');
+
         filas.forEach((f, i) => {
-            if (i === 0) return; 
+            if (i === 0) return;
             const c = f.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
             const id = parseInt(c[0]);
-            
+
             if (!isNaN(id)) {
                 let item = {
                     id: id,
@@ -172,15 +196,21 @@ async function cargar(retryCount = 0) {
                     imagen: c[5] || "",
                     alergenos: superLimpiar(c[6]),
                     // NUEVO: posiciones desactivadas de "Opciones del plato" (ver languages.js).
-                    opcionesInactivas: superLimpiar(c[window.IDX_OPCIONES_INACTIVAS] || "")
+                    opcionesInactivas: superLimpiar(c[window.IDX_OPCIONES_INACTIVAS] || ""),
+                    // NUEVO: Info (descripción + preguntas/respuestas) ya generada, por idioma —
+                    // JSON en bruto tal cual viene de la hoja (se parsea solo cuando hace falta).
+                    info: {},
+                    infoHashFicha: (idxInfoHashFicha !== -1 && c[idxInfoHashFicha] !== undefined) ? superLimpiar(c[idxInfoHashFicha]) : ""
                 };
-                
+
                 if (window.IDIOMAS_ORDEN && window.IDIOMAS_CSV_INDICES) {
                     window.IDIOMAS_ORDEN.forEach(lang => {
                         const index = window.IDIOMAS_CSV_INDICES[lang];
                         if (index !== undefined && c[index] !== undefined) {
                             item[lang] = superLimpiar(c[index]);
                         }
+                        const idxInfo = idxInfoPorIdioma[lang];
+                        item.info[lang] = (idxInfo !== undefined && idxInfo !== -1 && c[idxInfo] !== undefined) ? superLimpiar(c[idxInfo]) : "";
                     });
                 }
                 datosLocales.push(item);
@@ -293,6 +323,12 @@ function renderPlatoItemHtml(p) {
     const detalle = esVino ? desglosado.uvas : desglosado.opciones.join(' // ');
     const htmlDetalle = detalle ? `<span class="plato-detalle">${detalle}</span>` : "";
 
+    // NUEVO: aviso discreto mientras la Info (descripción + preguntas/respuestas) de este plato
+    // se está generando/guardando automáticamente en segundo plano — ver
+    // generarInfoAutomaticaPlato() (app.js). No bloquea nada, es solo visual.
+    const generandoInfo = window.platosGenerandoInfo && window.platosGenerandoInfo.has(p.id);
+    const htmlGenerandoInfo = generandoInfo ? `<span class="badge-generando-info" title="Generando la Info (descripción + preguntas/respuestas) con IA en segundo plano...">🤖 generando info…</span>` : "";
+
     return `<div class="plato-item">
         <div class="plato-orden-btns">
             <button class="btn-orden" onclick="moverPlato(${p.id}, 'subir')">▲</button>
@@ -301,6 +337,7 @@ function renderPlatoItemHtml(p) {
         <div class="plato-info">
             <span class="plato-nombre">${nombreLimpio}</span>
             ${htmlDetalle}
+            ${htmlGenerandoInfo}
             <div style="font-size: 0.7rem; color: #7f8c8d; margin-top: 4px; display: flex; gap: 10px; align-items: center;">${htmlCarpetaPC} ${htmlImagenPC}</div>
         </div>
         <div class="plato-meta-footer">
@@ -1156,11 +1193,179 @@ function aplicarCambiosPlato() {
     }
 
     window.hayCambiosSinGuardar = true;
+
+    // NUEVO: dispara la generación automática de la Info (descripción + preguntas/respuestas)
+    // en ES/EN y, encadenado, en el resto de idiomas — en segundo plano, sin bloquear el editor
+    // ni pedir nada más al usuario (ver generarInfoAutomaticaPlato() más abajo). Si el plato es
+    // NUEVO, su fila todavía no existe en la hoja (se creará al pulsar "GUARDAR CAMBIOS EN
+    // WEB"), así que se encola para procesarse justo después de ese guardado (ver
+    // enviarAlExcel()); si ya existía, se dispara ya mismo contra el endpoint seguro
+    // "?accion=infoplato" de Código.gs, que solo toca la fila de ESTE plato — nunca reenvía ni
+    // toca el resto de la carta, así que no hay riesgo de pisar la Info ya generada de otros
+    // platos aunque la caché de "publicar en la web" esté desactualizada en este momento.
+    if (esNuevoPlato) {
+        if (!platosPendientesInfoAlGuardar.includes(p.id)) platosPendientesInfoAlGuardar.push(p.id);
+    } else {
+        dispararGeneracionInfoAutomatica(p);
+    }
+
     cerrarModal('modal-editor');
     renderizar();
 }
 
-function generarMenuAgrupado() { 
+// =========================================================================================
+// NUEVO: GENERACIÓN AUTOMÁTICA DE INFO (descripción + preguntas/respuestas) AL CREAR/EDITAR UN
+// PLATO. Reutiliza los mismos prompts que ya usaba "Ajustes Expertos" (window.PROMPTS.piloto /
+// vino / infoOtrosIdiomasLote — ver prompts.js), pero para UN SOLO plato/vino a la vez, y
+// guarda el resultado con el endpoint seguro "?accion=infoplato" (Código.gs), que actualiza
+// SOLO la fila de ese plato sin tocar ni reenviar el resto de la carta.
+// =========================================================================================
+
+// Idéntico patrón de reintento-por-key que ya usaban generarTraduccionEN()/
+// ejecutarTraduccionAutomatica(), extraído aquí para reutilizarlo. Devuelve el JSON ya
+// parseado, o null si ninguna key tuvo éxito (nunca lanza excepción: este flujo es 100% en
+// segundo plano y no debe interrumpir al usuario con ningún alert()).
+async function llamarGeminiConReintentos(instruccion, keys) {
+    let intentos = 0;
+    while (intentos < keys.length) {
+        try {
+            const apiKey = keys[intentos];
+            const response = await fetch(`${GEMINI_ENDPOINT_URL}?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contents: [{ parts: [{ text: instruccion }] }], generationConfig: { maxOutputTokens: window.GEMINI_MAX_OUTPUT_TOKENS || 65536, thinkingConfig: { thinkingLevel: window.GEMINI_THINKING_LEVEL || "medium" } } })
+            });
+            const data = await response.json();
+            if (!response.ok || data.error) {
+                if (data.error?.code === 429 || response.status === 429) await new Promise(r => setTimeout(r, 3000));
+                intentos++;
+                continue;
+            }
+            const txt = (typeof extraerTextoCompletoRespuesta === 'function') ? extraerTextoCompletoRespuesta(data.candidates?.[0]) : data.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (txt) return extraerJSON(txt);
+            intentos++;
+        } catch (err) {
+            intentos++;
+        }
+    }
+    return null;
+}
+
+// Envía al backend (Código.gs, acción "infoplato") la Info ya generada de UN plato concreto,
+// para uno o varios idiomas a la vez. "no-cors" (igual que el resto de guardados del editor)
+// significa que no se puede leer la respuesta real — se asume éxito de forma optimista, igual
+// que ya hace enviarAlExcel()/toggleCategoriaPestana().
+async function guardarInfoPlatoEnBackend(id, infoPorIdioma) {
+    try {
+        const url = getWebAppUrlSafe();
+        if (!url) return;
+        await fetch(url + '?accion=infoplato', {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: id, info: infoPorIdioma })
+        });
+    } catch (err) {
+        console.warn('[Editor] Error al guardar Info automática en el backend:', err);
+    }
+}
+
+// Añade/quita el ID del Set de "generando ahora mismo" y repinta para que
+// renderPlatoItemHtml() muestre/oculte el aviso "🤖 generando info…".
+function marcarPlatoGenerandoInfo(id, activo) {
+    if (activo) window.platosGenerandoInfo.add(id); else window.platosGenerandoInfo.delete(id);
+    renderizar();
+}
+
+// Punto de entrada "fire-and-forget" llamado desde aplicarCambiosPlato()/enviarAlExcel(): no se
+// espera (await) su resultado a propósito, para no bloquear el editor ni el guardado normal.
+function dispararGeneracionInfoAutomatica(p) {
+    generarInfoAutomaticaPlato(p);
+}
+
+// Carpetas de bebidas simples que "Ajustes Expertos" también omite de la generación de Info
+// (café, refrescos, cerveza) — mismo criterio aquí para no generar fichas de sabor a un café.
+const CARPETAS_SIN_IA_INFO = ['cafe', 'refrescos', 'cerveza'];
+
+async function generarInfoAutomaticaPlato(p) {
+    try {
+        if (!p || isNaN(p.id) || p.id < 13) return; // ids 1-12 son cabeceras de categoría heredadas, sin info real
+        const carpetaValor = (p.carpeta || "").trim().toLowerCase();
+        if (CARPETAS_SIN_IA_INFO.includes(carpetaValor)) return;
+
+        let keys = [];
+        if (typeof getKeys === 'function') keys = getKeys();
+        if (keys.length === 0) return; // sin API Keys configuradas: no se hace nada, en silencio (es un proceso de fondo)
+
+        const esVino = (p.id >= 13000);
+        const nombreEs = p['es'] || "";
+        if (!nombreEs) return;
+
+        const alergenosValor = p.alergenos || "";
+        const tieneAlergenos = !!(alergenosValor && alergenosValor.toUpperCase() !== 'NINGUNO' && alergenosValor !== '0');
+        const nuevoHashFicha = (typeof calcularHashContenido === 'function') ? calcularHashContenido(`${nombreEs}|${alergenosValor}`) : "";
+
+        p.info = p.info || {};
+        const yaCompleto = p.info.es && p.info.en && p.infoHashFicha && p.infoHashFicha === nuevoHashFicha;
+        if (yaCompleto) return; // no ha cambiado el nombre/alérgenos desde la última vez que se generó: nada que hacer
+
+        marcarPlatoGenerandoInfo(p.id, true);
+
+        // --- Paso A: INFO_ES + INFO_EN (mismo prompt que "Generar Info Platos ES/EN", 1 plato) ---
+        const promptPiloto = esVino ? window.PROMPTS.vino(nombreEs) : window.PROMPTS.piloto(nombreEs, tieneAlergenos, alergenosValor);
+        const resultadoEsEn = await llamarGeminiConReintentos(promptPiloto, keys);
+        if (!resultadoEsEn || !resultadoEsEn.es || !resultadoEsEn.en) {
+            if (typeof UI !== 'undefined' && typeof UI.log === 'function') UI.log(`[Info automática] No se pudo generar la ficha ES/EN de "${nombreEs}" (ID ${p.id}). Puedes generarla luego a mano desde "Ajustes Expertos".`);
+            return;
+        }
+
+        // NUEVO: a propósito NO se toca el nombre en inglés (parsed.nombre_en) desde aquí — el
+        // editor ya tiene su propio flujo manual para elegir el nombre EN ("🇬🇧 Generar EN",
+        // con 3 estilos a elegir), y pisarlo en silencio desde este proceso de fondo iría en
+        // contra de esa elección del usuario.
+        p.info.es = JSON.stringify(resultadoEsEn.es);
+        p.info.en = JSON.stringify(resultadoEsEn.en);
+        p.infoHashFicha = nuevoHashFicha;
+        window.hayCambiosSinGuardar = true;
+
+        await guardarInfoPlatoEnBackend(p.id, { es: resultadoEsEn.es, en: resultadoEsEn.en });
+
+        // --- Paso B: encadenado, resto de idiomas (mismo prompt que "Generar Info Platos Otros
+        // Idiomas", 1 plato) — traduce fielmente la ficha ES/EN recién generada, no redacta contenido nuevo.
+        const idiomasObjetivo = (window.IDIOMAS_ORDEN || []).filter(l => l !== 'es' && l !== 'en');
+        if (idiomasObjetivo.length > 0) {
+            const promptOtros = window.PROMPTS.infoOtrosIdiomasLote(
+                [{ esVino: esVino, infoEs: resultadoEsEn.es, infoEn: resultadoEsEn.en }],
+                idiomasObjetivo.map(l => l.toUpperCase())
+            );
+            const resultadoOtros = await llamarGeminiConReintentos(promptOtros, keys);
+            const traducciones = resultadoOtros ? (resultadoOtros['0'] || resultadoOtros[0]) : null;
+            if (traducciones) {
+                const paraGuardar = {};
+                idiomasObjetivo.forEach(l => {
+                    const valor = traducciones[l.toUpperCase()] || traducciones[l];
+                    if (valor) { p.info[l] = JSON.stringify(valor); paraGuardar[l] = valor; }
+                });
+                if (Object.keys(paraGuardar).length > 0) {
+                    window.hayCambiosSinGuardar = true;
+                    await guardarInfoPlatoEnBackend(p.id, paraGuardar);
+                }
+            } else if (typeof UI !== 'undefined' && typeof UI.log === 'function') {
+                UI.log(`[Info automática] ES/EN guardados, pero falló la traducción al resto de idiomas de "${nombreEs}" (ID ${p.id}). Puedes completarla luego desde "Ajustes Expertos" (Paso 3).`);
+            }
+        }
+
+        if (typeof UI !== 'undefined' && typeof UI.log === 'function') {
+            UI.log(`[Info automática] Ficha generada y guardada para "${nombreEs}" (ID ${p.id}).`);
+        }
+    } catch (err) {
+        console.warn('[Editor] Error en generación automática de Info:', err);
+    } finally {
+        marcarPlatoGenerandoInfo(p.id, false);
+    }
+}
+
+function generarMenuAgrupado() {
     const estructuraActual = getEstructuraActual(); 
     if (!estructuraActual) return;
     
@@ -1265,12 +1470,28 @@ async function enviarAlExcel() {
         }
         
         alert(`✅ Petición enviada para ${getModoAlias(modo)}. Memoria local bloqueada por 3 min.`);
-        
+
         window.hayCambiosSinGuardar = false;
         btn.innerText = textoOriginal;
         btn.disabled = false;
         iniciarContadorOptimista(modo);
-    } catch (e) { 
+
+        // NUEVO: platos NUEVOS cuya Info automática quedó en cola (ver aplicarCambiosPlato())
+        // porque su fila todavía no existía en la hoja — ahora que este guardado ya la ha
+        // creado, se procesan. Margen de unos segundos para darle tiempo a Apps Script a
+        // terminar de escribir antes de que el endpoint seguro "?accion=infoplato" intente
+        // localizar la fila por ID.
+        if (platosPendientesInfoAlGuardar.length > 0) {
+            const idsAProcesar = platosPendientesInfoAlGuardar.slice();
+            platosPendientesInfoAlGuardar = [];
+            setTimeout(() => {
+                idsAProcesar.forEach(idPlato => {
+                    const plato = datosLocales.find(x => x.id === idPlato);
+                    if (plato) dispararGeneracionInfoAutomatica(plato);
+                });
+            }, 4000);
+        }
+    } catch (e) {
         alert("Error al intentar impactar los datos.");
         console.error("[Editor] Error de red: ", e);
         btn.disabled = false; 

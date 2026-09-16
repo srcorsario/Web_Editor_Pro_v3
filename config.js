@@ -43,11 +43,11 @@ function getModoAlias(modoInterno) {
 
 // CONFIGURACION ROLAND GARROS (restaurante001)
 const CSV_URL_RESTAURANTE001 = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT9rPlxpax2lE0rN97c6Hoy_OxUwREqRb48juEBr9C91ZFY2UvaKgC8JdiRcwDrtBErXFVmFRh0Zr5e/pub?gid=0&single=true&output=csv';
-const WEB_APP_URL_RESTAURANTE001 = 'https://script.google.com/macros/s/AKfycbzu2RyyNMhW9DdBFhmaUcYMqWgVinKmG1NfI9J57rXaw4uLxXs10p8ewUcmx3z0bT2v7A/exec';
+const WEB_APP_URL_RESTAURANTE001 = 'https://script.google.com/macros/s/AKfycbwe_6c4woiFXSp34fHgcky1uX-o_oCMQGRjYjmKeWgAbcgB-2sBmaNVgvS4wOI_aKSfYA/exec';
 
 // CONFIGURACION US OPEN (restaurante002)
 const CSV_URL_RESTAURANTE002 = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSOWewZgqWZEFYiIMh8DTUX5tr6EEXBwvUJGr7hrpkCG91UhE5xU8fDJ12qcRVrT69xfZ5NGGGyhNCE/pub?output=csv'; 
-const WEB_APP_URL_RESTAURANTE002 = 'https://script.google.com/macros/s/AKfycby4d3AzkjnVhy7k9H4ydOO_b909R9VuOgCvpmVOMNR8R60xEQSYEY5jT5L2FrLqZ8gd/exec';
+const WEB_APP_URL_RESTAURANTE002 = 'https://script.google.com/macros/s/AKfycbwouqhWugYlrVuc1Pv0h4BVaI3PPRkL13snFNxsntR1CLR7AxsloFvJ2b3l0JDFT788/exec';
 
 // MODIFICADO: Función auxiliar pura. Recibe el modo explícitamente.
 function getWebAppUrl(modo) {

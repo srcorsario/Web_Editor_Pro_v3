@@ -357,6 +357,16 @@ body {
 
 .plato-meta-footer { display: flex; align-items: center; gap: 8px; flex-shrink: 0; min-width: 210px; justify-content: flex-end; }
 
+/* NUEVO: aviso discreto mientras se genera/guarda automáticamente la Info de un plato en
+   segundo plano (ver generarInfoAutomaticaPlato() en app.js). Puramente informativo, no
+   bloquea ninguna interacción con el plato. */
+.badge-generando-info {
+    display: inline-block; font-size: 0.68rem; color: #8e44ad; background: #f4ecf7;
+    border: 1px solid #d7bde2; border-radius: 4px; padding: 1px 6px; margin-top: 3px;
+    animation: badge-generando-pulso 1.4s ease-in-out infinite;
+}
+@keyframes badge-generando-pulso { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+
 .btn-config { background: #f8f9fa; border: 1px solid #ddd; border-radius: 6px; padding: 8px; cursor: pointer; }
 .btn-orden { background: #f8f9fa; border: 1px solid #ddd; border-radius: 6px; padding: 8px 10px; cursor: pointer; font-size: 0.85rem; }
 .btn-nav { background: #f8f9fa; border: 1px solid #ddd; border-radius: 6px; padding: 8px 10px; cursor: pointer; font-size: 0.85rem; }

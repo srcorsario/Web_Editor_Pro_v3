@@ -1,0 +1,54 @@
+Web_Editor_Pro_v3 — URLs de Apps Script (Google Apps Script Web App)
+=====================================================================
+
+Este editor gestiona 2 restaurantes, cada uno con su propia hoja de Google
+Sheets y su propio proyecto de Apps Script (Codigo.gs). Los dos archivos
+.gs de esta carpeta son copias de referencia del código actualmente
+desplegado — sirven para tenerlo a mano al actualizar, NO se editan aquí
+para que surtan efecto: hay que pegarlos en el proyecto de Apps Script
+correspondiente (Extensiones > Apps Script) y desplegar.
+
+ROLAND GARROS (restaurante001)
+  Archivo de referencia: Codigo_RG.gs
+  URL /exec actual (WEB_APP_URL_RESTAURANTE001 en config.js,
+  APP_SCRIPT_URL en script.js de la web pública "web"):
+  https://script.google.com/macros/s/AKfycbwe_6c4woiFXSp34fHgcky1uX-o_oCMQGRjYjmKeWgAbcgB-2sBmaNVgvS4wOI_aKSfYA/exec
+
+US OPEN (restaurante002)
+  Archivo de referencia: Codigo_USOpen.gs
+  URL /exec actual (WEB_APP_URL_RESTAURANTE002 en config.js,
+  APP_SCRIPT_URL en script.js de la web pública "usopen-main"):
+  https://script.google.com/macros/s/AKfycbwouqhWugYlrVuc1Pv0h4BVaI3PPRkL13snFNxsntR1CLR7AxsloFvJ2b3l0JDFT788/exec
+
+CÓMO DESPLEGAR UN CAMBIO EN CUALQUIERA DE LOS DOS
+  1. Abrir la hoja de Google Sheets del restaurante correspondiente.
+  2. Extensiones > Apps Script.
+  3. Sustituir todo el contenido de Código.gs por la versión actualizada.
+  4. Implementar > Gestionar implementaciones > icono de lápiz sobre la
+     implementación web existente > Versión: Nueva versión > Implementar.
+     OJO: hay que EDITAR la implementación existente (no crear una nueva),
+     para que la URL /exec no cambie y no haga falta tocar config.js ni
+     los script.js de las webs públicas.
+  5. Si en vez de eso se crea una implementación NUEVA, la URL /exec
+     cambia: hay que actualizarla aquí y en config.js (editor) +
+     script.js del sitio público afectado antes de entregar nada más.
+
+16 septiembre — actualización "Info automática": Codigo_RG.gs / Codigo_USOpen.gs
+incorporaron la acción nueva "?accion=infoplato" (función guardarInfoPlato), que
+usa el editor para guardar automáticamente la Info (descripción + preguntas/
+respuestas) de UN plato concreto sin tocar el resto de la carta. El usuario
+desplegó esta vez creando una implementación NUEVA en los dos proyectos (no
+"Nueva versión" de la existente), así que las 2 URLs /exec de arriba cambiaron
+respecto a las anteriores y ya están actualizadas aquí y en config.js del editor.
+
+SOBRE LOS REPOS PÚBLICOS "web" (RG) y "usopen-main" (US Open): siguen con la URL
+/exec ANTERIOR puesta en LIVE_CSV_ENDPOINT/APP_SCRIPT_URL de su script.js (esos
+repos no se han tocado en esta sesión, no se subieron). Como este cambio SOLO
+añadió la función nueva "guardarInfoPlato" sin tocar nada de lo que ya usaba la
+web pública (doGet/servirCsvEnVivo/categorías siguen igual), la implementación
+VIEJA (si sigue activa en "Gestionar implementaciones") debería seguir sirviendo
+esos datos con normalidad — no es urgente tocar los repos públicos por esto. Si
+en algún momento se quiere dejar una única implementación activa (borrando la
+vieja), entonces sí habría que actualizar antes la URL en esos dos script.js.
+
+Última actualización de este archivo: 2026-09-16.
