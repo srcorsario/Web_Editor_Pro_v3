@@ -1,7 +1,7 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '2.11.1'; // NUEVO: el modal de plato ya no se queda abierto indefinidamente tras la generación automática de Info en un plato existente -- se cierra solo ~1.8s después de terminar (éxito, aviso o error), en vez de obligar a pulsar "Cancelar" a mano cada vez
+window.APP_VERSIONS.app = '2.12.0'; // CORREGIDO: bug real -- reabrir con la rueda ⚙️ un plato NUEVO (aún sin pulsar "GUARDAR CAMBIOS EN WEB") y volver a pulsar "Aplicar Cambios" disparaba la Info automática contra una fila que todavía no existe en la hoja; como el guardado usa fetch en modo no-cors, el editor no podía leer el error real de Código.gs y mostraba "generado con éxito" sin haberse guardado nada. Ahora se decide por p.filaExisteEnHoja (false hasta el primer "GUARDAR CAMBIOS EN WEB" correcto) en vez de por esNuevoPlato, así que sigue encolando correctamente aunque se reabra el mismo plato nuevo varias veces antes de guardar
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
@@ -208,7 +208,13 @@ async function cargar(retryCount = 0) {
                     // NUEVO: Info (descripción + preguntas/respuestas) ya generada, por idioma —
                     // JSON en bruto tal cual viene de la hoja (se parsea solo cuando hace falta).
                     info: {},
-                    infoHashFicha: (idxInfoHashFicha !== -1 && c[idxInfoHashFicha] !== undefined) ? superLimpiar(c[idxInfoHashFicha]) : ""
+                    infoHashFicha: (idxInfoHashFicha !== -1 && c[idxInfoHashFicha] !== undefined) ? superLimpiar(c[idxInfoHashFicha]) : "",
+                    // NUEVO: viene del CSV de la hoja, así que su fila YA existe de verdad en
+                    // Google Sheets — ver filaExisteEnHoja en prepararNuevoPlato()/enviarAlExcel()/
+                    // aplicarCambiosPlato(), que usan este flag (no "esNuevoPlato") para decidir si
+                    // es seguro llamar ya al endpoint de Info automática o hay que esperar a que
+                    // "GUARDAR CAMBIOS EN WEB" cree la fila primero.
+                    filaExisteEnHoja: true
                 };
 
                 if (window.IDIOMAS_ORDEN && window.IDIOMAS_CSV_INDICES) {
@@ -1218,22 +1224,29 @@ function aplicarCambiosPlato() {
 
     // NUEVO: dispara la generación automática de la Info (descripción + preguntas/respuestas)
     // en ES/EN y, encadenado, en el resto de idiomas — en segundo plano, sin bloquear el editor
-    // ni pedir nada más al usuario (ver generarInfoAutomaticaPlato() más abajo). Si el plato es
-    // NUEVO, su fila todavía no existe en la hoja (se creará al pulsar "GUARDAR CAMBIOS EN
-    // WEB"), así que se encola para procesarse justo después de ese guardado (ver
-    // enviarAlExcel()); si ya existía, se dispara ya mismo contra el endpoint seguro
-    // "?accion=infoplato" de Código.gs, que solo toca la fila de ESTE plato — nunca reenvía ni
-    // toca el resto de la carta, así que no hay riesgo de pisar la Info ya generada de otros
-    // platos aunque la caché de "publicar en la web" esté desactualizada en este momento.
-    if (esNuevoPlato) {
+    // ni pedir nada más al usuario (ver generarInfoAutomaticaPlato() más abajo). CORREGIDO: la
+    // decisión de encolar YA NO se basa en "esNuevoPlato" (que solo es true la PRIMERA vez que
+    // se aplica un plato recién creado) sino en p.filaExisteEnHoja -- si el usuario reabre con la
+    // rueda ⚙️ ese mismo plato nuevo y vuelve a pulsar "Aplicar Cambios" SIN haber pulsado antes
+    // el botón grande "GUARDAR CAMBIOS EN WEB", esNuevoPlato ya es false (abrirEditor() sin
+    // esNuevo=true) pero la fila SIGUE sin existir en la hoja -- disparar ya mismo el endpoint
+    // seguro "?accion=infoplato" en ese caso fallaba en SILENCIO (Código.gs no encuentra la fila
+    // y devuelve un error, pero el fetch usa "no-cors" y el editor no puede leer esa respuesta,
+    // así que la consola mostraba "generado con éxito" aunque no se hubiera guardado nada de
+    // verdad). p.filaExisteEnHoja se pone a false al crear el plato (prepararNuevoPlato()) y solo
+    // pasa a true tras un "GUARDAR CAMBIOS EN WEB" con éxito (ver enviarAlExcel()), así que sigue
+    // encolando correctamente aunque se reabra y reaplique el mismo plato varias veces antes de
+    // guardar. Si la fila ya existe, se dispara ya mismo contra ese mismo endpoint, que solo toca
+    // la fila de ESTE plato — nunca reenvía ni toca el resto de la carta, así que no hay riesgo de
+    // pisar la Info ya generada de otros platos aunque la caché de "publicar en la web" esté
+    // desactualizada en este momento.
+    if (p.filaExisteEnHoja !== true) {
         if (!platosPendientesInfoAlGuardar.includes(p.id)) platosPendientesInfoAlGuardar.push(p.id);
-        // Plato nuevo: la generación no arrancará hasta unos segundos después de pulsar el botón
-        // grande "GUARDAR CAMBIOS EN WEB" (ver enviarAlExcel()), así que aquí todavía no hay nada
-        // que ver en la consola — se cierra el modal como antes.
-        cerrarModal('modal-editor');
+        logInfoAutomatica(`"${p['es'] || ('ID ' + p.id)}" es un plato nuevo: su fila todavía no existe en la hoja, así que la Info se generará automáticamente en cuanto pulses "GUARDAR CAMBIOS EN WEB" (unos segundos después de guardar).`, p.id);
+        cerrarModalPlatoTrasInfoSiSigueAbierto(p);
     } else {
         dispararGeneracionInfoAutomatica(p);
-        // NUEVO: ya NO se cierra el modal al instante en este caso (plato ya existente) — se deja
+        // NUEVO: ya NO se cierra el modal al instante en este caso (fila ya existente) — se deja
         // abierto para que el usuario pueda ver en vivo, en la consola de debajo de "Alérgenos",
         // si la generación automática de Info tiene éxito o falla (antes se cerraba enseguida y
         // ese aviso solo aparecía en la consola de "Ajustes Expertos", invisible desde aquí). Los
@@ -1241,6 +1254,8 @@ function aplicarCambiosPlato() {
         // cualquier momento no deshace nada; la generación sigue en segundo plano igualmente
         // aunque se cierre antes de que termine (y su resultado queda guardado para la próxima
         // vez que se reabra el editor de este plato, ver abrirEditor() > renderConsolaInfoPlato()).
+        // El propio generarInfoAutomaticaPlato() cierra el modal solo al terminar (ver
+        // cerrarModalPlatoTrasInfoSiSigueAbierto()).
     }
 
     renderizar();
@@ -1575,7 +1590,12 @@ function prepararNuevoPlato(baseId, folder) {
         carpeta: folder,
         imagen: "",
         alergenos: "",
-        opcionesInactivas: ""
+        opcionesInactivas: "",
+        // NUEVO: su fila NO existe todavía en Google Sheets (solo se crea al pulsar "GUARDAR
+        // CAMBIOS EN WEB") — ver filaExisteEnHoja en cargar()/enviarAlExcel()/
+        // aplicarCambiosPlato(). Sigue en false aunque se reabra este mismo plato con la rueda
+        // ⚙️ y se pulse "Aplicar Cambios" varias veces ANTES de guardar de verdad.
+        filaExisteEnHoja: false
     };
     
     // CORREGIDO: mismo problema que en abrirEditor() — antes precargaba la imagen de croquetas
@@ -1632,6 +1652,12 @@ async function enviarAlExcel() {
         }
         
         alert(`✅ Petición enviada para ${getModoAlias(modo)}. Memoria local bloqueada por 3 min.`);
+
+        // NUEVO: este guardado general acaba de crear/actualizar la fila de TODOS los platos de
+        // datosLocales en la hoja (incluidos los nuevos) — a partir de ahora es seguro llamar al
+        // endpoint de Info automática para cualquiera de ellos. Ver filaExisteEnHoja en cargar()/
+        // prepararNuevoPlato()/aplicarCambiosPlato().
+        datosLocales.forEach(p => { p.filaExisteEnHoja = true; });
 
         window.hayCambiosSinGuardar = false;
         btn.innerText = textoOriginal;
