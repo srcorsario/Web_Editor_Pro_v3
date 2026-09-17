@@ -1,7 +1,7 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '2.11.0'; // NUEVO: consola de Info automática dentro del modal de plato (#consola-info-plato, debajo de Alérgenos) con historial por plato (window.logsInfoPorPlato) + reintento automático x2 de la traducción a otros idiomas + aviso "⚠️ faltan otros idiomas" con botón de reintento manual en la ficha del plato
+window.APP_VERSIONS.app = '2.11.1'; // NUEVO: el modal de plato ya no se queda abierto indefinidamente tras la generación automática de Info en un plato existente -- se cierra solo ~1.8s después de terminar (éxito, aviso o error), en vez de obligar a pulsar "Cancelar" a mano cada vez
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
@@ -1430,7 +1430,22 @@ async function generarInfoAutomaticaPlato(p) {
         if (p) logInfoAutomatica(`Error inesperado generando la Info de "${p['es'] || ('ID ' + p.id)}": ${err && err.message ? err.message : err}`, p.id, true);
     } finally {
         marcarPlatoGenerandoInfo(p.id, false);
+        cerrarModalPlatoTrasInfoSiSigueAbierto(p);
     }
+}
+
+// NUEVO: si el usuario dejó el editor de ESTE plato abierto viendo la consola (ver
+// aplicarCambiosPlato(), que ya no lo cierra al instante en un plato existente), se cierra solo
+// un par de segundos después de terminar la generación automática de Info -- da tiempo de sobra
+// a leer el último mensaje sin obligar a pulsar "Cancelar" a mano cada vez. Si el usuario ya lo
+// cerró él mismo, o mientras tanto abrió el editor de OTRO plato, no hace nada.
+function cerrarModalPlatoTrasInfoSiSigueAbierto(p) {
+    if (!p || typeof platoEditandoId === 'undefined' || platoEditandoId !== p.id) return;
+    const modal = document.getElementById('modal-editor');
+    if (!modal || modal.style.display === 'none') return;
+    setTimeout(() => {
+        if (platoEditandoId === p.id) cerrarModal('modal-editor');
+    }, 1800);
 }
 
 // NUEVO: Paso B extraído a su propia función para poder reutilizarlo tanto encadenado desde
