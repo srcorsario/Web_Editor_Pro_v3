@@ -380,6 +380,22 @@ body {
 }
 .btn-reintentar-info-otros:hover { background: #f0c98a; }
 
+/* NUEVO: consola visible de la generación automática de Info, debajo de la lista de categorías
+   en la pestaña normal del Editor (ver #consola-info-automatica en index.html y
+   logInfoAutomatica() en app.js). Antes este rastro solo se veía en la consola de "Ajustes
+   Expertos", invisible mientras se trabaja aquí. */
+.consola-info-automatica {
+    background: #1c1c1e; color: #d0d0d0; font-family: 'Courier New', monospace; font-size: 0.72rem;
+    border-radius: 6px; padding: 8px 10px; max-height: 160px; overflow-y: auto;
+    min-height: 34px; line-height: 1.5;
+}
+.consola-info-automatica:empty::before {
+    content: "Aquí aparecerá el resultado (éxito o error) de la generación automática de Info al crear/editar un plato.";
+    color: #888; font-style: italic;
+}
+.consola-info-automatica-linea { white-space: pre-wrap; word-break: break-word; }
+.consola-info-automatica-linea.es-error { color: #ff8a80; }
+
 .btn-config { background: #f8f9fa; border: 1px solid #ddd; border-radius: 6px; padding: 8px; cursor: pointer; }
 .btn-orden { background: #f8f9fa; border: 1px solid #ddd; border-radius: 6px; padding: 8px 10px; cursor: pointer; font-size: 0.85rem; }
 .btn-nav { background: #f8f9fa; border: 1px solid #ddd; border-radius: 6px; padding: 8px 10px; cursor: pointer; font-size: 0.85rem; }

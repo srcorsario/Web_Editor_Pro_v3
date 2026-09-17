@@ -1302,6 +1302,29 @@ function dispararGeneracionInfoAutomatica(p) {
 // (café, refrescos, cerveza) — mismo criterio aquí para no generar fichas de sabor a un café.
 const CARPETAS_SIN_IA_INFO = ['cafe', 'refrescos', 'cerveza'];
 
+// NUEVO: consola visible en la propia pantalla del Editor (debajo de la sección "Alérgenos e
+// Intolerancias", que es la última de la lista de categorías — ver #consola-info-automatica en
+// index.html, colocado justo después de #editor-dinamico para no ser borrado por renderizar()).
+// Antes, todo el rastro de la generación automática de Info solo se veía con UI.log(), que
+// escribe en la consola de "Ajustes Expertos" — invisible mientras se trabaja en la pestaña
+// normal del Editor, que es donde de hecho se crean/editan los platos. Se escribe SIEMPRE aquí
+// (éxito, aviso o error) y, si existe, también en UI.log() para no perder esa consola tampoco.
+function logInfoAutomatica(mensaje, esError = false) {
+    console.log(`[Info automática] ${mensaje}`);
+    if (typeof UI !== 'undefined' && typeof UI.log === 'function') UI.log(`[Info automática] ${mensaje}`);
+
+    const consola = document.getElementById('consola-info-automatica');
+    if (!consola) return;
+    const linea = document.createElement('div');
+    linea.className = 'consola-info-automatica-linea' + (esError ? ' es-error' : '');
+    const hora = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    linea.textContent = `[${hora}] ${mensaje}`;
+    consola.appendChild(linea);
+    // No dejar crecer la consola indefinidamente: solo se conservan las últimas 40 líneas.
+    while (consola.childElementCount > 40) consola.removeChild(consola.firstChild);
+    consola.scrollTop = consola.scrollHeight;
+}
+
 async function generarInfoAutomaticaPlato(p) {
     try {
         if (!p || isNaN(p.id) || p.id < 13) return; // ids 1-12 son cabeceras de categoría heredadas, sin info real
@@ -1310,7 +1333,10 @@ async function generarInfoAutomaticaPlato(p) {
 
         let keys = [];
         if (typeof getKeys === 'function') keys = getKeys();
-        if (keys.length === 0) return; // sin API Keys configuradas: no se hace nada, en silencio (es un proceso de fondo)
+        if (keys.length === 0) {
+            logInfoAutomatica(`No hay ninguna API Key de Gemini configurada — no se puede generar la Info de "${p['es'] || ('ID ' + p.id)}" automáticamente. Añade al menos una en "Ajustes Expertos".`, true);
+            return;
+        }
 
         const esVino = (p.id >= 13000);
         const nombreEs = p['es'] || "";
@@ -1322,15 +1348,19 @@ async function generarInfoAutomaticaPlato(p) {
 
         p.info = p.info || {};
         const yaCompleto = p.info.es && p.info.en && p.infoHashFicha && p.infoHashFicha === nuevoHashFicha;
-        if (yaCompleto) return; // no ha cambiado el nombre/alérgenos desde la última vez que se generó: nada que hacer
+        if (yaCompleto) {
+            logInfoAutomatica(`"${nombreEs}" (ID ${p.id}) ya tenía su ficha generada y ni el nombre ni los alérgenos han cambiado: no se regenera.`);
+            return;
+        }
 
         marcarPlatoGenerandoInfo(p.id, true);
+        logInfoAutomatica(`Generando ficha ES/EN de "${nombreEs}" (ID ${p.id})...`);
 
         // --- Paso A: INFO_ES + INFO_EN (mismo prompt que "Generar Info Platos ES/EN", 1 plato) ---
         const promptPiloto = esVino ? window.PROMPTS.vino(nombreEs) : window.PROMPTS.piloto(nombreEs, tieneAlergenos, alergenosValor);
         const resultadoEsEn = await llamarGeminiConReintentos(promptPiloto, keys);
         if (!resultadoEsEn || !resultadoEsEn.es || !resultadoEsEn.en) {
-            if (typeof UI !== 'undefined' && typeof UI.log === 'function') UI.log(`[Info automática] No se pudo generar la ficha ES/EN de "${nombreEs}" (ID ${p.id}). Puedes generarla luego a mano desde "Ajustes Expertos".`);
+            logInfoAutomatica(`No se pudo generar la ficha ES/EN de "${nombreEs}" (ID ${p.id}) — puede que ninguna API Key haya respondido bien (cuota agotada, key inválida...). Puedes generarla luego a mano desde "Ajustes Expertos".`, true);
             return;
         }
 
@@ -1344,18 +1374,19 @@ async function generarInfoAutomaticaPlato(p) {
         window.hayCambiosSinGuardar = true;
 
         await guardarInfoPlatoEnBackend(p.id, { es: resultadoEsEn.es, en: resultadoEsEn.en });
+        logInfoAutomatica(`Ficha ES/EN guardada para "${nombreEs}" (ID ${p.id}). Traduciendo al resto de idiomas...`);
 
         // --- Paso B: encadenado, resto de idiomas (mismo prompt que "Generar Info Platos Otros
         // Idiomas", 1 plato) — traduce fielmente la ficha ES/EN recién generada, no redacta contenido nuevo.
         const otrosOk = await generarInfoOtrosIdiomasPlato(p, keys, resultadoEsEn.es, resultadoEsEn.en);
 
-        if (typeof UI !== 'undefined' && typeof UI.log === 'function') {
-            UI.log(otrosOk
-                ? `[Info automática] Ficha generada y guardada para "${nombreEs}" (ID ${p.id}).`
-                : `[Info automática] ES/EN guardados para "${nombreEs}" (ID ${p.id}), pero falló la traducción al resto de idiomas. Aviso "⚠️ faltan otros idiomas" en su ficha del Editor.`);
-        }
+        logInfoAutomatica(otrosOk
+            ? `Ficha generada y guardada en TODOS los idiomas para "${nombreEs}" (ID ${p.id}).`
+            : `ES/EN guardados para "${nombreEs}" (ID ${p.id}), pero falló la traducción al resto de idiomas. Aviso "⚠️ faltan otros idiomas" en su ficha del Editor.`,
+            !otrosOk);
     } catch (err) {
         console.warn('[Editor] Error en generación automática de Info:', err);
+        logInfoAutomatica(`Error inesperado generando la Info de "${p && p['es'] ? p['es'] : ('ID ' + (p && p.id))}": ${err && err.message ? err.message : err}`, true);
     } finally {
         marcarPlatoGenerandoInfo(p.id, false);
     }
@@ -1386,7 +1417,7 @@ async function generarInfoOtrosIdiomasPlato(p, keys, infoEsObj, infoEnObj) {
 
     if (!traducciones) {
         window.platosInfoOtrosIdiomasFallidos.add(p.id);
-        console.warn(`[Editor] Falló la traducción de Info al resto de idiomas del plato ID ${p.id} tras ${MAX_INTENTOS_OTROS} intento(s).`);
+        logInfoAutomatica(`Falló la traducción de Info al resto de idiomas del plato "${p['es'] || ''}" (ID ${p.id}) tras ${MAX_INTENTOS_OTROS} intento(s).`, true);
         return false;
     }
 

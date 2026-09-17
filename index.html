@@ -61,6 +61,16 @@
         <div id="tab-editor" class="tab-content active">
             <div id="ajustes-generales-bar" class="ajustes-generales-bar"></div>
             <div id="editor-dinamico"></div>
+            <!-- NUEVO: consola de la generación automática de Info (ver logInfoAutomatica() en
+                 app.js) — colocada debajo de la lista de categorías (que termina en "Alérgenos e
+                 Intolerancias") a propósito FUERA de #editor-dinamico, para que renderizar() no
+                 la borre en cada repintado. Muestra en vivo, desde la propia pestaña del Editor,
+                 si la generación automática de cada plato tuvo éxito o falló y por qué — antes
+                 solo se veía en la consola de "Ajustes Expertos" (UI.log), invisible desde aquí. -->
+            <div class="input-group">
+                <label class="label-seccion">🤖 Consola de Info automática (ES/EN + otros idiomas)</label>
+                <div id="consola-info-automatica" class="consola-info-automatica"></div>
+            </div>
         </div>
 
         <div id="tab-pro" class="tab-content pro-panel" style="display: none;">
