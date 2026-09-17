@@ -695,6 +695,13 @@ function abrirEditor(id, esNuevo = false) {
         alergenosGrid.innerHTML = alergenosHtml;
     }
 
+    // NUEVO: repinta la consola de Info automática (ver logInfoAutomatica() más abajo) con el
+    // historial de ESTE plato — así, si la generación se disparó/siguió en segundo plano tras
+    // cerrar el editor la última vez, al reabrirlo se ve igualmente qué pasó (éxito o error).
+    // Un plato recién creado (esNuevo) no tiene historial todavía: queda vacío (ver placeholder
+    // por CSS en .consola-info-automatica:empty).
+    renderConsolaInfoPlato(id);
+
     // La rueda de solo activar/desactivar de antes se sustituyó por la lista editable de
     // ingredientes — ver aplicarVisibilidadModoIngredientes()/renderIngredientesPlato() más
     // arriba, ya invocada para este plato.
@@ -1220,11 +1227,22 @@ function aplicarCambiosPlato() {
     // platos aunque la caché de "publicar en la web" esté desactualizada en este momento.
     if (esNuevoPlato) {
         if (!platosPendientesInfoAlGuardar.includes(p.id)) platosPendientesInfoAlGuardar.push(p.id);
+        // Plato nuevo: la generación no arrancará hasta unos segundos después de pulsar el botón
+        // grande "GUARDAR CAMBIOS EN WEB" (ver enviarAlExcel()), así que aquí todavía no hay nada
+        // que ver en la consola — se cierra el modal como antes.
+        cerrarModal('modal-editor');
     } else {
         dispararGeneracionInfoAutomatica(p);
+        // NUEVO: ya NO se cierra el modal al instante en este caso (plato ya existente) — se deja
+        // abierto para que el usuario pueda ver en vivo, en la consola de debajo de "Alérgenos",
+        // si la generación automática de Info tiene éxito o falla (antes se cerraba enseguida y
+        // ese aviso solo aparecía en la consola de "Ajustes Expertos", invisible desde aquí). Los
+        // cambios ya están aplicados en memoria a esta altura, así que cerrar con "Cancelar" en
+        // cualquier momento no deshace nada; la generación sigue en segundo plano igualmente
+        // aunque se cierre antes de que termine (y su resultado queda guardado para la próxima
+        // vez que se reabra el editor de este plato, ver abrirEditor() > renderConsolaInfoPlato()).
     }
 
-    cerrarModal('modal-editor');
     renderizar();
 }
 
@@ -1302,26 +1320,49 @@ function dispararGeneracionInfoAutomatica(p) {
 // (café, refrescos, cerveza) — mismo criterio aquí para no generar fichas de sabor a un café.
 const CARPETAS_SIN_IA_INFO = ['cafe', 'refrescos', 'cerveza'];
 
-// NUEVO: consola visible en la propia pantalla del Editor (debajo de la sección "Alérgenos e
-// Intolerancias", que es la última de la lista de categorías — ver #consola-info-automatica en
-// index.html, colocado justo después de #editor-dinamico para no ser borrado por renderizar()).
-// Antes, todo el rastro de la generación automática de Info solo se veía con UI.log(), que
-// escribe en la consola de "Ajustes Expertos" — invisible mientras se trabaja en la pestaña
-// normal del Editor, que es donde de hecho se crean/editan los platos. Se escribe SIEMPRE aquí
-// (éxito, aviso o error) y, si existe, también en UI.log() para no perder esa consola tampoco.
-function logInfoAutomatica(mensaje, esError = false) {
+// NUEVO: historial de mensajes de la generación automática de Info, por ID de plato (ver
+// logInfoAutomatica()/renderConsolaInfoPlato() más abajo). Se guarda SIEMPRE (haya o no un
+// modal abierto en ese momento) para poder pintarlo en cuanto el usuario abra/reabra el editor
+// de ESE plato concreto — ver abrirEditor(), que llama a renderConsolaInfoPlato(id).
+window.logsInfoPorPlato = window.logsInfoPorPlato || {};
+
+// NUEVO: consola visible DENTRO del propio modal de crear/editar plato, justo debajo de
+// "Alérgenos" (ver #consola-info-plato en index.html, dentro de .modal-col-derecha). Antes todo
+// el rastro de la generación automática de Info solo se veía con UI.log(), que escribe en la
+// consola de "Ajustes Expertos" — invisible mientras se está creando/editando un plato, que es
+// justo cuando el usuario quiere ver si está funcionando. Cada línea se guarda en
+// window.logsInfoPorPlato[idPlato] (para poder repintarla si se reabre el editor de ese plato
+// más tarde, ya que la generación sigue en marcha en segundo plano aunque se cierre el modal) y,
+// si el modal está abierto AHORA MISMO para ese mismo plato (platoEditandoId === idPlato), se
+// añade también en vivo a la consola visible.
+function logInfoAutomatica(mensaje, idPlato, esError = false) {
     console.log(`[Info automática] ${mensaje}`);
     if (typeof UI !== 'undefined' && typeof UI.log === 'function') UI.log(`[Info automática] ${mensaje}`);
 
-    const consola = document.getElementById('consola-info-automatica');
-    if (!consola) return;
-    const linea = document.createElement('div');
-    linea.className = 'consola-info-automatica-linea' + (esError ? ' es-error' : '');
     const hora = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    linea.textContent = `[${hora}] ${mensaje}`;
-    consola.appendChild(linea);
-    // No dejar crecer la consola indefinidamente: solo se conservan las últimas 40 líneas.
-    while (consola.childElementCount > 40) consola.removeChild(consola.firstChild);
+    const historial = window.logsInfoPorPlato[idPlato] = window.logsInfoPorPlato[idPlato] || [];
+    historial.push({ hora, mensaje, esError });
+    while (historial.length > 20) historial.shift(); // no crecer indefinidamente por plato
+
+    if (typeof platoEditandoId !== 'undefined' && platoEditandoId === idPlato) {
+        renderConsolaInfoPlato(idPlato);
+    }
+}
+
+// Repinta la consola del modal (#consola-info-plato) con el historial guardado de ESE plato —
+// se llama al abrir/reabrir el editor de un plato (abrirEditor()) y, en vivo, desde
+// logInfoAutomatica() mientras el modal de ese mismo plato sigue abierto.
+function renderConsolaInfoPlato(idPlato) {
+    const consola = document.getElementById('consola-info-plato');
+    if (!consola) return;
+    const historial = window.logsInfoPorPlato[idPlato] || [];
+    consola.innerHTML = "";
+    historial.forEach(linea => {
+        const div = document.createElement('div');
+        div.className = 'consola-info-automatica-linea' + (linea.esError ? ' es-error' : '');
+        div.textContent = `[${linea.hora}] ${linea.mensaje}`;
+        consola.appendChild(div);
+    });
     consola.scrollTop = consola.scrollHeight;
 }
 
@@ -1334,7 +1375,7 @@ async function generarInfoAutomaticaPlato(p) {
         let keys = [];
         if (typeof getKeys === 'function') keys = getKeys();
         if (keys.length === 0) {
-            logInfoAutomatica(`No hay ninguna API Key de Gemini configurada — no se puede generar la Info de "${p['es'] || ('ID ' + p.id)}" automáticamente. Añade al menos una en "Ajustes Expertos".`, true);
+            logInfoAutomatica(`No hay ninguna API Key de Gemini configurada — no se puede generar la Info de "${p['es'] || ('ID ' + p.id)}" automáticamente. Añade al menos una en "Ajustes Expertos".`, p.id, true);
             return;
         }
 
@@ -1349,18 +1390,18 @@ async function generarInfoAutomaticaPlato(p) {
         p.info = p.info || {};
         const yaCompleto = p.info.es && p.info.en && p.infoHashFicha && p.infoHashFicha === nuevoHashFicha;
         if (yaCompleto) {
-            logInfoAutomatica(`"${nombreEs}" (ID ${p.id}) ya tenía su ficha generada y ni el nombre ni los alérgenos han cambiado: no se regenera.`);
+            logInfoAutomatica(`"${nombreEs}" (ID ${p.id}) ya tenía su ficha generada y ni el nombre ni los alérgenos han cambiado: no se regenera.`, p.id);
             return;
         }
 
         marcarPlatoGenerandoInfo(p.id, true);
-        logInfoAutomatica(`Generando ficha ES/EN de "${nombreEs}" (ID ${p.id})...`);
+        logInfoAutomatica(`Generando ficha ES/EN de "${nombreEs}" (ID ${p.id})...`, p.id);
 
         // --- Paso A: INFO_ES + INFO_EN (mismo prompt que "Generar Info Platos ES/EN", 1 plato) ---
         const promptPiloto = esVino ? window.PROMPTS.vino(nombreEs) : window.PROMPTS.piloto(nombreEs, tieneAlergenos, alergenosValor);
         const resultadoEsEn = await llamarGeminiConReintentos(promptPiloto, keys);
         if (!resultadoEsEn || !resultadoEsEn.es || !resultadoEsEn.en) {
-            logInfoAutomatica(`No se pudo generar la ficha ES/EN de "${nombreEs}" (ID ${p.id}) — puede que ninguna API Key haya respondido bien (cuota agotada, key inválida...). Puedes generarla luego a mano desde "Ajustes Expertos".`, true);
+            logInfoAutomatica(`No se pudo generar la ficha ES/EN de "${nombreEs}" (ID ${p.id}) — puede que ninguna API Key haya respondido bien (cuota agotada, key inválida...). Puedes generarla luego a mano desde "Ajustes Expertos".`, p.id, true);
             return;
         }
 
@@ -1374,7 +1415,7 @@ async function generarInfoAutomaticaPlato(p) {
         window.hayCambiosSinGuardar = true;
 
         await guardarInfoPlatoEnBackend(p.id, { es: resultadoEsEn.es, en: resultadoEsEn.en });
-        logInfoAutomatica(`Ficha ES/EN guardada para "${nombreEs}" (ID ${p.id}). Traduciendo al resto de idiomas...`);
+        logInfoAutomatica(`Ficha ES/EN guardada para "${nombreEs}" (ID ${p.id}). Traduciendo al resto de idiomas...`, p.id);
 
         // --- Paso B: encadenado, resto de idiomas (mismo prompt que "Generar Info Platos Otros
         // Idiomas", 1 plato) — traduce fielmente la ficha ES/EN recién generada, no redacta contenido nuevo.
@@ -1383,10 +1424,10 @@ async function generarInfoAutomaticaPlato(p) {
         logInfoAutomatica(otrosOk
             ? `Ficha generada y guardada en TODOS los idiomas para "${nombreEs}" (ID ${p.id}).`
             : `ES/EN guardados para "${nombreEs}" (ID ${p.id}), pero falló la traducción al resto de idiomas. Aviso "⚠️ faltan otros idiomas" en su ficha del Editor.`,
-            !otrosOk);
+            p.id, !otrosOk);
     } catch (err) {
         console.warn('[Editor] Error en generación automática de Info:', err);
-        logInfoAutomatica(`Error inesperado generando la Info de "${p && p['es'] ? p['es'] : ('ID ' + (p && p.id))}": ${err && err.message ? err.message : err}`, true);
+        if (p) logInfoAutomatica(`Error inesperado generando la Info de "${p['es'] || ('ID ' + p.id)}": ${err && err.message ? err.message : err}`, p.id, true);
     } finally {
         marcarPlatoGenerandoInfo(p.id, false);
     }
@@ -1417,7 +1458,7 @@ async function generarInfoOtrosIdiomasPlato(p, keys, infoEsObj, infoEnObj) {
 
     if (!traducciones) {
         window.platosInfoOtrosIdiomasFallidos.add(p.id);
-        logInfoAutomatica(`Falló la traducción de Info al resto de idiomas del plato "${p['es'] || ''}" (ID ${p.id}) tras ${MAX_INTENTOS_OTROS} intento(s).`, true);
+        logInfoAutomatica(`Falló la traducción de Info al resto de idiomas del plato "${p['es'] || ''}" (ID ${p.id}) tras ${MAX_INTENTOS_OTROS} intento(s).`, p.id, true);
         return false;
     }
 
@@ -1460,8 +1501,10 @@ async function reintentarInfoOtrosIdiomasPlato(id) {
     }
 
     marcarPlatoGenerandoInfo(id, true);
+    logInfoAutomatica(`Reintentando la traducción al resto de idiomas de "${p['es'] || ''}" (ID ${id})...`, id);
     try {
         const ok = await generarInfoOtrosIdiomasPlato(p, keys, infoEsObj, infoEnObj);
+        if (ok) logInfoAutomatica(`Reintento correcto: "${p['es'] || ''}" (ID ${id}) ya tiene la Info en todos los idiomas.`, id);
         if (!ok) alert('Ha vuelto a fallar la traducción al resto de idiomas. Puedes reintentarlo de nuevo, o completarla desde "Ajustes Expertos" (Paso 3).');
     } finally {
         marcarPlatoGenerandoInfo(id, false);

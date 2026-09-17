@@ -61,16 +61,6 @@
         <div id="tab-editor" class="tab-content active">
             <div id="ajustes-generales-bar" class="ajustes-generales-bar"></div>
             <div id="editor-dinamico"></div>
-            <!-- NUEVO: consola de la generación automática de Info (ver logInfoAutomatica() en
-                 app.js) — colocada debajo de la lista de categorías (que termina en "Alérgenos e
-                 Intolerancias") a propósito FUERA de #editor-dinamico, para que renderizar() no
-                 la borre en cada repintado. Muestra en vivo, desde la propia pestaña del Editor,
-                 si la generación automática de cada plato tuvo éxito o falló y por qué — antes
-                 solo se veía en la consola de "Ajustes Expertos" (UI.log), invisible desde aquí. -->
-            <div class="input-group">
-                <label class="label-seccion">🤖 Consola de Info automática (ES/EN + otros idiomas)</label>
-                <div id="consola-info-automatica" class="consola-info-automatica"></div>
-            </div>
         </div>
 
         <div id="tab-pro" class="tab-content pro-panel" style="display: none;">
@@ -241,6 +231,17 @@
                     <div class="input-group">
                         <label class="label-seccion">Alérgenos</label>
                         <div id="alergenos-grid" class="alergenos-grid"></div>
+                    </div>
+                    <!-- NUEVO: consola de la generación automática de Info (ES/EN + resto de
+                         idiomas al crear/editar este plato — ver logInfoAutomatica()/
+                         renderConsolaInfoPlato() en app.js), justo debajo de Alérgenos, que es
+                         donde el usuario está mirando al pulsar "Aplicar Cambios". Muestra el
+                         historial de ESTE plato (se repinta al abrir el editor) y se actualiza en
+                         vivo mientras el modal siga abierto para él. Antes este rastro solo se
+                         veía en la consola de "Ajustes Expertos" (UI.log), invisible desde aquí. -->
+                    <div class="input-group">
+                        <label class="label-seccion">🤖 Consola de Info automática</label>
+                        <div id="consola-info-plato" class="consola-info-automatica"></div>
                     </div>
                     <div id="contenedor-croquetas"></div>
                     <div class="modal-acciones-footer">
