@@ -53,6 +53,14 @@ let ingredientesPlatoActual = [];
 let platosPendientesInfoAlGuardar = [];
 window.platosGenerandoInfo = window.platosGenerandoInfo || new Set();
 
+// NUEVO: IDs de platos a los que se les generó bien la Info ES/EN pero falló la traducción
+// automática al resto de idiomas (Paso B, ver generarInfoOtrosIdiomasPlato() más abajo). El
+// aviso de ese fallo antes solo se veía con UI.log(), que escribe en la consola de "Ajustes
+// Expertos" — invisible mientras se está en la pestaña normal del Editor, que es donde
+// realmente se crea/edita el plato. Este Set se usa para pintar un aviso "⚠️ faltan otros
+// idiomas" con botón de reintento directamente en la ficha del plato (renderPlatoItemHtml).
+window.platosInfoOtrosIdiomasFallidos = window.platosInfoOtrosIdiomasFallidos || new Set();
+
 // CORREGIDO: esta constante faltaba por completo (no estaba definida en ningún
 // archivo), lo que hacía que abrirEditor() lanzara "ALERGENOS_LISTA is not
 // defined" y se detuviera a mitad de camino — por eso el modal nunca llegaba
@@ -329,6 +337,12 @@ function renderPlatoItemHtml(p) {
     const generandoInfo = window.platosGenerandoInfo && window.platosGenerandoInfo.has(p.id);
     const htmlGenerandoInfo = generandoInfo ? `<span class="badge-generando-info" title="Generando la Info (descripción + preguntas/respuestas) con IA en segundo plano...">🤖 generando info…</span>` : "";
 
+    // NUEVO: si la Info ES/EN se generó bien pero falló la traducción automática al resto de
+    // idiomas (ver generarInfoOtrosIdiomasPlato()), se avisa aquí mismo con un botón para
+    // reintentar SOLO ese paso (no hace falta regenerar ES/EN de nuevo ni tocar nada más).
+    const infoOtrosFallido = !generandoInfo && window.platosInfoOtrosIdiomasFallidos && window.platosInfoOtrosIdiomasFallidos.has(p.id);
+    const htmlInfoOtrosFallido = infoOtrosFallido ? `<span class="badge-info-otros-fallido" title="La Info se generó en ES/EN, pero falló la traducción automática al resto de idiomas. Pulsa para reintentar solo ese paso.">⚠️ faltan otros idiomas <button type="button" class="btn-reintentar-info-otros" onclick="event.stopPropagation(); reintentarInfoOtrosIdiomasPlato(${p.id});">🔄 reintentar</button></span>` : "";
+
     return `<div class="plato-item">
         <div class="plato-orden-btns">
             <button class="btn-orden" onclick="moverPlato(${p.id}, 'subir')">▲</button>
@@ -338,6 +352,7 @@ function renderPlatoItemHtml(p) {
             <span class="plato-nombre">${nombreLimpio}</span>
             ${htmlDetalle}
             ${htmlGenerandoInfo}
+            ${htmlInfoOtrosFallido}
             <div style="font-size: 0.7rem; color: #7f8c8d; margin-top: 4px; display: flex; gap: 10px; align-items: center;">${htmlCarpetaPC} ${htmlImagenPC}</div>
         </div>
         <div class="plato-meta-footer">
@@ -1332,31 +1347,12 @@ async function generarInfoAutomaticaPlato(p) {
 
         // --- Paso B: encadenado, resto de idiomas (mismo prompt que "Generar Info Platos Otros
         // Idiomas", 1 plato) — traduce fielmente la ficha ES/EN recién generada, no redacta contenido nuevo.
-        const idiomasObjetivo = (window.IDIOMAS_ORDEN || []).filter(l => l !== 'es' && l !== 'en');
-        if (idiomasObjetivo.length > 0) {
-            const promptOtros = window.PROMPTS.infoOtrosIdiomasLote(
-                [{ esVino: esVino, infoEs: resultadoEsEn.es, infoEn: resultadoEsEn.en }],
-                idiomasObjetivo.map(l => l.toUpperCase())
-            );
-            const resultadoOtros = await llamarGeminiConReintentos(promptOtros, keys);
-            const traducciones = resultadoOtros ? (resultadoOtros['0'] || resultadoOtros[0]) : null;
-            if (traducciones) {
-                const paraGuardar = {};
-                idiomasObjetivo.forEach(l => {
-                    const valor = traducciones[l.toUpperCase()] || traducciones[l];
-                    if (valor) { p.info[l] = JSON.stringify(valor); paraGuardar[l] = valor; }
-                });
-                if (Object.keys(paraGuardar).length > 0) {
-                    window.hayCambiosSinGuardar = true;
-                    await guardarInfoPlatoEnBackend(p.id, paraGuardar);
-                }
-            } else if (typeof UI !== 'undefined' && typeof UI.log === 'function') {
-                UI.log(`[Info automática] ES/EN guardados, pero falló la traducción al resto de idiomas de "${nombreEs}" (ID ${p.id}). Puedes completarla luego desde "Ajustes Expertos" (Paso 3).`);
-            }
-        }
+        const otrosOk = await generarInfoOtrosIdiomasPlato(p, keys, resultadoEsEn.es, resultadoEsEn.en);
 
         if (typeof UI !== 'undefined' && typeof UI.log === 'function') {
-            UI.log(`[Info automática] Ficha generada y guardada para "${nombreEs}" (ID ${p.id}).`);
+            UI.log(otrosOk
+                ? `[Info automática] Ficha generada y guardada para "${nombreEs}" (ID ${p.id}).`
+                : `[Info automática] ES/EN guardados para "${nombreEs}" (ID ${p.id}), pero falló la traducción al resto de idiomas. Aviso "⚠️ faltan otros idiomas" en su ficha del Editor.`);
         }
     } catch (err) {
         console.warn('[Editor] Error en generación automática de Info:', err);
@@ -1364,6 +1360,83 @@ async function generarInfoAutomaticaPlato(p) {
         marcarPlatoGenerandoInfo(p.id, false);
     }
 }
+
+// NUEVO: Paso B extraído a su propia función para poder reutilizarlo tanto encadenado desde
+// generarInfoAutomaticaPlato() (recién generado ES/EN) como desde un reintento manual posterior
+// (reintentarInfoOtrosIdiomasPlato(), botón "🔄 reintentar" del aviso "⚠️ faltan otros idiomas").
+// infoEsObj/infoEnObj deben ser objetos ya parseados (no JSON.stringify-ados). Reintenta hasta
+// MAX_INTENTOS_OTROS veces (fallos puntuales: 429, JSON truncado por el propio modelo, etc.)
+// antes de darse por vencido; si al final falla, marca el plato en
+// window.platosInfoOtrosIdiomasFallidos para que quede visible en su ficha. Devuelve true/false.
+async function generarInfoOtrosIdiomasPlato(p, keys, infoEsObj, infoEnObj) {
+    const esVino = (p.id >= 13000);
+    const idiomasObjetivo = (window.IDIOMAS_ORDEN || []).filter(l => l !== 'es' && l !== 'en');
+    if (idiomasObjetivo.length === 0) { window.platosInfoOtrosIdiomasFallidos.delete(p.id); return true; }
+
+    const MAX_INTENTOS_OTROS = 2;
+    let traducciones = null;
+    for (let intento = 0; intento < MAX_INTENTOS_OTROS && !traducciones; intento++) {
+        const promptOtros = window.PROMPTS.infoOtrosIdiomasLote(
+            [{ esVino: esVino, infoEs: infoEsObj, infoEn: infoEnObj }],
+            idiomasObjetivo.map(l => l.toUpperCase())
+        );
+        const resultadoOtros = await llamarGeminiConReintentos(promptOtros, keys);
+        traducciones = resultadoOtros ? (resultadoOtros['0'] || resultadoOtros[0]) : null;
+    }
+
+    if (!traducciones) {
+        window.platosInfoOtrosIdiomasFallidos.add(p.id);
+        console.warn(`[Editor] Falló la traducción de Info al resto de idiomas del plato ID ${p.id} tras ${MAX_INTENTOS_OTROS} intento(s).`);
+        return false;
+    }
+
+    p.info = p.info || {};
+    const paraGuardar = {};
+    idiomasObjetivo.forEach(l => {
+        const valor = traducciones[l.toUpperCase()] || traducciones[l];
+        if (valor) { p.info[l] = JSON.stringify(valor); paraGuardar[l] = valor; }
+    });
+    if (Object.keys(paraGuardar).length > 0) {
+        window.hayCambiosSinGuardar = true;
+        await guardarInfoPlatoEnBackend(p.id, paraGuardar);
+    }
+    window.platosInfoOtrosIdiomasFallidos.delete(p.id);
+    return true;
+}
+
+// NUEVO: entrada manual del botón "🔄 reintentar" del aviso "⚠️ faltan otros idiomas" —
+// reintenta SOLO el Paso B (resto de idiomas) a partir de la ficha ES/EN ya guardada, sin
+// gastar otra llamada a Gemini para regenerarla ni tocar el resto de la carta.
+async function reintentarInfoOtrosIdiomasPlato(id) {
+    const p = datosLocales.find(x => x.id === id);
+    if (!p) return;
+
+    let keys = [];
+    if (typeof getKeys === 'function') keys = getKeys();
+    if (keys.length === 0) { alert('Añade al menos una API Key de Gemini en "Ajustes Expertos" antes de reintentar.'); return; }
+
+    if (!p.info || !p.info.es || !p.info.en) {
+        alert('Este plato todavía no tiene guardada su ficha ES/EN; no se puede traducir al resto de idiomas todavía.');
+        return;
+    }
+    let infoEsObj, infoEnObj;
+    try {
+        infoEsObj = JSON.parse(p.info.es);
+        infoEnObj = JSON.parse(p.info.en);
+    } catch (err) {
+        alert('La ficha ES/EN guardada de este plato no es un JSON válido; regenérala primero desde "Ajustes Expertos".');
+        return;
+    }
+
+    marcarPlatoGenerandoInfo(id, true);
+    try {
+        const ok = await generarInfoOtrosIdiomasPlato(p, keys, infoEsObj, infoEnObj);
+        if (!ok) alert('Ha vuelto a fallar la traducción al resto de idiomas. Puedes reintentarlo de nuevo, o completarla desde "Ajustes Expertos" (Paso 3).');
+    } finally {
+        marcarPlatoGenerandoInfo(id, false);
+    }
+}
+window.reintentarInfoOtrosIdiomasPlato = reintentarInfoOtrosIdiomasPlato;
 
 function generarMenuAgrupado() {
     const estructuraActual = getEstructuraActual(); 
