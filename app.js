@@ -1,7 +1,7 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '2.10.0'; // CORREGIDO: esCroqueta/esCroquetaVeg (abrirEditor, actualizarNombreCroquetas, prepararNuevoPlato) ya comprueban currentMode vía esRangoCroquetasRG() — antes el rango de ID 12100-12299 activaba la lógica de croquetas también en Entrantes/Ensaladas de US Open, heredado de la plantilla de Roland Garros
+window.APP_VERSIONS.app = '2.11.0'; // NUEVO: consola de Info automática dentro del modal de plato (#consola-info-plato, debajo de Alérgenos) con historial por plato (window.logsInfoPorPlato) + reintento automático x2 de la traducción a otros idiomas + aviso "⚠️ faltan otros idiomas" con botón de reintento manual en la ficha del plato
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
