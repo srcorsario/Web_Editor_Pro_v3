@@ -215,38 +215,94 @@ async function fetchYParsearDatos(modo) {
     return datos;
 }
 
-// NUEVO: precarga en segundo plano los datos de OTRO restaurante (el que no se está viendo
-// en este momento), para que al cambiar de pestaña ya estén listos en window.__datosLocalesCache
-// y cargar() los sirva al instante (ver el bloque de caché al principio de cargar()). Se puede
-// desactivar desde el checkbox "⚡ Precargar en segundo plano" del panel "👁️ Pestañas" — la
-// preferencia se recuerda en este navegador (localStorage), no en el servidor.
-async function precargarEnSegundoPlano(modo) {
+// CORREGIDO: fallo detectado por HAR — al abrir la web, la carga automática de RG (nueva) y
+// un clic real del usuario en "1. Editor Carta RG" (por costumbre, mientras la automática
+// todavía estaba en marcha) acababan lanzando DOS descargas del CSV de RG en paralelo, porque
+// cargar() solo comprobaba la precarga en segundo plano de OTRO restaurante, pero no se
+// protegía a sí mismo si se le llamaba dos veces seguidas para el MISMO restaurante antes de
+// terminar. Ahora TODA petición de datos de un restaurante (la del usuario mirando la pantalla
+// Y la precarga en segundo plano del otro) pasa por este único punto, que primero devuelve la
+// caché si ya existe y si no comprueba si YA hay una carga en marcha para ese modo — sea cual
+// sea su origen — y se limita a esperar esa misma, en vez de arrancar una segunda en paralelo.
+// Devuelve el array de platos, o null si el modo no tiene URL de CSV configurada.
+async function cargarYCachearModo(modo) {
     window.__datosLocalesCache = window.__datosLocalesCache || {};
     window.__prefetchEnCurso = window.__prefetchEnCurso || {};
 
-    if (window.__datosLocalesCache[modo] || window.__prefetchEnCurso[modo]) return;
+    if (window.__datosLocalesCache[modo]) return window.__datosLocalesCache[modo];
+    if (window.__prefetchEnCurso[modo]) return window.__prefetchEnCurso[modo];
+
+    const promesa = (async () => {
+        const state = window.optimisticState[modo];
+        const timeSinceSave = Date.now() - state.t;
+        const isConsistencyZone = timeSinceSave < CONSISTENCY_WINDOW_MS;
+
+        console.log(`[Editor] Cargando datos para ${modo} (${getModoAlias(modo)})... (Zona de peligro: ${isConsistencyZone})`);
+
+        // NUEVO: el fetch + parseo del CSV vive en fetchYParsearDatos (ver esa función para el
+        // detalle de columnas INFO_*, etc). Devuelve null si el modo no tiene URL configurada.
+        const datos = await fetchYParsearDatos(modo);
+        if (datos === null) return null;
+
+        if (isConsistencyZone && state.s && state.s.length > 0) {
+            let parchesAplicados = 0;
+            state.s.forEach(savedItem => {
+                const loadedItem = datos.find(i => i.id === savedItem.id);
+                if (loadedItem) {
+                    if (JSON.stringify(loadedItem) !== JSON.stringify(savedItem)) {
+                        console.warn(`[Editor] ⚠️ Inconsistencia detectada en ${modo} - ID ${savedItem.id}. Aplicando parche.`);
+                        parchesAplicados++;
+                        Object.keys(savedItem).forEach(k => loadedItem[k] = savedItem[k]);
+                    }
+                }
+            });
+            if (parchesAplicados > 0 && typeof UI !== 'undefined' && typeof UI.log === 'function') {
+                UI.log(`[Alerta] CDN ${getModoAlias(modo)} desactualizado. Asegurando ${parchesAplicados} ediciones locales.`);
+            }
+        }
+
+        console.log(`[Editor] ${datos.length} platos cargados (${modo}).`);
+        window.__datosLocalesCache[modo] = datos;
+
+        // NUEVO: estado de pestañas activas/inactivas — se trae junto con los platos para que,
+        // tanto en carga normal como en precarga en segundo plano, el interruptor de cada
+        // cabecera de acordeón nazca ya con el estado real (si esto fallara, cargarEstadoCategorias
+        // ya deja el Set tal cual estaba y no bloquea nada).
+        await cargarEstadoCategorias(modo);
+
+        return datos;
+    })();
+
+    window.__prefetchEnCurso[modo] = promesa;
+    try {
+        return await promesa;
+    } finally {
+        delete window.__prefetchEnCurso[modo];
+    }
+}
+
+// NUEVO: precarga en segundo plano los datos de OTRO restaurante (el que no se está viendo
+// en este momento), para que al cambiar de pestaña ya estén listos en window.__datosLocalesCache
+// y cargar() los sirva al instante. Se puede desactivar desde el checkbox "⚡ Precargar" de la
+// cabecera — la preferencia se recuerda en este navegador (localStorage), no en el servidor.
+async function precargarEnSegundoPlano(modo) {
+    window.__datosLocalesCache = window.__datosLocalesCache || {};
+    if (window.__datosLocalesCache[modo]) return;
     if (typeof isRestauranteA === 'function' && !isRestauranteA(modo)) return;
     try {
         if (localStorage.getItem('precargaSegundoPlanoDesactivada') === '1') return;
     } catch (e) { /* si localStorage no está disponible, seguimos con la precarga activada */ }
 
-    const promesa = (async () => {
-        try {
-            const datos = await fetchYParsearDatos(modo);
-            if (datos === null) return;
-            window.__datosLocalesCache[modo] = datos;
-            await cargarEstadoCategorias(modo);
+    try {
+        const datos = await cargarYCachearModo(modo);
+        if (datos !== null) {
             console.log(`[Editor] Precarga en segundo plano completada: ${datos.length} platos (${modo}).`);
-        } catch (e) {
-            // Una precarga fallida no es un error visible para el usuario: si de verdad entra
-            // en esa pestaña, cargar() simplemente hará la carga normal en ese momento.
-            console.warn(`[Editor] Precarga en segundo plano de ${modo} falló (sin problema):`, e.message);
-        } finally {
-            delete window.__prefetchEnCurso[modo];
         }
-    })();
-    window.__prefetchEnCurso[modo] = promesa;
-    return promesa;
+    } catch (e) {
+        // Una precarga fallida no es un error visible para el usuario: si de verdad entra
+        // en esa pestaña, cargar() simplemente hará la carga normal en ese momento.
+        console.warn(`[Editor] Precarga en segundo plano de ${modo} falló (sin problema):`, e.message);
+    }
 }
 window.precargarEnSegundoPlano = precargarEnSegundoPlano;
 
@@ -266,87 +322,28 @@ async function cargar(retryCount = 0, forzarRecarga = false) {
         return;
     }
 
-    // NUEVO: caché en memoria por restaurante. Antes, cada vez que se cruzaba de RG a US
-    // Open (o al revés) se volvía a pedir el CSV entero (~2,7 MB) y el estado de categorías
-    // a Google Sheets/Apps Script, aunque ya se hubiera cargado ese mismo restaurante hace
-    // un momento. Ahora, si este modo ya se cargó una vez en esta sesión del navegador, se
-    // reutilizan esos datos directamente — son los mismos objetos que editan las funciones
-    // de guardado (push/splice sobre datosLocales), así que la caché ya refleja cualquier
-    // cambio hecho desde este editor. Lo único que NO recoge es un cambio hecho DIRECTAMENTE
-    // en la hoja de Google Sheets (por otra persona u otro dispositivo) mientras este
-    // restaurante ya estaba en caché aquí — para eso hay que recargar la página entera (F5).
-    // forzarRecarga=true se salta la caché a propósito (por si en el futuro hace falta un
-    // botón de "Refrescar" explícito).
+    // NUEVO: caché en memoria por restaurante (y de-duplicación de cargas en marcha — ver
+    // cargarYCachearModo). Antes, cada vez que se cruzaba de RG a US Open (o al revés) se
+    // volvía a pedir el CSV entero (~2,7 MB) y el estado de categorías a Google Sheets/Apps
+    // Script, aunque ya se hubiera cargado ese mismo restaurante hace un momento. Ahora, si
+    // este modo ya se cargó una vez en esta sesión del navegador, se reutilizan esos datos
+    // directamente — son los mismos objetos que editan las funciones de guardado (push/splice
+    // sobre datosLocales), así que la caché ya refleja cualquier cambio hecho desde este editor.
+    // Lo único que NO recoge es un cambio hecho DIRECTAMENTE en la hoja de Google Sheets (por
+    // otra persona u otro dispositivo) mientras este restaurante ya estaba en caché aquí — para
+    // eso hay que recargar la página entera (F5).
     window.__datosLocalesCache = window.__datosLocalesCache || {};
-    window.__prefetchEnCurso = window.__prefetchEnCurso || {};
+    if (forzarRecarga) delete window.__datosLocalesCache[modo];
 
-    if (!forzarRecarga && window.__datosLocalesCache[modo]) {
-        datosLocales = window.__datosLocalesCache[modo];
-        window.datosLocales = datosLocales;
-        console.log(`[Editor] ${datosLocales.length} platos (${modo}) recuperados de caché en memoria — sin red.`);
-        window.hayCambiosSinGuardar = false;
-        renderizar();
-        generarMenuAgrupado();
-        return;
-    }
-
-    // NUEVO: si ya hay una precarga en segundo plano en marcha para este modo (ver
-    // precargarEnSegundoPlano), esperamos a que termine ELLA en vez de lanzar una segunda
-    // petición en paralelo pidiendo lo mismo dos veces.
-    if (!forzarRecarga && window.__prefetchEnCurso[modo]) {
-        try { await window.__prefetchEnCurso[modo]; } catch (e) { /* si falla, seguimos abajo con una carga normal */ }
-        if (window.__datosLocalesCache[modo]) {
-            datosLocales = window.__datosLocalesCache[modo];
-            window.datosLocales = datosLocales;
-            console.log(`[Editor] ${datosLocales.length} platos (${modo}) listos gracias a la precarga en segundo plano.`);
-            window.hayCambiosSinGuardar = false;
-            renderizar();
-            generarMenuAgrupado();
-            return;
-        }
-    }
-
-    const state = window.optimisticState[modo];
-    const timeSinceSave = Date.now() - state.t;
-    const isConsistencyZone = timeSinceSave < CONSISTENCY_WINDOW_MS;
-
-    console.log(`[Editor] Cargando datos para ${modo} (${getModoAlias(modo)})... (Zona de peligro: ${isConsistencyZone})`);
     try {
-        if (typeof UI !== 'undefined' && typeof UI.log === 'function') {
+        if (typeof UI !== 'undefined' && typeof UI.log === 'function' && !window.__datosLocalesCache[modo]) {
             UI.log(`[Editor] Conectando con Google Sheets remoto (${getModoAlias(modo)})...`);
         }
 
-        // NUEVO: el fetch + parseo del CSV vive ahora en fetchYParsearDatos (compartido con
-        // la precarga en segundo plano de precargarEnSegundoPlano) — ver esa función para
-        // el detalle de columnas INFO_*, etc. Devuelve null si el modo no tiene URL configurada.
-        const datosNuevos = await fetchYParsearDatos(modo);
-        if (datosNuevos === null) return;
-        datosLocales = datosNuevos;
-        
-        if (isConsistencyZone && state.s && state.s.length > 0) {
-            let parchesAplicados = 0;
-            state.s.forEach(savedItem => {
-                const loadedItem = datosLocales.find(i => i.id === savedItem.id);
-                if (loadedItem) {
-                    if (JSON.stringify(loadedItem) !== JSON.stringify(savedItem)) {
-                        console.warn(`[Editor] ⚠️ Inconsistencia detectada en ${modo} - ID ${savedItem.id}. Aplicando parche.`);
-                        parchesAplicados++;
-                        Object.keys(savedItem).forEach(k => loadedItem[k] = savedItem[k]);
-                    }
-                }
-            });
-            if (parchesAplicados > 0 && typeof UI !== 'undefined' && typeof UI.log === 'function') {
-                UI.log(`[Alerta] CDN ${getModoAlias(modo)} desactualizado. Asegurando ${parchesAplicados} ediciones locales.`);
-            }
-        }
-
-        console.log(`[Editor] ${datosLocales.length} platos cargados (${modo}).`);
+        const datos = await cargarYCachearModo(modo);
+        if (datos === null) return;
+        datosLocales = datos;
         window.datosLocales = datosLocales;
-        // NUEVO: guarda esta carga en la caché en memoria del restaurante (ver el bloque de
-        // caché al principio de esta función) para no tener que repetirla la próxima vez que
-        // se cruce a este modo.
-        window.__datosLocalesCache = window.__datosLocalesCache || {};
-        window.__datosLocalesCache[modo] = datosLocales;
 
         const statusCarga = document.getElementById('status-carga');
         if (statusCarga) {
@@ -355,20 +352,15 @@ async function cargar(retryCount = 0, forzarRecarga = false) {
             // (ver el catch de abajo) y para otros mensajes de estado (conectando, deshabilitado).
             statusCarga.style.display = "none";
         }
-        
-        // NUEVO: estado de pestañas activas/inactivas, ANTES de renderizar, para que el
-        // interruptor de cada cabecera de acordeón nazca ya con el estado real (si esto
-        // fallara, cargarEstadoCategorias ya deja el Set tal cual estaba y no bloquea nada).
-        await cargarEstadoCategorias(modo);
 
         window.hayCambiosSinGuardar = false;
         renderizar();
         generarMenuAgrupado();
-    } catch (e) { 
+    } catch (e) {
         console.error("[Editor] Error cargando:", e);
         const statusCarga = document.getElementById('status-carga');
         if (statusCarga) {
-            statusCarga.innerText = "❌ Error al cargar base multidireccional"; 
+            statusCarga.innerText = "❌ Error al cargar base multidireccional";
             statusCarga.className = "status-error";
             statusCarga.style.display = "";
         }
