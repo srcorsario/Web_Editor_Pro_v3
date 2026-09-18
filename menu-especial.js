@@ -14,7 +14,7 @@
 // ventana emergente (window.open + document.write), para no depender de @media print peleándose
 // con el resto de la interfaz del editor.
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.menuEspecial = '1.7.0'; // MODIFICADO: guardarMenuEnServidor() ahora también valida (defensa en profundidad) que el nombre no llegue vacío al backend, aunque guardarMenuActual() ya lo impedía antes; el contenido impreso de cada mitad de hoja ahora se centra VERTICALMENTE en el espacio disponible (198mm) cuando sobra hueco tras el ajuste automático de tamaño -- antes se quedaba pegado arriba dejando un hueco en blanco abajo (.me-print-sheet pasa a tener altura fija y .me-print-menu usa justify-content:center; el script de ajuste ahora mide .me-print-inner en vez de .me-print-menu, que ya no cambia de tamaño con el contenido).
+window.APP_VERSIONS.menuEspecial = '1.9.0'; // MODIFICADO: quitado el emoji de tijeras (✂) de la línea de corte -- sustituido por dos marcas finas (un trazo de 1.5px), una arriba y otra abajo, sobre la propia línea de puntos, pensadas para alinear una guillotina de papel.
 
 (function () {
     'use strict';
@@ -955,11 +955,19 @@ window.APP_VERSIONS.menuEspecial = '1.7.0'; // MODIFICADO: guardarMenuEnServidor
             .me-print-menu { flex:1 1 50%; padding: 4mm 4mm; display:flex; flex-direction:column; align-items:center; justify-content:center; }
             .me-print-inner { width:100%; display:flex; flex-direction:column; align-items:center; text-align:center; font-size:13px; }
             .me-print-cutline { width:0; border-left:1.5px dashed #999; position:relative; margin:0 2mm; }
-            .me-print-cutline::before, .me-print-cutline::after { content:'✂'; position:absolute; left:50%; transform:translateX(-50%) rotate(90deg); font-size:13px; color:#999; }
-            .me-print-cutline::before { top:-6mm; }
-            .me-print-cutline::after { bottom:-6mm; }
+            /* Marcas de corte (antes: emoji de tijeras ✂ rotado): dos trazos finos, uno arriba y
+               otro abajo, sobre la propia línea de puntos, pensados para alinear una guillotina
+               de papel -- no decorativos. Igual que antes, .me-print-cutline se estira a los
+               198mm EXACTOS del área imprimible (para poder centrar el contenido verticalmente),
+               así que las marcas se quedan a -4mm/4mm de alto, dejando 2mm de margen de sobra
+               antes del borde físico real de la hoja (el margen de @page es de 6mm) -- si se
+               pegaran más al borde, arriesgan forzar una segunda página casi vacía como pasaba
+               antes con las tijeras a -6mm. */
+            .me-print-cutline::before, .me-print-cutline::after { content:''; position:absolute; left:50%; transform:translateX(-50%); width:1.5px; height:4mm; background:#999; }
+            .me-print-cutline::before { top:-4mm; }
+            .me-print-cutline::after { bottom:-4mm; }
             .me-print-logo { max-height:4.4em; max-width:13em; object-fit:contain; margin-bottom:0.5em; }
-            .me-print-titulo { font-size:1.65em; font-weight:800; letter-spacing:0.02em; text-transform:uppercase; margin-bottom:0.85em; }
+            .me-print-titulo { font-size:1.65em; font-weight:800; letter-spacing:0.02em; margin-bottom:0.85em; }
             .me-print-seccion { width:100%; max-width:35em; margin:0 auto 0.5em auto; }
             .me-print-seccion-titulo { font-size:0.76em; font-weight:800; text-transform:uppercase; letter-spacing:0.03em; white-space:nowrap; color:#b8860b; border-bottom:1px solid #ddd; padding-bottom:0.15em; margin-bottom:0.3em; }
             .me-print-plato { font-size:0.92em; line-height:1.25; margin-bottom:0.22em; }
