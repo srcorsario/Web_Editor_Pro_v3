@@ -14,7 +14,7 @@
 // ventana emergente (window.open + document.write), para no depender de @media print peleándose
 // con el resto de la interfaz del editor.
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.menuEspecial = '1.6.0'; // MODIFICADO: título de sección "Principal (Segundo) - A Elegir / Main Course - To Choose" ya no se parte en 2 líneas (márgenes laterales de impresión más reducidos + letra/letter-spacing del título de sección más compactos + white-space:nowrap de seguridad); corregido el bug del nombre de menú guardado apareciendo como fecha ISO cruda ("2026-09-19T22:00:00.000Z") -- Google Sheets autoconvertía la celda "Nombre" a fecha si el texto "parecía" una; ahora siempre se usa nombreVisible(m), que prefiere el nombre embebido en Config_JSON (inmune a esa autoconversión) sobre el de la celda; las "Copas" (venta por copa/vaso) de vino Y cava ya no aparecen como opción en el selector de vinos, solo botellas; el ajuste automático de impresión ahora también AGRANDA la letra/espaciado (no solo encoge) cuando el menú es corto y sobra espacio en la página, para aprovecharlo en vez de dejarlo en blanco.
+window.APP_VERSIONS.menuEspecial = '1.7.0'; // MODIFICADO: guardarMenuEnServidor() ahora también valida (defensa en profundidad) que el nombre no llegue vacío al backend, aunque guardarMenuActual() ya lo impedía antes; el contenido impreso de cada mitad de hoja ahora se centra VERTICALMENTE en el espacio disponible (198mm) cuando sobra hueco tras el ajuste automático de tamaño -- antes se quedaba pegado arriba dejando un hueco en blanco abajo (.me-print-sheet pasa a tener altura fija y .me-print-menu usa justify-content:center; el script de ajuste ahora mide .me-print-inner en vez de .me-print-menu, que ya no cambia de tamaño con el contenido).
 
 (function () {
     'use strict';
@@ -306,12 +306,21 @@ window.APP_VERSIONS.menuEspecial = '1.6.0'; // MODIFICADO: título de sección "
         const url = urlBackend();
         if (!url) throw new Error('Falta configurar WEBAPP_URL_MENUS_ESPECIALES en config.js');
 
+        // Defensa en profundidad: guardarMenuActual() ya impide llegar aquí sin nombre, pero
+        // como el guardado es no-cors/fire-and-forget (no se puede leer si el servidor lo
+        // rechazó), esta función NUNCA debe enviar un nombre vacío al backend -- si algún día
+        // se llama a guardarMenuEnServidor() desde otro sitio sin pasar por esa validación, es
+        // mejor que falle aquí (con un error que el catch de quien la llame pueda mostrar) que
+        // crear en el Sheet una fila fantasma sin nombre pero con datos.
+        const nombreLimpio = (menu.nombre || '').trim();
+        if (!nombreLimpio) throw new Error('No se puede guardar un menú sin nombre.');
+
         const eraNuevo = !menu.id;
         await fetch(url, {
             method: 'POST',
             mode: 'no-cors',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: menu.id || '', nombre: menu.nombre, config: menu })
+            body: JSON.stringify({ id: menu.id || '', nombre: nombreLimpio, config: menu })
         });
 
         // Refresca la lista para tener la versión real del servidor (fechas, y el id nuevo si
@@ -942,8 +951,8 @@ window.APP_VERSIONS.menuEspecial = '1.6.0'; // MODIFICADO: título de sección "
             html, body { margin:0; }
             body { font-family: 'Montserrat', Georgia, serif; -webkit-print-color-adjust: exact; }
             @page { size: A4 landscape; margin: 6mm 3mm; }
-            .me-print-sheet { display:flex; width:100%; }
-            .me-print-menu { flex:1 1 50%; padding: 4mm 4mm; display:flex; flex-direction:column; align-items:center; }
+            .me-print-sheet { display:flex; width:100%; height:198mm; }
+            .me-print-menu { flex:1 1 50%; padding: 4mm 4mm; display:flex; flex-direction:column; align-items:center; justify-content:center; }
             .me-print-inner { width:100%; display:flex; flex-direction:column; align-items:center; text-align:center; font-size:13px; }
             .me-print-cutline { width:0; border-left:1.5px dashed #999; position:relative; margin:0 2mm; }
             .me-print-cutline::before, .me-print-cutline::after { content:'✂'; position:absolute; left:50%; transform:translateX(-50%) rotate(90deg); font-size:13px; color:#999; }
@@ -993,7 +1002,12 @@ window.APP_VERSIONS.menuEspecial = '1.6.0'; // MODIFICADO: título de sección "
 
                 function ajustarYimprimir() {
                     var maxAlturaPx = alturaDisponiblePx();
-                    var menuEl = document.querySelector('.me-print-menu');
+                    // Se mide .me-print-inner (el bloque de contenido real, que crece/encoge con
+                    // el font-size que aplicarFactor() va cambiando), NO .me-print-menu -- ese
+                    // contenedor ahora tiene una altura fija (198mm, ver .me-print-sheet en los
+                    // estilos) para poder centrar verticalmente el contenido cuando sobra espacio,
+                    // así que su propio alto ya no sirve para saber si el contenido cabe o no.
+                    var menuEl = document.querySelector('.me-print-inner');
                     if (!menuEl) { window.print(); return; }
 
                     function cabe() { void menuEl.offsetHeight; return menuEl.getBoundingClientRect().height <= maxAlturaPx; }
