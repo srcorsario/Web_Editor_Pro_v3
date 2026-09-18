@@ -264,11 +264,16 @@ async function cargarYCachearModo(modo) {
         console.log(`[Editor] ${datos.length} platos cargados (${modo}).`);
         window.__datosLocalesCache[modo] = datos;
 
-        // NUEVO: estado de pestañas activas/inactivas — se trae junto con los platos para que,
-        // tanto en carga normal como en precarga en segundo plano, el interruptor de cada
-        // cabecera de acordeón nazca ya con el estado real (si esto fallara, cargarEstadoCategorias
-        // ya deja el Set tal cual estaba y no bloquea nada).
-        await cargarEstadoCategorias(modo);
+        // MODIFICADO (2026.09.18): antes se esperaba aquí (`await`) a que Apps Script
+        // respondiera el estado de pestañas activas/inactivas antes de dar los platos por
+        // listos — y esa llamada puede tardar varios segundos (arranque en frío de Apps
+        // Script), dejando el overlay "Cargando datos..." puesto de más sin motivo, aunque el
+        // menú (con todo su contenido) ya estuviera listo desde el CSV. Ahora esa comprobación
+        // se lanza en paralelo SIN esperarla — el menú se pinta ya con el último estado de
+        // interruptores conocido (o todos activados, si es la primera vez que se carga este
+        // restaurante en esta pestaña del navegador) — y, en cuanto responda, se corrige solo
+        // ese detalle (ver cargarEstadoCategoriasEnSegundoPlano). No bloquea nada más.
+        cargarEstadoCategoriasEnSegundoPlano(modo);
 
         return datos;
     })();
@@ -278,6 +283,19 @@ async function cargarYCachearModo(modo) {
         return await promesa;
     } finally {
         delete window.__prefetchEnCurso[modo];
+    }
+}
+
+// NUEVO (2026.09.18): pide el estado real de pestañas/categorías activas-inactivas sin
+// bloquear la aparición del menú (ver el comentario en cargarYCachearModo). Cuando responde,
+// si el usuario sigue viendo ese mismo restaurante en este momento, se repinta el menú
+// (renderizar) para que los interruptores de cada categoría reflejen ya el estado real
+// guardado en Apps Script — el resto del menú (platos, contenido, estructura) no cambia con
+// este repintado, así que no hay ningún parpadeo salvo, como mucho, en esos interruptores.
+async function cargarEstadoCategoriasEnSegundoPlano(modo) {
+    await cargarEstadoCategorias(modo);
+    if (window.currentMode === modo && typeof renderizar === 'function') {
+        renderizar();
     }
 }
 
