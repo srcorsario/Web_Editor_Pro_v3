@@ -7,7 +7,9 @@
     <link rel="icon" href="setting.png" type="image/png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- CORREGIDO: incluye el peso 300 aquí (antes solo 400;600;700) para que
+         sugerencias-print.js no tenga que pedirlo otra vez con un @import duplicado -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap" rel="stylesheet">
     <script>
         // VERSION DE DESPLIEGUE del codigo propio (HTML/CSS/JS). Subela (ej: 2026.09.18.1
         // -> 2026.09.18.2) SOLO cuando subas cambios de codigo a GitHub, para que los
@@ -16,7 +18,7 @@
         // todo el JS/CSS de golpe en cada visita.
         // OJO: esto NO afecta a los datos del menu (platos/precios) — esos se piden
         // siempre en fresco con cache:"no-store" en app.js, y eso no cambia.
-        window.__CACHE_BUST__ = '2026.09.18.1';
+        window.__CACHE_BUST__ = '2026.09.18.2';
     </script>
     <script>document.write('<link rel="stylesheet" href="styles.css?v=' + window.__CACHE_BUST__ + '">');</script>
 </head>
@@ -526,6 +528,10 @@
                     if(saveBtn) saveBtn.style.display = 'none';
                 }
 
+                // NUEVO: guardamos el modo que estaba cargado ANTES de este cambio de pestaña,
+                // para poder saber más abajo si de verdad hace falta recargar el menú.
+                const modoAnterior = window.currentMode;
+
                 // MODIFICADO: Mapeo estricto a Abstract Keys
                 if (tabId === 'sugerencias-usopen' || tabId === 'editor-usopen') {
                     window.currentMode = 'restaurante002';
@@ -546,7 +552,18 @@
                     }
                 }
 
-                if (typeof window.cargar === 'function') {
+                // CORREGIDO: antes se llamaba a cargar() en CADA cambio de pestaña, aunque el
+                // restaurante siguiera siendo el mismo (p.ej. Editor Carta RG -> Sugerencias RG
+                // -> Traductor Pro son las tres restaurante001) — eso descargaba el CSV del
+                // menú entero (~2,7 MB) y volvía a consultar el estado de categorías en Apps
+                // Script cada vez, aunque los datos ya estuvieran en memoria y no hubieran
+                // cambiado. Ahora solo se recarga si el modo (RG/USOpen) cambia de verdad, o si
+                // todavía no hay datos cargados (primera vez, o la carga anterior falló). Para
+                // forzar una recarga manual desde Google Sheets sigue estando el botón de
+                // "Cargar desde Google Sheets" / "Sincronizar", que no ha cambiado.
+                const necesitaRecargar = (window.currentMode !== modoAnterior) ||
+                    !Array.isArray(window.datosLocales) || window.datosLocales.length === 0;
+                if (necesitaRecargar && typeof window.cargar === 'function') {
                     try { await window.cargar(); } catch (e) { console.error("[Editor] Error cargando datos:", e); }
                 }
 
