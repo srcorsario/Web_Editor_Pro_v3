@@ -14,7 +14,7 @@
 // ventana emergente (window.open + document.write), para no depender de @media print peleándose
 // con el resto de la interfaz del editor.
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.menuEspecial = '1.2.0'; // MODIFICADO: los platos de Postre y los del resto de secciones (Entrantes/Primero/Principal) ya nunca se mezclan en el popup (clasificación por "tipo": postre / principal); Bebida pasa de 2 a 4 vinos independientes activables (Vino Blanco, Vino Rosado, Vino Tinto, Cava), cada uno con su PROPIO popup grande con checks (igual que los platos) que solo ofrece vinos de su propio tipo (nunca se mezclan blancos/rosados/tintos/cavas entre sí).
+window.APP_VERSIONS.menuEspecial = '1.3.0'; // MODIFICADO: el popup de platos ya NO descarta los inactivos en la web pública (una plantilla de evento es independiente de lo que esté activo ahora mismo en la carta en vivo); impresión con márgenes horizontales más ajustados y letra base algo mayor; Agua/Cerveza/Refresco en una sola línea; nombres de vino solo en castellano (la etiqueta de categoría sigue siendo bilingüe, "Vino Blanco / White Wine:"); títulos de sección (Entrantes, Primero - A Elegir, etc.) también salen en inglés si ese idioma está activo; los índices de platos/vinos ahora se precargan en segundo plano al arrancar la web (igual que ya se hace con "el otro restaurante" del Editor normal), así que abrir esta pestaña ya no suele mostrar overlay de carga.
 
 (function () {
     'use strict';
@@ -39,11 +39,13 @@ window.APP_VERSIONS.menuEspecial = '1.2.0'; // MODIFICADO: los platos de Postre 
     // 12999, carpeta "vinos" pero FUERA del rango 13100-14499).
     const CARPETAS_EXCLUIDAS_DE_PLATOS = ['cafe', 'refrescos', 'cerveza', 'vinos'];
 
+    // "tituloEn" solo se usa al imprimir (etiquetaBilingue en construirHtmlMenuImpreso) -- el
+    // formulario de edición sigue mostrando siempre "titulo" (en español), ver renderSeccionHtml.
     const SECCIONES_INFO = [
-        { key: 'entrantes', titulo: 'Entrantes', conCompartir: true },
-        { key: 'primero', titulo: 'Primero', conAElegir: true },
-        { key: 'principal', titulo: 'Principal (Segundo)', conAElegir: true },
-        { key: 'postre', titulo: 'Postre', conAElegir: true }
+        { key: 'entrantes', titulo: 'Entrantes', tituloEn: 'Starters', conCompartir: true },
+        { key: 'primero', titulo: 'Primero', tituloEn: 'First Course', conAElegir: true },
+        { key: 'principal', titulo: 'Principal (Segundo)', tituloEn: 'Main Course', conAElegir: true },
+        { key: 'postre', titulo: 'Postre', tituloEn: 'Dessert', conAElegir: true }
     ];
 
     // Los 4 vinos/cavas de la sección Bebida -- cada uno se activa/desactiva por separado ("por
@@ -166,7 +168,12 @@ window.APP_VERSIONS.menuEspecial = '1.2.0'; // MODIFICADO: los platos de Postre 
         function procesar(datos, modo, alias) {
             if (!Array.isArray(datos)) return;
             datos.forEach(item => {
-                if (!item.activa) return; // solo platos activos en la web de verdad
+                // NOTA: a diferencia de las webs públicas, aquí NO se filtra por item.activa --
+                // un "Menú Especial" es una plantilla propia para eventos, independiente de lo
+                // que esté visible/activo ahora mismo en la web pública (un plato desactivado
+                // temporalmente en la carta normal puede seguir siendo válido para una boda).
+                // Antes se descartaban los platos inactivos aquí, lo que hacía que el popup
+                // pareciera tener "menos platos de los que hay realmente" en la carta.
 
                 // Vinos y cavas de verdad (blancos/rosados/tintos/Cavas & Champagne -- mismos
                 // rangos en RG y en US Open, ver estructuras.js): van SOLO al selector de
@@ -747,42 +754,52 @@ window.APP_VERSIONS.menuEspecial = '1.2.0'; // MODIFICADO: los platos de Postre 
             return es;
         }
 
+        // Etiqueta de una categoría/título en el idioma o idiomas activos: "Vino Blanco / White
+        // Wine" si ES+EN están los dos activos, solo uno de los dos si solo hay uno activo --
+        // MISMO criterio en todos los títulos de sección y de vino (nunca el nombre del propio
+        // plato/vino, que es libre y no se traduce, ver más abajo).
+        function etiquetaBilingue(tituloEs, tituloEn) {
+            if (mostrarEs && mostrarEn) return `${escHtml(tituloEs)} / ${escHtml(tituloEn)}`;
+            if (mostrarEn && !mostrarEs) return escHtml(tituloEn);
+            return escHtml(tituloEs);
+        }
+
         function seccionHtml(info) {
             const sec = menu.secciones[info.key];
             if (!sec.activo || !sec.platos.length) return '';
-            let titulo = info.titulo;
-            if (info.key === 'entrantes') titulo = sec.compartir ? 'Entrantes - A Compartir' : 'Entrantes';
-            else if (sec.aElegir) titulo = titulo + ' - A Elegir';
+            let sufijoEs = '', sufijoEn = '';
+            if (info.key === 'entrantes' && sec.compartir) {
+                sufijoEs = ' - A Compartir'; sufijoEn = ' - To Share';
+            } else if (info.conAElegir && sec.aElegir) {
+                sufijoEs = ' - A Elegir'; sufijoEn = ' - To Choose';
+            }
+            const titulo = etiquetaBilingue(info.titulo + sufijoEs, info.tituloEn + sufijoEn);
             const items = sec.platos.map(p => `<div class="me-print-plato">${nombrePlato(p)}</div>`).join('');
-            return `<div class="me-print-seccion"><div class="me-print-seccion-titulo">${escHtml(titulo)}</div>${items}</div>`;
-        }
-
-        // Une los nombres de una lista de platos/vinos en una sola línea de texto, respetando el
-        // mismo criterio ES/EN que nombrePlato() para los platos de comida.
-        function nombresLista(lista) {
-            return lista.map(p => {
-                const es = escHtml(p.es);
-                const en = escHtml(p.en);
-                if (mostrarEs && mostrarEn && en) return `${es} / ${en}`;
-                if (mostrarEn && !mostrarEs) return en || es;
-                return es;
-            }).join(', ');
+            return `<div class="me-print-seccion"><div class="me-print-seccion-titulo">${titulo}</div>${items}</div>`;
         }
 
         const bebidaItems = [];
-        if (menu.bebida.agua) bebidaItems.push(mostrarEs ? 'Agua' : 'Water');
-        if (menu.bebida.cerveza) bebidaItems.push(mostrarEs ? 'Cerveza' : 'Beer');
-        if (menu.bebida.refresco) bebidaItems.push(mostrarEs ? 'Refresco' : 'Soft drink');
+        // Agua/Cerveza/Refresco en una única línea (más compacto); Café e infusiones aparte,
+        // como pidió el usuario.
+        const basicos = [];
+        if (menu.bebida.agua) basicos.push(mostrarEs ? 'Agua' : 'Water');
+        if (menu.bebida.cerveza) basicos.push(mostrarEs ? 'Cerveza' : 'Beer');
+        if (menu.bebida.refresco) basicos.push(mostrarEs ? 'Refresco' : 'Soft drink');
+        if (basicos.length) bebidaItems.push(basicos.join(mostrarEs && mostrarEn ? ' · ' : ', '));
         if (menu.bebida.cafe) bebidaItems.push(mostrarEs ? 'Café o infusiones' : 'Coffee or tea');
+        // Los NOMBRES de los vinos van solo en castellano (son nombres propios/marca, no hace
+        // falta repetirlos en inglés) -- solo la ETIQUETA de la categoría ("Vino Blanco / White
+        // Wine:") es bilingüe si ES+EN están los dos activos.
         WINES_INFO.forEach(w => {
             const slot = menu.bebida[w.key];
             if (slot.activo && slot.platos && slot.platos.length) {
-                const etiqueta = mostrarEs ? w.tituloEs : w.tituloEn;
-                bebidaItems.push(`${escHtml(etiqueta)}: ${nombresLista(slot.platos)}`);
+                const etiqueta = etiquetaBilingue(w.tituloEs, w.tituloEn);
+                const nombres = slot.platos.map(p => escHtml(p.es)).join(', ');
+                bebidaItems.push(`${etiqueta}: ${nombres}`);
             }
         });
         const bebidaHtml = bebidaItems.length
-            ? `<div class="me-print-seccion"><div class="me-print-seccion-titulo">${mostrarEs ? 'Bebida' : 'Drinks'}</div>${bebidaItems.map(t => `<div class="me-print-plato">${t}</div>`).join('')}</div>`
+            ? `<div class="me-print-seccion"><div class="me-print-seccion-titulo">${etiquetaBilingue('Bebida', 'Drinks')}</div>${bebidaItems.map(t => `<div class="me-print-plato">${t}</div>`).join('')}</div>`
             : '';
 
         const logoHtml = menu.logo ? `<img src="logo RG_REST.png" class="me-print-logo" alt="Logo RG">` : '';
@@ -801,23 +818,25 @@ window.APP_VERSIONS.menuEspecial = '1.2.0'; // MODIFICADO: los platos de Postre 
             if (!confirm('El menú está vacío y sin nombre. ¿Imprimir igualmente?')) return;
         }
         const menuHtml = construirHtmlMenuImpreso(menu);
-        // ALTO_DISPONIBLE_MM = 210mm (A4 horizontal) - 2×6mm de margen de @page = 198mm. Se
-        // apuesta por 6mm (antes 8mm) para "apretar márgenes" según lo pedido.
+        // ALTO_DISPONIBLE_MM = 210mm (A4 horizontal) - 2×6mm de margen VERTICAL de @page = 198mm
+        // (el margen HORIZONTAL se apretó más, a 4mm, a petición del usuario -- no afecta a este
+        // cálculo, que solo mide el alto disponible de la página). Ver ALTO_DISPONIBLE_MM más
+        // abajo en scriptAjuste, debe coincidir con este margen vertical si se vuelve a tocar.
         const estilos = `
             * { box-sizing: border-box; }
             html, body { margin:0; }
             body { font-family: 'Montserrat', Georgia, serif; -webkit-print-color-adjust: exact; }
-            @page { size: A4 landscape; margin: 6mm; }
+            @page { size: A4 landscape; margin: 6mm 4mm; }
             .me-print-sheet { display:flex; width:100%; }
-            .me-print-menu { flex:1 1 50%; padding: 4mm 7mm; display:flex; flex-direction:column; align-items:center; }
-            .me-print-inner { width:100%; display:flex; flex-direction:column; align-items:center; text-align:center; font-size:12px; }
+            .me-print-menu { flex:1 1 50%; padding: 4mm 5mm; display:flex; flex-direction:column; align-items:center; }
+            .me-print-inner { width:100%; display:flex; flex-direction:column; align-items:center; text-align:center; font-size:13px; }
             .me-print-cutline { width:0; border-left:1.5px dashed #999; position:relative; margin:0 2mm; }
             .me-print-cutline::before, .me-print-cutline::after { content:'✂'; position:absolute; left:50%; transform:translateX(-50%) rotate(90deg); font-size:13px; color:#999; }
             .me-print-cutline::before { top:-6mm; }
             .me-print-cutline::after { bottom:-6mm; }
             .me-print-logo { max-height:4.4em; max-width:13em; object-fit:contain; margin-bottom:0.5em; }
             .me-print-titulo { font-size:1.65em; font-weight:800; letter-spacing:0.02em; text-transform:uppercase; margin-bottom:0.85em; }
-            .me-print-seccion { width:100%; max-width:27em; margin:0 auto 0.5em auto; }
+            .me-print-seccion { width:100%; max-width:31em; margin:0 auto 0.5em auto; }
             .me-print-seccion-titulo { font-size:0.82em; font-weight:800; text-transform:uppercase; letter-spacing:0.06em; color:#b8860b; border-bottom:1px solid #ddd; padding-bottom:0.15em; margin-bottom:0.3em; }
             .me-print-plato { font-size:0.92em; line-height:1.25; margin-bottom:0.22em; }
             .me-print-plato em { font-style:italic; color:#555; font-size:0.85em; }
@@ -834,7 +853,7 @@ window.APP_VERSIONS.menuEspecial = '1.2.0'; // MODIFICADO: los platos de Postre 
         const scriptAjuste = `
             (function () {
                 var ALTO_DISPONIBLE_MM = 198;
-                var BASE_PX = 12;
+                var BASE_PX = 13;
                 var FACTOR_MIN = 0.62;
                 var PASO = 0.035;
                 var MAX_INTENTOS = 16;
@@ -913,22 +932,71 @@ window.APP_VERSIONS.menuEspecial = '1.2.0'; // MODIFICADO: los platos de Postre 
     }
 
     // =================================================================================
+    // PRECARGA DE ÍNDICES — punto único que deja platosParaPopup/indiceVinos listos, con el
+    // mismo espíritu de "no repetir trabajo" que ya usa cargarYCachearModo() de app.js para
+    // RG/US Open: si ya se cargaron antes (típicamente por precargarEnSegundoPlano() más abajo,
+    // lanzada al arrancar la web -- ver index.html) no se vuelve a tocar la red ni a reprocesar
+    // nada; si ya hay una carga en marcha (dos llamadas casi a la vez) se espera esa misma en
+    // vez de lanzar una segunda en paralelo.
+    // =================================================================================
+    let indicesListos = false;
+    let indicesPromesaEnCurso = null;
+
+    async function asegurarIndicesCargados() {
+        if (indicesListos) return;
+        if (indicesPromesaEnCurso) { await indicesPromesaEnCurso; return; }
+        indicesPromesaEnCurso = cargarIndiceDePlatos().then(() => { indicesListos = true; });
+        try {
+            await indicesPromesaEnCurso;
+        } finally {
+            indicesPromesaEnCurso = null;
+        }
+    }
+
+    // NUEVO: precarga en segundo plano (sin overlay, sin tocar la interfaz de esta pestaña --
+    // de hecho puede llamarse ANTES de que construirEsqueleto() haya montado nada) de las
+    // cartas de RG y US Open que necesita "Menú Especial". Pensada para lanzarse nada más
+    // arrancar la web, exactamente igual que ya hace precargarEnSegundoPlano(otroModo) en
+    // app.js con "el otro restaurante" del Editor normal (ver index.html) -- de hecho, como
+    // cargarIndiceDePlatos() reutiliza cargarYCachearModo() (la misma caché compartida de
+    // siempre), si RG/US Open ya se estaban cargando o ya estaban en caché por ese motivo, esto
+    // no duplica ninguna descarga, solo se une a la que ya hubiera en marcha o reutiliza el
+    // resultado ya guardado. Respeta el mismo checkbox "⚡ Precargar" de la cabecera (mismo
+    // localStorage que ya usa esa función de app.js) para no descargar nada si el usuario lo
+    // desactivó.
+    async function precargarEnSegundoPlano() {
+        try {
+            if (typeof localStorage !== 'undefined' && localStorage.getItem('precargaSegundoPlanoDesactivada') === '1') return;
+        } catch (e) { /* si localStorage no está disponible, seguimos con la precarga activada */ }
+        try {
+            await asegurarIndicesCargados();
+        } catch (e) {
+            // Una precarga fallida no es un error visible para el usuario: si de verdad entra
+            // en la pestaña, init() simplemente hará la carga normal en ese momento.
+            console.warn('[MenuEspecial] Precarga en segundo plano falló (sin problema):', e);
+        }
+    }
+
+    // =================================================================================
     // INICIALIZACIÓN — llamada desde switchTab() en index.html cada vez que se abre la
     // pestaña. No reinicia menuActual si ya había uno en edición (para no perder cambios al
-    // cambiar de pestaña y volver), pero SÍ refresca la lista de menús guardados y reconstruye
-    // los índices de platos/vinos (baratos gracias a la caché de cargarYCachearModo).
+    // cambiar de pestaña y volver). Si los índices de platos/vinos YA estaban listos (lo más
+    // habitual gracias a precargarEnSegundoPlano(), lanzada al arrancar la web -- ver
+    // index.html) no muestra overlay de carga ni reprocesa nada, solo refresca la lista de
+    // menús guardados (una petición GET ligera).
     // =================================================================================
     async function init() {
         inyectarEstilos();
         construirEsqueleto();
         if (!menuActual) menuActual = nuevoMenuVacio();
 
-        mostrarCargando(true, '🍽️ Cargando cartas de RG y US Open...');
+        const yaEstabanListos = indicesListos;
+        if (!yaEstabanListos) mostrarCargando(true, '🍽️ Cargando cartas de RG y US Open...');
         try {
-            await cargarIndiceDePlatos();
+            await asegurarIndicesCargados();
             menusGuardados = await listarMenus();
         } finally {
-            mostrarCargando(false);
+            if (!yaEstabanListos) mostrarCargando(false);
         }
 
         renderSidebarLista();
@@ -937,6 +1005,7 @@ window.APP_VERSIONS.menuEspecial = '1.2.0'; // MODIFICADO: los platos de Postre 
 
     window.MenuEspecial = {
         init: init,
+        precargarEnSegundoPlano: precargarEnSegundoPlano,
         nuevoMenu: nuevoMenu,
         refrescarLista: refrescarLista,
         cargarMenu: cargarMenu,
