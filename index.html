@@ -18,7 +18,7 @@
         // todo el JS/CSS de golpe en cada visita.
         // OJO: esto NO afecta a los datos del menu (platos/precios) — esos se piden
         // siempre en fresco con cache:"no-store" en app.js, y eso no cambia.
-        window.__CACHE_BUST__ = '2026.09.18.4';
+        window.__CACHE_BUST__ = '2026.09.18.5';
     </script>
     <script>document.write('<link rel="stylesheet" href="styles.css?v=' + window.__CACHE_BUST__ + '">');</script>
 </head>
@@ -31,6 +31,14 @@
                 <h1 style="font-size: 1.9rem; font-weight: 800; color: var(--texto); letter-spacing: -0.02em; margin: 0 0 8px 0;">Web Editor Pro <span id="app-version" style="font-size: 0.85rem; color: var(--primario); font-weight: 700; margin-left: 8px; vertical-align: middle; display: inline-block;"></span></h1>
                 <div class="header-status-row" style="display: flex; align-items: center; gap: 10px; width: 100%; margin-bottom: 10px;">
                     <div id="status-carga" class="status-ok" style="flex: 1;">⏳ Conectando...</div>
+                    <!-- NUEVO: activa/desactiva la precarga en segundo plano del OTRO restaurante
+                         (ver precargarEnSegundoPlano en app.js). La preferencia se guarda en
+                         localStorage de este navegador (clave "precargaSegundoPlanoDesactivada"),
+                         no en el servidor -- cada dispositivo recuerda la suya. -->
+                    <label id="precarga-toggle-wrapper" style="font-size: 0.7rem; display: flex; align-items: center; gap: 4px; white-space: nowrap; background: #f8f9fa; padding: 4px 8px; border-radius: 4px; border: 1px solid #ddd; cursor: pointer; color: #555; font-weight: 600;" title="Descarga en segundo plano los datos del otro restaurante nada más abrir la web, para que cambiar de pestaña entre RG y US Open sea instantáneo.">
+                        <input type="checkbox" id="chk-precarga-segundo-plano" style="margin:0; cursor:pointer;" checked>
+                        ⚡ Precargar
+                    </label>
                     <div id="tabs-visibility-wrapper" style="position: relative;">
                         <button id="btn-toggle-tabs-panel" type="button" style="font-size: 0.7rem; display: flex; align-items: center; gap: 4px; white-space: nowrap; background: #f8f9fa; padding: 4px 8px; border-radius: 4px; border: 1px solid #ddd; cursor: pointer; color: #555; font-weight: 600;">👁️ Pestañas</button>
                         <div id="tabs-visibility-panel" style="display: none; position: absolute; top: calc(100% + 4px); right: 0; background: white; border: 1px solid #ddd; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); padding: 10px 12px; z-index: 50; min-width: 220px; text-align: left;"></div>
@@ -595,7 +603,45 @@
         // nada más cargar la página, reutilizando switchTab() tal cual — con su mismo overlay
         // "Cargando datos..." — para que quede claro que está trabajando.
         const tabBtnInicial = document.getElementById('tab-btn-rg');
-        if (tabBtnInicial) switchTab('editor', tabBtnInicial);
+        if (tabBtnInicial) {
+            switchTab('editor', tabBtnInicial).then(() => {
+                // NUEVO: una vez cargado RG (con el que arranca la web), se precarga en
+                // segundo plano US Open (ver precargarEnSegundoPlano en app.js) para que si
+                // luego cambias de pestaña ya esté listo al instante. No bloquea ni retrasa
+                // nada de lo que se ve en pantalla mientras tanto. Se puede desactivar con el
+                // checkbox "⚡ Precargar" de la cabecera (ver initPrecargaToggle más abajo).
+                if (typeof window.precargarEnSegundoPlano === 'function') {
+                    window.precargarEnSegundoPlano('restaurante002');
+                }
+            });
+        }
+
+        // NUEVO: checkbox "⚡ Precargar" de la cabecera — activa/desactiva la precarga en
+        // segundo plano del otro restaurante. La preferencia se recuerda en este navegador
+        // (localStorage), no en el servidor: cada dispositivo guarda la suya.
+        (function initPrecargaToggle() {
+            const chk = document.getElementById('chk-precarga-segundo-plano');
+            if (!chk) return;
+            try {
+                chk.checked = localStorage.getItem('precargaSegundoPlanoDesactivada') !== '1';
+            } catch (e) { /* si localStorage no está disponible, se queda activado por defecto */ }
+            chk.addEventListener('change', () => {
+                try {
+                    if (chk.checked) {
+                        localStorage.removeItem('precargaSegundoPlanoDesactivada');
+                        // Si se acaba de reactivar y el otro restaurante aún no está en
+                        // caché, se lanza la precarga ya mismo en vez de esperar a la
+                        // próxima vez que se cargue la página entera.
+                        const modoContrario = (window.currentMode === 'restaurante002') ? 'restaurante001' : 'restaurante002';
+                        if (typeof window.precargarEnSegundoPlano === 'function') {
+                            window.precargarEnSegundoPlano(modoContrario);
+                        }
+                    } else {
+                        localStorage.setItem('precargaSegundoPlanoDesactivada', '1');
+                    }
+                } catch (e) { /* si localStorage no está disponible, el checkbox sigue funcionando en esta sesión */ }
+            });
+        })();
 
         // NUEVO: muestra la versión general de la app (window.APP_VERSIONS.app, la que se
         // incrementa en app.js con cada cambio significativo) junto al título, como

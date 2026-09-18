@@ -135,6 +135,121 @@ async function cargarEstadoCategorias(modo) {
     }
 }
 
+// NUEVO: descarga y parsea el CSV de platos de un restaurante concreto, sin tocar
+// datosLocales/window.currentMode ni renderizar nada — separado de cargar() para poder
+// reutilizarlo también desde la precarga en segundo plano (ver precargarEnSegundoPlano),
+// que trae los datos de un modo que NO es el que se está viendo en pantalla en ese momento.
+// Devuelve null (en vez de lanzar) si el modo no tiene URL de CSV configurada, igual que
+// hacía antes cargar() en ese caso.
+async function fetchYParsearDatos(modo) {
+    const url = (typeof window.getCsvUrl === 'function') ? window.getCsvUrl(modo) : '';
+    if (!url) return null;
+
+    // OJO: no añadir cabeceras manuales aquí (Cache-Control/Pragma): fuerzan un preflight
+    // CORS (OPTIONS) que el CSV publicado de Google Sheets/Apps Script no responde bien,
+    // y el navegador bloquea la petición real. "no-store" ya evita la caché del navegador.
+    const resp = await fetch(url + '&zx=' + Date.now(), {
+        cache: "no-store"
+    });
+    const text = await resp.text();
+
+    const filas = text.split(/\r?\n/).filter(f => f.trim() !== "");
+    const datos = [];
+
+    // NUEVO: a diferencia de las columnas NOMBRE_* (posición fija, ver IDIOMAS_CSV_INDICES
+    // en languages.js), las columnas INFO_* son dinámicas — Código.gs solo las crea a
+    // medida que hacen falta, así que su posición varía. Se localizan por NOMBRE leyendo la
+    // fila de cabeceras (fila 0), igual que ya hace el "Ajustes Expertos" (stateContainer)
+    // con su propio CSV. Solo se usan para decidir si ya hay Info generada (y su huella de
+    // cambio) antes de disparar la generación automática — ver aplicarCambiosPlato().
+    const cabecerasCsv = filas.length > 0 ? filas[0].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(h => superLimpiar(h)) : [];
+    const idxInfoPorIdioma = {};
+    if (window.IDIOMAS_ORDEN) {
+        window.IDIOMAS_ORDEN.forEach(lang => {
+            idxInfoPorIdioma[lang] = cabecerasCsv.findIndex(h => h && h.toUpperCase() === ('INFO_' + lang.toUpperCase()));
+        });
+    }
+    const idxInfoHashFicha = cabecerasCsv.findIndex(h => h && h.toUpperCase() === 'INFO_HASH_FICHA');
+
+    filas.forEach((f, i) => {
+        if (i === 0) return;
+        const c = f.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+        const id = parseInt(c[0]);
+
+        if (!isNaN(id)) {
+            let item = {
+                id: id,
+                precio: c[1] || "0.00",
+                activa: (c[2] || "").trim().toUpperCase() === "SI",
+                carpeta: c[4] || "",
+                imagen: c[5] || "",
+                alergenos: superLimpiar(c[6]),
+                // NUEVO: posiciones desactivadas de "Opciones del plato" (ver languages.js).
+                opcionesInactivas: superLimpiar(c[window.IDX_OPCIONES_INACTIVAS] || ""),
+                // NUEVO: Info (descripción + preguntas/respuestas) ya generada, por idioma —
+                // JSON en bruto tal cual viene de la hoja (se parsea solo cuando hace falta).
+                info: {},
+                infoHashFicha: (idxInfoHashFicha !== -1 && c[idxInfoHashFicha] !== undefined) ? superLimpiar(c[idxInfoHashFicha]) : "",
+                // NUEVO: viene del CSV de la hoja, así que su fila YA existe de verdad en
+                // Google Sheets — ver filaExisteEnHoja en prepararNuevoPlato()/enviarAlExcel()/
+                // aplicarCambiosPlato(), que usan este flag (no "esNuevoPlato") para decidir si
+                // es seguro llamar ya al endpoint de Info automática o hay que esperar a que
+                // "GUARDAR CAMBIOS EN WEB" cree la fila primero.
+                filaExisteEnHoja: true
+            };
+
+            if (window.IDIOMAS_ORDEN && window.IDIOMAS_CSV_INDICES) {
+                window.IDIOMAS_ORDEN.forEach(lang => {
+                    const index = window.IDIOMAS_CSV_INDICES[lang];
+                    if (index !== undefined && c[index] !== undefined) {
+                        item[lang] = superLimpiar(c[index]);
+                    }
+                    const idxInfo = idxInfoPorIdioma[lang];
+                    item.info[lang] = (idxInfo !== undefined && idxInfo !== -1 && c[idxInfo] !== undefined) ? superLimpiar(c[idxInfo]) : "";
+                });
+            }
+            datos.push(item);
+        }
+    });
+
+    return datos;
+}
+
+// NUEVO: precarga en segundo plano los datos de OTRO restaurante (el que no se está viendo
+// en este momento), para que al cambiar de pestaña ya estén listos en window.__datosLocalesCache
+// y cargar() los sirva al instante (ver el bloque de caché al principio de cargar()). Se puede
+// desactivar desde el checkbox "⚡ Precargar en segundo plano" del panel "👁️ Pestañas" — la
+// preferencia se recuerda en este navegador (localStorage), no en el servidor.
+async function precargarEnSegundoPlano(modo) {
+    window.__datosLocalesCache = window.__datosLocalesCache || {};
+    window.__prefetchEnCurso = window.__prefetchEnCurso || {};
+
+    if (window.__datosLocalesCache[modo] || window.__prefetchEnCurso[modo]) return;
+    if (typeof isRestauranteA === 'function' && !isRestauranteA(modo)) return;
+    try {
+        if (localStorage.getItem('precargaSegundoPlanoDesactivada') === '1') return;
+    } catch (e) { /* si localStorage no está disponible, seguimos con la precarga activada */ }
+
+    const promesa = (async () => {
+        try {
+            const datos = await fetchYParsearDatos(modo);
+            if (datos === null) return;
+            window.__datosLocalesCache[modo] = datos;
+            await cargarEstadoCategorias(modo);
+            console.log(`[Editor] Precarga en segundo plano completada: ${datos.length} platos (${modo}).`);
+        } catch (e) {
+            // Una precarga fallida no es un error visible para el usuario: si de verdad entra
+            // en esa pestaña, cargar() simplemente hará la carga normal en ese momento.
+            console.warn(`[Editor] Precarga en segundo plano de ${modo} falló (sin problema):`, e.message);
+        } finally {
+            delete window.__prefetchEnCurso[modo];
+        }
+    })();
+    window.__prefetchEnCurso[modo] = promesa;
+    return promesa;
+}
+window.precargarEnSegundoPlano = precargarEnSegundoPlano;
+
 async function cargar(retryCount = 0, forzarRecarga = false) {
     const modo = window.currentMode || 'restaurante001';
 
@@ -163,6 +278,8 @@ async function cargar(retryCount = 0, forzarRecarga = false) {
     // forzarRecarga=true se salta la caché a propósito (por si en el futuro hace falta un
     // botón de "Refrescar" explícito).
     window.__datosLocalesCache = window.__datosLocalesCache || {};
+    window.__prefetchEnCurso = window.__prefetchEnCurso || {};
+
     if (!forzarRecarga && window.__datosLocalesCache[modo]) {
         datosLocales = window.__datosLocalesCache[modo];
         window.datosLocales = datosLocales;
@@ -173,85 +290,38 @@ async function cargar(retryCount = 0, forzarRecarga = false) {
         return;
     }
 
+    // NUEVO: si ya hay una precarga en segundo plano en marcha para este modo (ver
+    // precargarEnSegundoPlano), esperamos a que termine ELLA en vez de lanzar una segunda
+    // petición en paralelo pidiendo lo mismo dos veces.
+    if (!forzarRecarga && window.__prefetchEnCurso[modo]) {
+        try { await window.__prefetchEnCurso[modo]; } catch (e) { /* si falla, seguimos abajo con una carga normal */ }
+        if (window.__datosLocalesCache[modo]) {
+            datosLocales = window.__datosLocalesCache[modo];
+            window.datosLocales = datosLocales;
+            console.log(`[Editor] ${datosLocales.length} platos (${modo}) listos gracias a la precarga en segundo plano.`);
+            window.hayCambiosSinGuardar = false;
+            renderizar();
+            generarMenuAgrupado();
+            return;
+        }
+    }
+
     const state = window.optimisticState[modo];
     const timeSinceSave = Date.now() - state.t;
     const isConsistencyZone = timeSinceSave < CONSISTENCY_WINDOW_MS;
 
     console.log(`[Editor] Cargando datos para ${modo} (${getModoAlias(modo)})... (Zona de peligro: ${isConsistencyZone})`);
     try {
-        const url = getCsvUrlSafe();
-        if (!url) return;
-        
         if (typeof UI !== 'undefined' && typeof UI.log === 'function') {
             UI.log(`[Editor] Conectando con Google Sheets remoto (${getModoAlias(modo)})...`);
         }
-        
-        // OJO: no añadir cabeceras manuales aquí (Cache-Control/Pragma): fuerzan un preflight
-        // CORS (OPTIONS) que el CSV publicado de Google Sheets/Apps Script no responde bien,
-        // y el navegador bloquea la petición real. "no-store" ya evita la caché del navegador.
-        const resp = await fetch(url + '&zx=' + Date.now(), { 
-            cache: "no-store"
-        });
-        const text = await resp.text();
-        
-        const filas = text.split(/\r?\n/).filter(f => f.trim() !== "");
-        datosLocales = [];
 
-        // NUEVO: a diferencia de las columnas NOMBRE_* (posición fija, ver IDIOMAS_CSV_INDICES
-        // en languages.js), las columnas INFO_* son dinámicas — Código.gs solo las crea a
-        // medida que hacen falta, así que su posición varía. Se localizan por NOMBRE leyendo la
-        // fila de cabeceras (fila 0), igual que ya hace el "Ajustes Expertos" (stateContainer)
-        // con su propio CSV. Solo se usan para decidir si ya hay Info generada (y su huella de
-        // cambio) antes de disparar la generación automática — ver aplicarCambiosPlato().
-        const cabecerasCsv = filas.length > 0 ? filas[0].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(h => superLimpiar(h)) : [];
-        const idxInfoPorIdioma = {};
-        if (window.IDIOMAS_ORDEN) {
-            window.IDIOMAS_ORDEN.forEach(lang => {
-                idxInfoPorIdioma[lang] = cabecerasCsv.findIndex(h => h && h.toUpperCase() === ('INFO_' + lang.toUpperCase()));
-            });
-        }
-        const idxInfoHashFicha = cabecerasCsv.findIndex(h => h && h.toUpperCase() === 'INFO_HASH_FICHA');
-
-        filas.forEach((f, i) => {
-            if (i === 0) return;
-            const c = f.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-            const id = parseInt(c[0]);
-
-            if (!isNaN(id)) {
-                let item = {
-                    id: id,
-                    precio: c[1] || "0.00",
-                    activa: (c[2] || "").trim().toUpperCase() === "SI",
-                    carpeta: c[4] || "",
-                    imagen: c[5] || "",
-                    alergenos: superLimpiar(c[6]),
-                    // NUEVO: posiciones desactivadas de "Opciones del plato" (ver languages.js).
-                    opcionesInactivas: superLimpiar(c[window.IDX_OPCIONES_INACTIVAS] || ""),
-                    // NUEVO: Info (descripción + preguntas/respuestas) ya generada, por idioma —
-                    // JSON en bruto tal cual viene de la hoja (se parsea solo cuando hace falta).
-                    info: {},
-                    infoHashFicha: (idxInfoHashFicha !== -1 && c[idxInfoHashFicha] !== undefined) ? superLimpiar(c[idxInfoHashFicha]) : "",
-                    // NUEVO: viene del CSV de la hoja, así que su fila YA existe de verdad en
-                    // Google Sheets — ver filaExisteEnHoja en prepararNuevoPlato()/enviarAlExcel()/
-                    // aplicarCambiosPlato(), que usan este flag (no "esNuevoPlato") para decidir si
-                    // es seguro llamar ya al endpoint de Info automática o hay que esperar a que
-                    // "GUARDAR CAMBIOS EN WEB" cree la fila primero.
-                    filaExisteEnHoja: true
-                };
-
-                if (window.IDIOMAS_ORDEN && window.IDIOMAS_CSV_INDICES) {
-                    window.IDIOMAS_ORDEN.forEach(lang => {
-                        const index = window.IDIOMAS_CSV_INDICES[lang];
-                        if (index !== undefined && c[index] !== undefined) {
-                            item[lang] = superLimpiar(c[index]);
-                        }
-                        const idxInfo = idxInfoPorIdioma[lang];
-                        item.info[lang] = (idxInfo !== undefined && idxInfo !== -1 && c[idxInfo] !== undefined) ? superLimpiar(c[idxInfo]) : "";
-                    });
-                }
-                datosLocales.push(item);
-            }
-        });
+        // NUEVO: el fetch + parseo del CSV vive ahora en fetchYParsearDatos (compartido con
+        // la precarga en segundo plano de precargarEnSegundoPlano) — ver esa función para
+        // el detalle de columnas INFO_*, etc. Devuelve null si el modo no tiene URL configurada.
+        const datosNuevos = await fetchYParsearDatos(modo);
+        if (datosNuevos === null) return;
+        datosLocales = datosNuevos;
         
         if (isConsistencyZone && state.s && state.s.length > 0) {
             let parchesAplicados = 0;
