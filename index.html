@@ -18,7 +18,7 @@
         // todo el JS/CSS de golpe en cada visita.
         // OJO: esto NO afecta a los datos del menu (platos/precios) — esos se piden
         // siempre en fresco con cache:"no-store" en app.js, y eso no cambia.
-        window.__CACHE_BUST__ = '2026.09.18.6';
+        window.__CACHE_BUST__ = '2026.09.18.7';
     </script>
     <script>document.write('<link rel="stylesheet" href="styles.css?v=' + window.__CACHE_BUST__ + '">');</script>
 </head>
@@ -593,25 +593,67 @@
         if (!window.currentMode) window.currentMode = 'restaurante001';
         actualizarTextoBotonGuardar();
 
+        // NUEVO: comprueba si el restaurante indicado tiene alguna de sus pestañas visible
+        // según la configuración del usuario en "👁️ Pestañas" (initTabsVisibilityPanel, más
+        // arriba). Se usa para no descargar/precargar en segundo plano un restaurante que el
+        // usuario ni siquiera tiene mostrado (p.ej. si solo dejó visibles las pestañas de
+        // USOpen, RG no debería descargarse para nada).
+        function modoTieneTabsVisibles(modo) {
+            const ids = (modo === 'restaurante002')
+                ? ['tab-btn-usopen', 'tab-btn-sug-usopen']
+                : ['tab-btn-rg', 'tab-btn-sug-rg'];
+            return ids.some(id => {
+                const btn = document.getElementById(id);
+                return btn && btn.style.display !== 'none';
+            });
+        }
+
         // NUEVO: carga automática de la pestaña activa al abrir la web. Antes, nada disparaba
         // la primera carga de datos hasta que el usuario hacía clic en una pestaña — aunque
         // "1. Editor Carta RG" ya apareciera marcada como activa, su contenido se quedaba
         // vacío y SIN ningún indicador de carga hasta ese primer clic. En una pestaña nueva
         // del navegador (que no tiene la caché en memoria de otra pestaña ya abierta) eso
         // podía tardar varios segundos y dar la sensación de que la web se había quedado
-        // colgada. Ahora se simula el mismo clic que haría el usuario en "1. Editor Carta RG"
-        // nada más cargar la página, reutilizando switchTab() tal cual — con su mismo overlay
-        // "Cargando datos..." — para que quede claro que está trabajando.
-        const tabBtnInicial = document.getElementById('tab-btn-rg');
+        // colgada. Ahora se simula el clic que haría el usuario, reutilizando switchTab() tal
+        // cual — con su mismo overlay "Cargando datos..." — para que quede claro que está
+        // trabajando.
+        //
+        // CORREGIDO: antes esto apuntaba siempre a "tab-btn-rg" a pelo, sin mirar si esa
+        // pestaña estaba oculta por "👁️ Pestañas" — así que aunque el usuario solo tuviera
+        // visibles las pestañas de USOpen, RG se descargaba igualmente (y de paso se
+        // deshacía el cambio de pestaña que ya hacía initTabsVisibilityPanel más arriba).
+        // Ahora se calcula la pestaña inicial real a partir de cuál haya quedado activa (o,
+        // si esa ha quedado oculta, la primera pestaña visible), para no tocar ningún
+        // restaurante que el usuario no tenga mostrado.
+        let tabBtnInicial = document.querySelector('.tabs-container .tab-btn.active');
+        if (!tabBtnInicial || tabBtnInicial.style.display === 'none') {
+            tabBtnInicial = Array.from(document.querySelectorAll('.tabs-container .tab-btn'))
+                .find(btn => btn.style.display !== 'none');
+        }
         if (tabBtnInicial) {
-            switchTab('editor', tabBtnInicial).then(() => {
-                // NUEVO: una vez cargado RG (con el que arranca la web), se precarga en
-                // segundo plano US Open (ver precargarEnSegundoPlano en app.js) para que si
-                // luego cambias de pestaña ya esté listo al instante. No bloquea ni retrasa
-                // nada de lo que se ve en pantalla mientras tanto. Se puede desactivar con el
-                // checkbox "⚡ Precargar" de la cabecera (ver initPrecargaToggle más abajo).
-                if (typeof window.precargarEnSegundoPlano === 'function') {
-                    window.precargarEnSegundoPlano('restaurante002');
+            const MAPA_ID_A_TABID = {
+                'tab-btn-apikeys': 'apikeys',
+                'tab-btn-rg': 'editor',
+                'tab-btn-sug-rg': 'sugerencias',
+                'tab-btn-pro': 'pro',
+                'tab-btn-qa': 'qa',
+                'tab-btn-usopen': 'editor-usopen',
+                'tab-btn-sug-usopen': 'sugerencias-usopen'
+            };
+            const tabIdInicial = MAPA_ID_A_TABID[tabBtnInicial.id] || 'editor';
+            switchTab(tabIdInicial, tabBtnInicial).then(() => {
+                // NUEVO: una vez cargada la pestaña inicial, se precarga en segundo plano el
+                // OTRO restaurante (ver precargarEnSegundoPlano en app.js) para que si luego
+                // cambias de pestaña ya esté listo al instante. No bloquea ni retrasa nada de
+                // lo que se ve en pantalla mientras tanto. Se puede desactivar con el checkbox
+                // "⚡ Precargar" de la cabecera (ver initPrecargaToggle más abajo).
+                //
+                // CORREGIDO: solo se precarga si ese otro restaurante tiene alguna pestaña
+                // visible — si el usuario solo usa USOpen (o solo RG), no tiene sentido
+                // descargar en segundo plano el que ni siquiera va a ver.
+                const otroModo = (window.currentMode === 'restaurante002') ? 'restaurante001' : 'restaurante002';
+                if (modoTieneTabsVisibles(otroModo) && typeof window.precargarEnSegundoPlano === 'function') {
+                    window.precargarEnSegundoPlano(otroModo);
                 }
             });
         }
@@ -631,9 +673,11 @@
                         localStorage.removeItem('precargaSegundoPlanoDesactivada');
                         // Si se acaba de reactivar y el otro restaurante aún no está en
                         // caché, se lanza la precarga ya mismo en vez de esperar a la
-                        // próxima vez que se cargue la página entera.
+                        // próxima vez que se cargue la página entera. CORREGIDO: solo si ese
+                        // otro restaurante tiene alguna pestaña visible (ver
+                        // modoTieneTabsVisibles más arriba).
                         const modoContrario = (window.currentMode === 'restaurante002') ? 'restaurante001' : 'restaurante002';
-                        if (typeof window.precargarEnSegundoPlano === 'function') {
+                        if (modoTieneTabsVisibles(modoContrario) && typeof window.precargarEnSegundoPlano === 'function') {
                             window.precargarEnSegundoPlano(modoContrario);
                         }
                     } else {
