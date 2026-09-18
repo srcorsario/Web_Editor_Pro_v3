@@ -2,18 +2,19 @@
 // NUEVO (18 sept): módulo de la pestaña "6. Menú Especial" — plantillas de menú de evento
 // (boda/grupo/celebración), sin precio, con logo RG opcional, en ES y/o EN, con secciones
 // Entrantes/Primero/Principal/Postre activables de forma independiente (cada una con varios
-// platos posibles, sacados de la carta de RG y/o de US Open, o escritos a mano si el plato no
-// está en ninguna carta), más una sección de Bebida fija (Agua/Cerveza/Refresco/Café o
-// infusiones + Vino Blanco/Tinto "a especificar"). Los menús se guardan de verdad (no es solo
-// una herramienta de "componer e imprimir") en un backend de Apps Script COMPLETAMENTE NUEVO e
-// independiente de RG y de US Open (ver Codigo_MenusEspeciales.gs y
-// config.js/WEBAPP_URL_MENUS_ESPECIALES) — así un menú puede mezclar libremente platos de las
-// dos cartas sin "pertenecer" a ninguna. Se imprime en A4 horizontal, 2 copias por hoja con una
-// guía de corte para la guillotina, igual que ya hace "Sugerencias" (sugerencias-print.js) con
-// su patrón de ventana emergente (window.open + document.write) para no depender de @media
-// print peleándose con el resto de la interfaz del editor.
+// platos posibles, sacados de la carta de RG y/o de US Open mediante un selector grande con
+// checks -- o escritos a mano si el plato no está en ninguna carta), más una sección de Bebida
+// fija (Agua/Cerveza/Refresco/Café o infusiones + Vino Blanco/Tinto "a especificar", solo con
+// sugerencias de vinos y cavas de verdad, nunca platos de comida). Los menús se guardan de
+// verdad (no es solo una herramienta de "componer e imprimir") en un backend de Apps Script
+// COMPLETAMENTE NUEVO e independiente de RG y de US Open (ver Codigo_MenusEspeciales.gs y
+// config.js/WEBAPP_URL_MENUS_ESPECIALES). Se imprime SIEMPRE en una sola hoja A4 horizontal (2
+// copias del menú, con guía de corte para la guillotina) reduciendo la letra automáticamente
+// si hace falta -- igual que ya hace "Sugerencias" (sugerencias-print.js) con su patrón de
+// ventana emergente (window.open + document.write), para no depender de @media print peleándose
+// con el resto de la interfaz del editor.
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.menuEspecial = '1.0.0';
+window.APP_VERSIONS.menuEspecial = '1.1.0'; // MODIFICADO: check "A elegir" en Primero/Principal/Postre; selector de platos ahora es un popup grande con checks (multi-selección) que descarta cafés/refrescos/cervezas/vinos de la lista de "platos"; vinos ahora incluyen Cavas & Champagne y nunca platos de comida; impresión reescrita para encajar SIEMPRE en una sola hoja A4 (reduce la letra automáticamente) con márgenes más ajustados.
 
 (function () {
     'use strict';
@@ -21,16 +22,27 @@ window.APP_VERSIONS.menuEspecial = '1.0.0';
     // =================================================================================
     // ESTADO DEL MÓDULO
     // =================================================================================
-    let indicePlatos = {};                    // "Nombre — RG" / "Nombre — US Open" -> {modo,id,es,en}
-    let indiceVinos = { blanco: [], tinto: [] };
+    let platosParaPopup = [];                 // [{modo,alias,id,es,en}] -- solo comida de verdad (ver CARPETAS_EXCLUIDAS_DE_PLATOS)
+    let indiceVinos = [];                     // [{modo,id,es,en}] -- SOLO vinos y cavas (id 13100-14499)
     let menusGuardados = [];                  // última lista conocida (GET listarMenus), más recientes primero
     let menuActual = null;                    // el menú que se está editando ahora mismo en pantalla
+    let modalSeccionActual = null;            // sección ('entrantes'/'primero'/...) a la que añade el popup de platos abierto
+    const seleccionEnModal = {};              // "modo|id" -> true, mientras el popup está abierto
+
+    // Cafés, refrescos/bebidas y cervezas nunca son "platos" de una sección de comida -- ver
+    // estructuras.js: en RG caen en el rango de ID 9000-11999, en US Open en 9001-11099 (mismo
+    // rango de millar, por seguridad se descarta TODO el bloque 9000-11999 en los dos). Además,
+    // por si algún plato antiguo no llevara ese rango de ID bien puesto, se descarta también por
+    // "carpeta" (cafe/refrescos/cerveza) -- y 'vinos' por si acaso algún vino colgara de un ID
+    // fuera del rango de vinos reconocido (p.ej. el "Vino" de Sugerencias en US Open, ID 12991-
+    // 12999, carpeta "vinos" pero FUERA del rango 13100-14499).
+    const CARPETAS_EXCLUIDAS_DE_PLATOS = ['cafe', 'refrescos', 'cerveza', 'vinos'];
 
     const SECCIONES_INFO = [
         { key: 'entrantes', titulo: 'Entrantes', conCompartir: true },
-        { key: 'primero', titulo: 'Primero' },
-        { key: 'principal', titulo: 'Principal (Segundo)' },
-        { key: 'postre', titulo: 'Postre' }
+        { key: 'primero', titulo: 'Primero', conAElegir: true },
+        { key: 'principal', titulo: 'Principal (Segundo)', conAElegir: true },
+        { key: 'postre', titulo: 'Postre', conAElegir: true }
     ];
 
     function nuevoMenuVacio() {
@@ -41,9 +53,9 @@ window.APP_VERSIONS.menuEspecial = '1.0.0';
             idiomas: { es: true, en: false },
             secciones: {
                 entrantes: { activo: true, compartir: false, platos: [] },
-                primero: { activo: false, platos: [] },
-                principal: { activo: true, platos: [] },
-                postre: { activo: true, platos: [] }
+                primero: { activo: false, aElegir: false, platos: [] },
+                principal: { activo: true, aElegir: false, platos: [] },
+                postre: { activo: true, aElegir: false, platos: [] }
             },
             bebida: {
                 agua: true, cerveza: true, refresco: true, cafe: true,
@@ -73,6 +85,8 @@ window.APP_VERSIONS.menuEspecial = '1.0.0';
         const pad = n => String(n).padStart(2, '0');
         return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
     }
+
+    function claveModoId(modo, id) { return modo + '|' + id; }
 
     // =================================================================================
     // ESTILOS PROPIOS — inyectados una sola vez, igual que hace sugerencias-print.js con los
@@ -104,6 +118,9 @@ window.APP_VERSIONS.menuEspecial = '1.0.0';
             .me-menu-item-btns { display:flex; gap:5px; flex-wrap:wrap; }
             .me-menu-item-btns button { font-size:0.68rem; padding:3px 7px; border-radius:5px; border:1px solid #ddd; background:#f8f9fa; cursor:pointer; }
             .me-menu-item-btns button:hover { background:#eee; }
+            .me-modal-plato-row { display:flex; align-items:center; gap:10px; padding:7px 6px; border-bottom:1px solid #f2f2f2; font-size:0.85rem; cursor:pointer; }
+            .me-modal-plato-row:hover { background:#f8f9fa; }
+            .me-modal-plato-row input { width:16px; height:16px; cursor:pointer; flex-shrink:0; margin:0; }
             @media (max-width: 900px) { .me-layout { flex-direction: column; } .me-sidebar { width:100%; } }
         `;
         document.head.appendChild(style);
@@ -112,7 +129,9 @@ window.APP_VERSIONS.menuEspecial = '1.0.0';
     // =================================================================================
     // CARGA DE PLATOS — combina RG + US Open, reutilizando cargarYCachearModo(modo) de app.js
     // (misma caché de siempre, así no se duplica ninguna descarga de CSV ya hecha por el
-    // editor normal). Se ejecutan en paralelo porque son independientes entre sí.
+    // editor normal). Se ejecutan en paralelo porque son independientes entre sí. Separa
+    // estrictamente "platos de comida" (para Entrantes/Primero/Principal/Postre) de "vinos y
+    // cavas" (para la sección Bebida) -- nunca se mezclan en ningún sentido.
     // =================================================================================
     async function cargarIndiceDePlatos() {
         let datosRG = null, datosUS = null;
@@ -127,8 +146,8 @@ window.APP_VERSIONS.menuEspecial = '1.0.0';
             console.error('[MenuEspecial] Error cargando las cartas de RG/US Open:', e);
         }
 
-        indicePlatos = {};
-        indiceVinos = { blanco: [], tinto: [] };
+        platosParaPopup = [];
+        indiceVinos = [];
 
         // Limpia el "//" (segunda línea de ingredientes/opciones) del nombre para que la
         // plantilla de menú especial muestre solo el nombre principal del plato.
@@ -138,30 +157,43 @@ window.APP_VERSIONS.menuEspecial = '1.0.0';
             if (!Array.isArray(datos)) return;
             datos.forEach(item => {
                 if (!item.activa) return; // solo platos activos en la web de verdad
-                if (item.id >= 13000) {
-                    // Vinos: se clasifican por rango de ID (ver estructuras.js — mismos rangos
-                    // en RG y en US Open: 13100-13199 blancos, 13300-13399 tintos).
-                    if (item.id >= 13100 && item.id < 13200) indiceVinos.blanco.push({ modo: modo, id: item.id, es: limpiarNombre(item.es), en: limpiarNombre(item.en) });
-                    else if (item.id >= 13300 && item.id < 13400) indiceVinos.tinto.push({ modo: modo, id: item.id, es: limpiarNombre(item.es), en: limpiarNombre(item.en) });
+
+                // Vinos y cavas de verdad (blancos/rosados/tintos/Cavas & Champagne -- mismos
+                // rangos en RG y en US Open, ver estructuras.js): van SOLO al selector de
+                // Bebida, nunca al de comida.
+                if (item.id >= 13100 && item.id <= 14499) {
+                    const nombreVino = limpiarNombre(item.es);
+                    if (nombreVino) indiceVinos.push({ modo: modo, id: item.id, es: nombreVino, en: limpiarNombre(item.en) });
                     return;
                 }
+                if (item.id >= 13000) return; // otro ID de vino fuera del rango reconocido: se descarta (ni plato ni vino)
+
+                // Cafés / Refrescos-Bebidas / Cervezas: nunca son "platos" de Entrantes,
+                // Primero, Principal o Postre.
+                if (item.id >= 9000 && item.id <= 11999) return;
+                const carpeta = (item.carpeta || '').toLowerCase().trim();
+                if (CARPETAS_EXCLUIDAS_DE_PLATOS.indexOf(carpeta) !== -1) return;
+
                 const nombreEs = limpiarNombre(item.es);
                 if (!nombreEs) return;
-                const label = `${nombreEs} — ${alias}`;
-                indicePlatos[label] = { modo: modo, id: item.id, es: nombreEs, en: limpiarNombre(item.en) };
+                platosParaPopup.push({ modo: modo, alias: alias, id: item.id, es: nombreEs, en: limpiarNombre(item.en) });
             });
         }
         procesar(datosRG, 'restaurante001', 'RG');
         procesar(datosUS, 'restaurante002', 'US Open');
+        platosParaPopup.sort((a, b) => a.es.localeCompare(b.es, 'es'));
     }
 
     function renderDatalists() {
-        const dl = document.getElementById('me-datalist-platos');
-        if (dl) dl.innerHTML = Object.keys(indicePlatos).sort().map(l => `<option value="${escHtml(l)}">`).join('');
+        // Los dos campos (Vino Blanco / Vino Tinto) comparten las mismas sugerencias -- son
+        // campos de texto libre, esto es solo autocompletado, y evita duplicar lógica de
+        // clasificar cada botella por color (que además puede variar de matiz real a real).
+        const nombresUnicos = Array.from(new Set(indiceVinos.map(v => v.es))).sort((a, b) => a.localeCompare(b, 'es'));
+        const opciones = nombresUnicos.map(n => `<option value="${escHtml(n)}">`).join('');
         const dlBlanco = document.getElementById('me-datalist-vinoblanco');
-        if (dlBlanco) dlBlanco.innerHTML = indiceVinos.blanco.map(v => `<option value="${escHtml(v.es)}">`).join('');
+        if (dlBlanco) dlBlanco.innerHTML = opciones;
         const dlTinto = document.getElementById('me-datalist-vinotinto');
-        if (dlTinto) dlTinto.innerHTML = indiceVinos.tinto.map(v => `<option value="${escHtml(v.es)}">`).join('');
+        if (dlTinto) dlTinto.innerHTML = opciones;
     }
 
     // =================================================================================
@@ -227,7 +259,7 @@ window.APP_VERSIONS.menuEspecial = '1.0.0';
 
     // Reconstruye un menú editable a partir de lo guardado, rellenando con los valores por
     // defecto de nuevoMenuVacio() cualquier campo que faltara (por si se guardó con una versión
-    // anterior de la plantilla y luego se ha añadido algún campo nuevo).
+    // anterior de la plantilla y luego se ha añadido algún campo nuevo, p.ej. "aElegir").
     function mergeMenuDesdeGuardado(m) {
         const base = nuevoMenuVacio();
         const cfg = m.config || {};
@@ -248,8 +280,9 @@ window.APP_VERSIONS.menuEspecial = '1.0.0';
     // RENDER — esqueleto fijo (se construye una sola vez) + dos zonas que se repintan por
     // separado (sidebar de menús guardados / formulario de edición), para no reconstruir toda
     // la pestaña en cada tecla y perder el foco de los campos de texto que sí se escriben del
-    // tirón (nombre del menú, texto de los vinos): esos campos NO disparan un repintado en cada
-    // "input", solo actualizan el estado en memoria — se relee al guardar/imprimir.
+    // tirón (nombre del menú, texto de los vinos, búsqueda del popup): esos campos NO disparan
+    // un repintado completo, solo actualizan el estado o una zona pequeña — se relee entero al
+    // guardar/imprimir.
     // =================================================================================
     function construirEsqueleto() {
         const cont = document.getElementById('menu-especial-contenido');
@@ -267,9 +300,28 @@ window.APP_VERSIONS.menuEspecial = '1.0.0';
                 </div>
                 <div id="me-form-area" style="flex:1;min-width:0;"></div>
             </div>
-            <datalist id="me-datalist-platos"></datalist>
             <datalist id="me-datalist-vinoblanco"></datalist>
             <datalist id="me-datalist-vinotinto"></datalist>
+
+            <div id="me-modal-platos" class="modal">
+                <div class="modal-content" style="max-width:920px; max-height:88vh; display:flex; flex-direction:column;">
+                    <h2 style="margin-top:0;margin-bottom:4px;">🍽️ Elegir platos</h2>
+                    <p id="me-modal-subtitulo" style="margin:0 0 14px 0; font-size:0.82rem; color:#777;"></p>
+                    <div class="me-fila" style="margin-bottom:12px;">
+                        <input type="text" id="me-modal-buscar" class="input-estandar" style="flex:2;min-width:200px;margin-bottom:0;" placeholder="Buscar por nombre..." oninput="MenuEspecial.filtrarModalLista()">
+                        <select id="me-modal-filtro-restaurante" class="input-estandar" style="flex:0 0 170px;margin-bottom:0;" onchange="MenuEspecial.filtrarModalLista()">
+                            <option value="">RG y US Open</option>
+                            <option value="restaurante001">Solo RG</option>
+                            <option value="restaurante002">Solo US Open</option>
+                        </select>
+                    </div>
+                    <div id="me-modal-lista" style="flex:1;overflow-y:auto;border:1px solid #eee;border-radius:8px;padding:6px 10px;min-height:200px;"></div>
+                    <div class="me-fila" style="margin-top:14px;justify-content:flex-end;">
+                        <button class="btn btn-secondary" onclick="MenuEspecial.cerrarModalPlatos()">Cancelar</button>
+                        <button class="btn btn-success" onclick="MenuEspecial.confirmarSeleccionPlatos()">+ Añadir seleccionados (<span id="me-modal-contador">0</span>)</button>
+                    </div>
+                </div>
+            </div>
         `;
     }
 
@@ -302,7 +354,7 @@ window.APP_VERSIONS.menuEspecial = '1.0.0';
         let html = `<div class="me-card">
             <div class="me-fila" style="justify-content:space-between;">
                 <div style="flex:1;min-width:260px;">
-                    <label class="label-seccion">Nombre del menú</label>
+                    <label class="label-seccion">Nombre del menú <span style="font-weight:500;text-transform:none;color:#999;">(aparecerá impreso como título del menú)</span></label>
                     <input type="text" id="me-nombre" class="input-estandar" style="margin-bottom:0;" placeholder="Ej: Boda García — 20 septiembre" value="${escHtml(menuActual.nombre)}" oninput="MenuEspecial.actualizarNombre(this.value)">
                 </div>
                 <label class="me-check-label"><input type="checkbox" ${menuActual.logo ? 'checked' : ''} onchange="MenuEspecial.toggleLogo(this.checked)"> 🎾 Logo RG</label>
@@ -311,7 +363,7 @@ window.APP_VERSIONS.menuEspecial = '1.0.0';
             </div>
             <div class="me-fila" style="margin-top:14px;">
                 <button class="btn btn-success" onclick="MenuEspecial.guardarMenuActual()">💾 Guardar menú</button>
-                <button class="btn btn-primary" onclick="MenuEspecial.imprimirMenuActual()">🖨️ Imprimir (A4 horizontal, 2 por hoja)</button>
+                <button class="btn btn-primary" onclick="MenuEspecial.imprimirMenuActual()">🖨️ Imprimir (A4 horizontal, 1 hoja, 2 menús)</button>
             </div>
         </div>`;
 
@@ -328,13 +380,17 @@ window.APP_VERSIONS.menuEspecial = '1.0.0';
             <div class="me-fila">
                 <label class="me-check-label"><input type="checkbox" ${sec.activo ? 'checked' : ''} onchange="MenuEspecial.toggleSeccion('${info.key}', this.checked)"> ${info.titulo}</label>
                 ${info.conCompartir ? `<label class="me-check-label me-sub-check"><input type="checkbox" ${sec.compartir ? 'checked' : ''} onchange="MenuEspecial.toggleCompartir(this.checked)"> A compartir (si no, se imprime "Entrantes" individual)</label>` : ''}
+                ${info.conAElegir ? `<label class="me-check-label me-sub-check"><input type="checkbox" ${sec.aElegir ? 'checked' : ''} onchange="MenuEspecial.toggleAElegir('${info.key}', this.checked)"> A elegir (el comensal elige una opción de la lista)</label>` : ''}
             </div>
             ${sec.activo ? `
             <div style="margin-top:12px;">
                 <div class="me-fila" style="margin-bottom:10px;">
-                    <input list="me-datalist-platos" id="me-input-${info.key}" class="input-estandar" style="flex:2;min-width:220px;margin-bottom:0;" placeholder="Escribe o elige un plato de la carta (RG / US Open)... o texto libre si no está en la carta">
-                    ${conEn ? `<input type="text" id="me-input-${info.key}-en" class="input-estandar" style="flex:1;min-width:160px;margin-bottom:0;" placeholder="Nombre en inglés (solo si el plato es manual)">` : ''}
-                    <button class="btn btn-secondary" onclick="MenuEspecial.agregarPlato('${info.key}')">+ Añadir</button>
+                    <button class="btn btn-secondary" onclick="MenuEspecial.abrirModalPlatos('${info.key}')">🔍 Elegir platos de la carta (RG / US Open)...</button>
+                </div>
+                <div class="me-fila" style="margin-bottom:10px;">
+                    <input type="text" id="me-input-manual-${info.key}" class="input-estandar" style="flex:2;min-width:200px;margin-bottom:0;" placeholder="¿No está en la carta? Escríbelo aquí...">
+                    ${conEn ? `<input type="text" id="me-input-manual-${info.key}-en" class="input-estandar" style="flex:1;min-width:160px;margin-bottom:0;" placeholder="Nombre en inglés">` : ''}
+                    <button class="btn btn-secondary" onclick="MenuEspecial.agregarPlatoManual('${info.key}')">+ Añadir manual</button>
                 </div>
                 <div id="me-lista-${info.key}">${renderListaPlatosHtml(info.key)}</div>
             </div>` : ''}
@@ -370,14 +426,108 @@ window.APP_VERSIONS.menuEspecial = '1.0.0';
             <div class="me-fila" style="align-items:flex-start;">
                 <div style="flex:1;min-width:220px;">
                     <label class="me-check-label" style="margin-bottom:6px;"><input type="checkbox" ${b.vinoBlanco.activo ? 'checked' : ''} onchange="MenuEspecial.toggleVino('vinoBlanco', this.checked)"> 🥂 Vino Blanco</label>
-                    ${b.vinoBlanco.activo ? `<input list="me-datalist-vinoblanco" class="input-estandar" style="margin-bottom:0;" placeholder="Elige uno de la carta o escribe el nombre..." value="${escHtml(b.vinoBlanco.texto)}" oninput="MenuEspecial.actualizarVinoTexto('vinoBlanco', this.value)">` : ''}
+                    ${b.vinoBlanco.activo ? `<input list="me-datalist-vinoblanco" class="input-estandar" style="margin-bottom:0;" placeholder="Elige un vino/cava de la carta o escribe el nombre..." value="${escHtml(b.vinoBlanco.texto)}" oninput="MenuEspecial.actualizarVinoTexto('vinoBlanco', this.value)">` : ''}
                 </div>
                 <div style="flex:1;min-width:220px;">
                     <label class="me-check-label" style="margin-bottom:6px;"><input type="checkbox" ${b.vinoTinto.activo ? 'checked' : ''} onchange="MenuEspecial.toggleVino('vinoTinto', this.checked)"> 🍷 Vino Tinto</label>
-                    ${b.vinoTinto.activo ? `<input list="me-datalist-vinotinto" class="input-estandar" style="margin-bottom:0;" placeholder="Elige uno de la carta o escribe el nombre..." value="${escHtml(b.vinoTinto.texto)}" oninput="MenuEspecial.actualizarVinoTexto('vinoTinto', this.value)">` : ''}
+                    ${b.vinoTinto.activo ? `<input list="me-datalist-vinotinto" class="input-estandar" style="margin-bottom:0;" placeholder="Elige un vino/cava de la carta o escribe el nombre..." value="${escHtml(b.vinoTinto.texto)}" oninput="MenuEspecial.actualizarVinoTexto('vinoTinto', this.value)">` : ''}
                 </div>
             </div>
         </div>`;
+    }
+
+    // =================================================================================
+    // POPUP DE SELECCIÓN DE PLATOS — grande, con buscador + filtro de restaurante, un check por
+    // plato (multi-selección) y "+ Añadir seleccionados" para meterlos todos de golpe. Solo
+    // ofrece platos de verdad (platosParaPopup ya descarta cafés/refrescos/cervezas/vinos al
+    // construirse, ver cargarIndiceDePlatos) y nunca repite uno que la sección ya tenga.
+    // =================================================================================
+    function abrirModalPlatos(key) {
+        modalSeccionActual = key;
+        Object.keys(seleccionEnModal).forEach(k => delete seleccionEnModal[k]);
+        const buscar = document.getElementById('me-modal-buscar');
+        const filtro = document.getElementById('me-modal-filtro-restaurante');
+        if (buscar) buscar.value = '';
+        if (filtro) filtro.value = '';
+        const infoSeccion = SECCIONES_INFO.find(s => s.key === key);
+        const sub = document.getElementById('me-modal-subtitulo');
+        if (sub) sub.textContent = infoSeccion ? `Añadiendo a: ${infoSeccion.titulo}` : '';
+        renderModalLista();
+        const modal = document.getElementById('me-modal-platos');
+        if (modal) modal.style.display = 'flex';
+    }
+
+    function cerrarModalPlatos() {
+        const modal = document.getElementById('me-modal-platos');
+        if (modal) modal.style.display = 'none';
+        modalSeccionActual = null;
+    }
+
+    function filtrarModalLista() { renderModalLista(); }
+
+    function renderModalLista() {
+        const cont = document.getElementById('me-modal-lista');
+        if (!cont || !modalSeccionActual) return;
+        const buscarEl = document.getElementById('me-modal-buscar');
+        const filtroEl = document.getElementById('me-modal-filtro-restaurante');
+        const textoBusqueda = (buscarEl && buscarEl.value || '').trim().toLowerCase();
+        const filtroModo = filtroEl ? filtroEl.value : '';
+
+        const yaAnadidos = new Set(
+            menuActual.secciones[modalSeccionActual].platos.filter(p => !p.manual).map(p => claveModoId(p.modo, p.id))
+        );
+
+        const items = platosParaPopup.filter(p => {
+            if (yaAnadidos.has(claveModoId(p.modo, p.id))) return false;
+            if (filtroModo && p.modo !== filtroModo) return false;
+            if (textoBusqueda && p.es.toLowerCase().indexOf(textoBusqueda) === -1) return false;
+            return true;
+        });
+
+        if (!items.length) {
+            cont.innerHTML = `<p style="font-size:0.82rem;color:#999;text-align:center;padding:24px 0;">No hay platos que coincidan (o ya están todos añadidos a esta sección).</p>`;
+            actualizarContadorModal();
+            return;
+        }
+
+        cont.innerHTML = items.map(p => {
+            const clave = claveModoId(p.modo, p.id);
+            const marcado = !!seleccionEnModal[clave];
+            const tag = p.modo === 'restaurante002' ? `<span class="me-plato-tag me-tag-us">US Open</span>` : `<span class="me-plato-tag me-tag-rg">RG</span>`;
+            return `<label class="me-modal-plato-row">
+                <input type="checkbox" ${marcado ? 'checked' : ''} onchange="MenuEspecial.toggleSeleccionModal('${clave}', this.checked)">
+                <span>${tag}${escHtml(p.es)}</span>
+            </label>`;
+        }).join('');
+        actualizarContadorModal();
+    }
+
+    function toggleSeleccionModal(clave, marcado) {
+        if (marcado) seleccionEnModal[clave] = true; else delete seleccionEnModal[clave];
+        actualizarContadorModal();
+    }
+
+    function actualizarContadorModal() {
+        const el = document.getElementById('me-modal-contador');
+        if (el) el.textContent = Object.keys(seleccionEnModal).length;
+    }
+
+    function confirmarSeleccionPlatos() {
+        if (!modalSeccionActual) return;
+        const claves = Object.keys(seleccionEnModal);
+        const key = modalSeccionActual;
+        if (claves.length) {
+            claves.forEach(clave => {
+                const idxSep = clave.indexOf('|');
+                const modo = clave.substring(0, idxSep);
+                const id = parseInt(clave.substring(idxSep + 1), 10);
+                const p = platosParaPopup.find(x => x.modo === modo && x.id === id);
+                if (p) menuActual.secciones[key].platos.push({ manual: false, modo: p.modo, id: p.id, es: p.es, en: p.en });
+            });
+        }
+        cerrarModalPlatos();
+        const listaEl = document.getElementById(`me-lista-${key}`);
+        if (listaEl) listaEl.innerHTML = renderListaPlatosHtml(key);
     }
 
     // =================================================================================
@@ -400,27 +550,18 @@ window.APP_VERSIONS.menuEspecial = '1.0.0';
 
     function toggleSeccion(key, v) { menuActual.secciones[key].activo = v; renderFormulario(); }
     function toggleCompartir(v) { menuActual.secciones.entrantes.compartir = v; renderFormulario(); }
+    function toggleAElegir(key, v) { menuActual.secciones[key].aElegir = v; }
     function toggleBebida(key, v) { menuActual.bebida[key] = v; }
     function toggleVino(key, v) { menuActual.bebida[key].activo = v; renderFormulario(); }
     function actualizarVinoTexto(key, v) { menuActual.bebida[key].texto = v; }
 
-    function agregarPlato(key) {
-        const inputEs = document.getElementById(`me-input-${key}`);
-        const inputEn = document.getElementById(`me-input-${key}-en`);
+    function agregarPlatoManual(key) {
+        const inputEs = document.getElementById(`me-input-manual-${key}`);
+        const inputEn = document.getElementById(`me-input-manual-${key}-en`);
         if (!inputEs) return;
         const valor = (inputEs.value || '').trim();
         if (!valor) return;
-
-        const match = indicePlatos[valor];
-        let entrada;
-        if (match) {
-            entrada = { manual: false, modo: match.modo, id: match.id, es: match.es, en: match.en };
-        } else {
-            // No coincide con ningún plato de la carta: se guarda como plato manual (la
-            // "categoría extra" que pedía el usuario para lo que no está en ninguna carta).
-            entrada = { manual: true, modo: null, id: null, es: valor, en: inputEn ? (inputEn.value || '').trim() : '' };
-        }
-        menuActual.secciones[key].platos.push(entrada);
+        menuActual.secciones[key].platos.push({ manual: true, modo: null, id: null, es: valor, en: inputEn ? (inputEn.value || '').trim() : '' });
         inputEs.value = '';
         if (inputEn) inputEn.value = '';
         const listaEl = document.getElementById(`me-lista-${key}`);
@@ -505,11 +646,15 @@ window.APP_VERSIONS.menuEspecial = '1.0.0';
     }
 
     // =================================================================================
-    // IMPRESIÓN — A4 horizontal, 2 copias del mismo menú por hoja con una línea de corte
-    // discontinua en el centro (guillotina). Se usa el MISMO patrón que ya usa
-    // sugerencias-print.js (window.open('', ...) + document.write con estilos inline) en vez de
-    // @media print sobre la propia interfaz del editor, para no arriesgarse a que la cabecera,
-    // las pestañas o el overlay de carga se cuelen en el papel.
+    // IMPRESIÓN — A4 horizontal, SIEMPRE en una sola hoja (no negociable): 2 copias del mismo
+    // menú por hoja con una línea de corte discontinua en el centro (guillotina), reduciendo la
+    // letra automáticamente (con márgenes/paddings apretados desde el principio) si el
+    // contenido no cabe a tamaño normal — mismo tipo de ajuste automático que ya usa
+    // "Sugerencias" (ajustarAUnaPagina en sugerencias-print.js), simplificado aquí a un único
+    // factor de escala en em (texto + espaciados + logo escalan juntos) porque el contenido de
+    // un menú especial es mucho más corto que una carta completa. Se usa el MISMO patrón de
+    // ventana emergente (window.open + document.write) que ya usa sugerencias-print.js, en vez
+    // de @media print sobre la propia interfaz del editor.
     // =================================================================================
     function construirHtmlMenuImpreso(menu) {
         const mostrarEs = menu.idiomas.es;
@@ -528,6 +673,7 @@ window.APP_VERSIONS.menuEspecial = '1.0.0';
             if (!sec.activo || !sec.platos.length) return '';
             let titulo = info.titulo;
             if (info.key === 'entrantes') titulo = sec.compartir ? 'Entrantes - A Compartir' : 'Entrantes';
+            else if (sec.aElegir) titulo = titulo + ' - A Elegir';
             const items = sec.platos.map(p => `<div class="me-print-plato">${nombrePlato(p)}</div>`).join('');
             return `<div class="me-print-seccion"><div class="me-print-seccion-titulo">${escHtml(titulo)}</div>${items}</div>`;
         }
@@ -545,12 +691,12 @@ window.APP_VERSIONS.menuEspecial = '1.0.0';
 
         const logoHtml = menu.logo ? `<img src="logo RG_REST.png" class="me-print-logo" alt="Logo RG">` : '';
 
-        return `<div class="me-print-menu">
+        return `<div class="me-print-menu"><div class="me-print-inner">
             ${logoHtml}
             <div class="me-print-titulo">${escHtml(menu.nombre || 'Menú')}</div>
             ${SECCIONES_INFO.map(seccionHtml).join('')}
             ${bebidaHtml}
-        </div>`;
+        </div></div>`;
     }
 
     function imprimir(menu) {
@@ -559,28 +705,106 @@ window.APP_VERSIONS.menuEspecial = '1.0.0';
             if (!confirm('El menú está vacío y sin nombre. ¿Imprimir igualmente?')) return;
         }
         const menuHtml = construirHtmlMenuImpreso(menu);
+        // ALTO_DISPONIBLE_MM = 210mm (A4 horizontal) - 2×6mm de margen de @page = 198mm. Se
+        // apuesta por 6mm (antes 8mm) para "apretar márgenes" según lo pedido.
         const estilos = `
             * { box-sizing: border-box; }
-            body { margin:0; font-family: 'Montserrat', Georgia, serif; -webkit-print-color-adjust: exact; }
-            @page { size: A4 landscape; margin: 8mm; }
+            html, body { margin:0; }
+            body { font-family: 'Montserrat', Georgia, serif; -webkit-print-color-adjust: exact; }
+            @page { size: A4 landscape; margin: 6mm; }
             .me-print-sheet { display:flex; width:100%; }
-            .me-print-menu { flex:1 1 50%; padding: 8mm 12mm; display:flex; flex-direction:column; align-items:center; text-align:center; }
-            .me-print-cutline { width:0; border-left:1.5px dashed #999; position:relative; margin:0 3mm; }
+            .me-print-menu { flex:1 1 50%; padding: 4mm 7mm; display:flex; flex-direction:column; align-items:center; }
+            .me-print-inner { width:100%; display:flex; flex-direction:column; align-items:center; text-align:center; font-size:12px; }
+            .me-print-cutline { width:0; border-left:1.5px dashed #999; position:relative; margin:0 2mm; }
             .me-print-cutline::before, .me-print-cutline::after { content:'✂'; position:absolute; left:50%; transform:translateX(-50%) rotate(90deg); font-size:13px; color:#999; }
             .me-print-cutline::before { top:-6mm; }
             .me-print-cutline::after { bottom:-6mm; }
-            .me-print-logo { max-width:120px; max-height:70px; object-fit:contain; margin-bottom:10px; }
-            .me-print-titulo { font-size:20px; font-weight:800; letter-spacing:0.03em; text-transform:uppercase; margin-bottom:16px; }
-            .me-print-seccion { width:100%; max-width:340px; margin-bottom:12px; }
-            .me-print-seccion-titulo { font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; color:#b8860b; border-bottom:1px solid #ddd; padding-bottom:3px; margin-bottom:6px; }
-            .me-print-plato { font-size:13px; line-height:1.35; margin-bottom:5px; }
-            .me-print-plato em { font-style:italic; color:#555; font-size:11px; }
+            .me-print-logo { max-height:4.4em; max-width:13em; object-fit:contain; margin-bottom:0.5em; }
+            .me-print-titulo { font-size:1.65em; font-weight:800; letter-spacing:0.02em; text-transform:uppercase; margin-bottom:0.85em; }
+            .me-print-seccion { width:100%; max-width:27em; margin:0 auto 0.5em auto; }
+            .me-print-seccion-titulo { font-size:0.82em; font-weight:800; text-transform:uppercase; letter-spacing:0.06em; color:#b8860b; border-bottom:1px solid #ddd; padding-bottom:0.15em; margin-bottom:0.3em; }
+            .me-print-plato { font-size:0.92em; line-height:1.25; margin-bottom:0.22em; }
+            .me-print-plato em { font-style:italic; color:#555; font-size:0.85em; }
         `;
         const bodyHtml = `<div class="me-print-sheet">${menuHtml}<div class="me-print-cutline"></div>${menuHtml}</div>`;
 
+        // Script embebido en la propia ventana emergente: espera imágenes/fuentes, mide el
+        // alto real disponible de la página (misma técnica de "sonda" que ya usa
+        // ajustarAUnaPagina en sugerencias-print.js: crear un div oculto con una altura en mm
+        // conocida y leer a cuántos px equivale, evitando asumir una resolución fija) y reduce
+        // el font-size de .me-print-inner (todo lo demás está en "em", así que espaciados y
+        // logo se achican en proporción) hasta que quepa en una sola hoja, o hasta un mínimo
+        // legible -- si ni así cupiera (menú realmente muy largo), avisa y deja decidir.
+        const scriptAjuste = `
+            (function () {
+                var ALTO_DISPONIBLE_MM = 198;
+                var BASE_PX = 12;
+                var FACTOR_MIN = 0.62;
+                var PASO = 0.035;
+                var MAX_INTENTOS = 16;
+
+                function alturaDisponiblePx() {
+                    var probe = document.createElement('div');
+                    probe.style.cssText = 'position:absolute; visibility:hidden; height:' + ALTO_DISPONIBLE_MM + 'mm; width:0;';
+                    document.body.appendChild(probe);
+                    var px = probe.getBoundingClientRect().height;
+                    document.body.removeChild(probe);
+                    return px;
+                }
+
+                function aplicarFactor(f) {
+                    var styleEl = document.getElementById('me-ajuste-dinamico');
+                    if (styleEl) styleEl.textContent = '.me-print-inner{ font-size:' + (BASE_PX * f) + 'px !important; }';
+                }
+
+                function ajustarYimprimir() {
+                    var maxAlturaPx = alturaDisponiblePx();
+                    var menuEl = document.querySelector('.me-print-menu');
+                    if (!menuEl) { window.print(); return; }
+
+                    function cabe() { void menuEl.offsetHeight; return menuEl.getBoundingClientRect().height <= maxAlturaPx; }
+
+                    var factor = 1, intentos = 0;
+                    aplicarFactor(factor);
+                    while (!cabe() && intentos < MAX_INTENTOS && (factor - PASO) >= FACTOR_MIN) {
+                        factor -= PASO;
+                        aplicarFactor(factor);
+                        intentos++;
+                    }
+
+                    if (cabe()) {
+                        setTimeout(function () { window.print(); }, 150);
+                    } else {
+                        var aviso = document.createElement('div');
+                        aviso.style.cssText = 'position:fixed; top:10px; left:50%; transform:translateX(-50%); background:#fef2f2; border:1px solid #dc2626; color:#991b1b; padding:10px 16px; border-radius:8px; font-family:sans-serif; font-size:13px; z-index:9999; text-align:center; box-shadow:0 4px 10px rgba(0,0,0,0.15);';
+                        aviso.innerHTML = '⚠️ Hay demasiados platos para que quepa todo en una sola hoja, incluso con la letra al mínimo legible.<br>Quita algún plato del menú antes de imprimir.<br><button id="me-print-btn-forzar" style="margin-top:8px;cursor:pointer;background:#dc2626;color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:12px;">Imprimir de todas formas</button>';
+                        document.body.appendChild(aviso);
+                        document.getElementById('me-print-btn-forzar').onclick = function () {
+                            aviso.parentNode.removeChild(aviso);
+                            window.print();
+                        };
+                    }
+                }
+
+                function esperar() {
+                    var imgs = Array.prototype.slice.call(document.images);
+                    var promesasImgs = imgs.map(function (img) {
+                        if (img.complete) return Promise.resolve();
+                        return new Promise(function (res) { img.onload = img.onerror = res; });
+                    });
+                    var promesaFuentes = (document.fonts && document.fonts.ready) ? document.fonts.ready.catch(function () {}) : Promise.resolve();
+                    return Promise.all(promesasImgs.concat([promesaFuentes])).then(function () {
+                        return new Promise(function (res) { requestAnimationFrame(function () { requestAnimationFrame(res); }); });
+                    });
+                }
+
+                esperar().then(ajustarYimprimir);
+            })();
+        `;
+
         const pWin = window.open('', '_blank', 'width=1100,height=800');
         if (!pWin) { alert('El navegador ha bloqueado la ventana de impresión (bloqueador de pop-ups). Permite las ventanas emergentes para esta web e inténtalo de nuevo.'); return; }
-        pWin.document.write(`<html><head><title>${escHtml(menu.nombre || 'Menú Especial')}</title><style>${estilos}</style></head><body>${bodyHtml}<script>window.onload=function(){setTimeout(function(){window.print();},200);};<\/script></body></html>`);
+        pWin.document.write(`<html><head><title>${escHtml(menu.nombre || 'Menú Especial')}</title><style>${estilos}</style><style id="me-ajuste-dinamico"></style></head><body>${bodyHtml}<script>${scriptAjuste}<\/script></body></html>`);
         pWin.document.close();
     }
 
@@ -596,7 +820,7 @@ window.APP_VERSIONS.menuEspecial = '1.0.0';
     // INICIALIZACIÓN — llamada desde switchTab() en index.html cada vez que se abre la
     // pestaña. No reinicia menuActual si ya había uno en edición (para no perder cambios al
     // cambiar de pestaña y volver), pero SÍ refresca la lista de menús guardados y reconstruye
-    // los índices de platos (baratos gracias a la caché de cargarYCachearModo).
+    // los índices de platos/vinos (baratos gracias a la caché de cargarYCachearModo).
     // =================================================================================
     async function init() {
         inyectarEstilos();
@@ -631,10 +855,16 @@ window.APP_VERSIONS.menuEspecial = '1.0.0';
         toggleIdioma: toggleIdioma,
         toggleSeccion: toggleSeccion,
         toggleCompartir: toggleCompartir,
+        toggleAElegir: toggleAElegir,
         toggleBebida: toggleBebida,
         toggleVino: toggleVino,
         actualizarVinoTexto: actualizarVinoTexto,
-        agregarPlato: agregarPlato,
-        quitarPlato: quitarPlato
+        agregarPlatoManual: agregarPlatoManual,
+        quitarPlato: quitarPlato,
+        abrirModalPlatos: abrirModalPlatos,
+        cerrarModalPlatos: cerrarModalPlatos,
+        filtrarModalLista: filtrarModalLista,
+        toggleSeleccionModal: toggleSeleccionModal,
+        confirmarSeleccionPlatos: confirmarSeleccionPlatos
     };
 })();
