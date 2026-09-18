@@ -39,24 +39,40 @@ const REGLA_FIDELIDAD_CARNES = 'REGLA DE FIDELIDAD TERMINOLÓGICA (obligatoria, 
 // especie/término de un elemento no debe "contagiarse" a otro elemento cercano de la lista.
 const REGLA_NO_CONTAMINACION_LOTE = 'REGLA DE AISLAMIENTO ENTRE ELEMENTOS DEL LOTE (obligatoria): cada elemento de la lista de abajo es INDEPENDIENTE de los demás. Al traducir la especie/corte/ingrediente de UN elemento, ignora por completo qué especie, carne o pescado aparezca en los OTROS elementos del mismo lote, aunque estén en líneas consecutivas o el término se repita mucho en las instrucciones de arriba (p.ej. "ternera") — nunca copies ni "arrastres" el término de un elemento a otro. Verifica, elemento por elemento, que la especie de tu traducción coincide EXACTAMENTE con la especie que trae el texto en español de ESE elemento en concreto.';
 
+// NUEVO (18 sept, traído de la web de cartelitos — ver WB-main/js/app.js > traducirYRevisarConGemini):
+// cuando el nombre del plato usa una palabra de cocina extranjera o regional que NO es ya
+// universalmente conocida en inglés, la traducción sola ("literal" o "gastronómica") puede dejar
+// al comensal sin saber qué es el plato realmente. Se le pide al modelo que, solo cuando haga
+// falta, combine el nombre con una breve explicación de qué lleva/cómo se prepara — usando su
+// propio conocimiento de la receta típica del plato si lo reconoce, igual que ya hace la web de
+// cartelitos. Se aplica a "directa" y "gastronomica" (donde hay margen); "corta" se deja tal cual,
+// realmente corta, para seguir sirviendo de alternativa breve tipo carta.
+const REGLA_EXPLICACION_TERMINOS_NO_UNIVERSALES = 'REGLA DE EXPLICACIÓN PARA TÉRMINOS NO UNIVERSALES (aplícala en las opciones "directa" y "gastronomica" — la opción "corta" debe quedarse realmente corta, SIN esta explicación, para servir como alternativa breve tipo carta): si el nombre usa una palabra de cocina extranjera o regional (española, japonesa, etc.) que NO sea ya universalmente conocida en inglés (a diferencia de palabras ya asentadas del todo, como "pizza", "sushi", "taco" o "paella", que sí puedes dejar solas sin más), combina esa palabra con una breve explicación en inglés sencillo de qué es el producto realmente (tipo de preparación y qué lleva dentro), con el formato "<Nombre>, <descripción breve>" — por ejemplo, "Empanadas, savory meat and pea pastry" en vez de solo "Meat and Pea Empanadas" o solo una descripción sin el nombre. Así se entiende tanto el nombre real del plato como lo que lleva, sin dar por hecho que quien lo lee ya conoce esa palabra. El nombre en español puede ser muy corto (es para un cartelito/carta, sin sitio para explicaciones largas), así que si reconoces que se trata de un plato tradicional conocido (regional o internacional), usa tú mismo lo que sabes de su receta real y típica para la descripción — ingredientes característicos, el corte o la parte concreta que se usa, cómo se cocina — aunque esas palabras no aparezcan en el nombre que te doy (por ejemplo, el "frito mallorquín" tradicional se hace con casquería/asadura de cordero o cerdo, no con carne genérica: la descripción debería reflejar eso aunque el nombre en español solo diga "frito mallorquín"). Si el plato no te suena y no lo reconoces con seguridad, basa la descripción solo en lo que las palabras del nombre dicen literalmente, sin inventar ingredientes que no puedas deducir de ellas. Si el nombre ya es perfectamente entendible en inglés sin explicación (no usa ningún término no universal), no añadas ninguna explicación de más: deja la traducción tal cual.';
+
 window.PROMPTS = {
 
     // ---------------------------------------------------------
     // Usado en app.js > generarTraduccionEN()
-    // Genera 3 opciones de traducción al inglés del nombre del plato/vino.
+    // Genera 3 opciones de traducción al inglés del nombre del plato/vino, con revisión
+    // ortográfica previa del español (NUEVO 18 sept) y explicación del plato cuando haga falta
+    // (NUEVO 18 sept) — mismo criterio que ya usaba la web de cartelitos para este mismo problema.
     // ---------------------------------------------------------
-    opcionesEN: (textoCompletoEs, esVino) => `Actúa como un translator profesional de menús de restaurantes. Te paso un elemento en español: "${textoCompletoEs}".
+    opcionesEN: (textoCompletoEs, esVino) => `Actúa como un traductor profesional de menús de restaurantes. Te paso un elemento en español tal como lo ha escrito el encargado del restaurante: "${textoCompletoEs}".
+
+${esVino ? `Este elemento es un VINO: los nombres de vino son marcas/nombres propios, así que NO revises ni corrijas su ortografía — devuelve siempre "correccion":{"hayError":false,"texto":"${textoCompletoEs.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"} tal cual, sin cambios.` : `PASO PREVIO — REVISIÓN ORTOGRÁFICA (antes de traducir): revisa si el NOMBRE PRINCIPAL del plato (la parte antes del primer "//", si lo hay) tiene una falta de ortografía clara o está mal escrito (letras cambiadas, falta alguna letra, etc.). Ten en cuenta también ingredientes, salsas o platos extranjeros conocidos internacionalmente (japoneses, italianos, franceses, etc.): a veces se escriben "como suenan" en español, con un resultado que se parece poco por escrito al nombre real pero suena parecido al leerlo en voz alta (por ejemplo, "waquinicu" por "yakiniku"); si reconoces el nombre real por cómo suena, aunque se escriba muy distinto, trátalo igualmente como una falta a corregir. Sé conservador: si es un nombre de plato poco habitual, casero, o una forma de escribirlo válida aunque no sea la más común, y no reconoces ningún nombre real (ni por ortografía ni por sonido) al que se pueda estar refiriendo, NO lo marques como error. Si SÍ hay una falta clara, escribe en "correccion.texto" el texto COMPLETO corregido, respetando cualquier parte tras "//" tal cual (solo corriges el nombre principal, nunca inventas ni tocas el resto) y pon "correccion.hayError":true. Si no hay ninguna falta, "correccion.texto" debe ser EXACTAMENTE igual al original y "correccion.hayError":false. Independientemente de si había o no falta de ortografía, traduce entendiendo lo que el plato es realmente (aunque el texto original tenga esa falta), igual que lo entendería una persona.`}
+
     ${textoCompletoEs.includes('//') ? `El separador "//" distingue el nombre ${esVino ? 'del vino' : 'del plato'} de ${esVino ? 'la variedad de uva o detalles' : 'una segunda línea de ingredientes/opciones'} que le sigue. Debes traducir ambas partes y mantener el separador "//" en el resultado, EXACTAMENTE con esos dos caracteres "//" (nunca lo sustituyas por un guion "-", dos puntos ":", una pleca "|", una coma u otro signo de puntuación, aunque te parezca más natural en ese idioma), en la misma posición. Ejemplo de formato correcto: "Nombre traducido //Segunda parte traducida".
     ATENCIÓN — CUENTA CUÁNTAS VECES aparece "//" en el texto original ANTES de traducir: a veces hay MÁS DE UNA opción, cada una envuelta en su propio par "//...//" (p. ej. una lista de sabores o ingredientes a elegir). Debes reproducir EXACTAMENTE el mismo número de pares "//...//" que el original, traduciendo cada opción por separado — NUNCA te quedes solo con la primera opción y omitas el resto, y NUNCA fusiones varias opciones dentro de un único par "//...//". Ejemplo con varias opciones — ES: "Mix de Gyozas //Pato// , //Langostino// , //Pollo//" → correcto: "Gyoza Mix //Duck// , //Prawn// , //Chicken//" (¡las 3 opciones, cada una en su propio "//...//"!) — INCORRECTO: "Gyoza Mix //Duck//" (le faltan 2 opciones) o "Gyoza Mix //Duck, Prawn, Chicken//" (las fusionó en un solo par).` : ''}
     ${esVino ? 'El nombre del vino debe ir en MAYÚSCULAS, pero el contenido entre paréntesis (como la D.O.) debe mantener su formato original.' : ''}
     ${REGLA_FIDELIDAD_CARNES}
+    ${REGLA_EXPLICACION_TERMINOS_NO_UNIVERSALES}
     Necesito que me des EXACTAMENTE 3 opciones de traducción al inglés con diferentes enfoques para un menú:
-    1. Traducción directa/literal.
-    2. Traducción gastronómica/descriptiva (más elegante).
-    3. Traducción corta/concisa (estilo menú).
+    1. Traducción directa/literal (aplica la regla de explicación de arriba si hace falta).
+    2. Traducción gastronómica/descriptiva, más elegante (aplica la regla de explicación de arriba si hace falta).
+    3. Traducción corta/concisa, estilo menú (SIN explicación añadida, aunque las otras dos sí la lleven).
     ${REGLA_COMILLAS_JSON}
     Responde EXCLUSIVAMENTE con un objeto JSON válido. No incluyas texto fuera del JSON. Las comillas dobles dentro de las traducciones deben estar escapadas con barra invertida (\").
-    Estructura exacta: {"directa": "...", "gastronomica": "...", "corta": "..."}`,
+    Estructura exacta: {"correccion":{"hayError":false,"texto":"..."},"directa": "...", "gastronomica": "...", "corta": "..."}`,
 
     // ---------------------------------------------------------
     // Usado en app.js > ejecutarTraduccionAutomatica()

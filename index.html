@@ -18,7 +18,7 @@
         // todo el JS/CSS de golpe en cada visita.
         // OJO: esto NO afecta a los datos del menu (platos/precios) — esos se piden
         // siempre en fresco con cache:"no-store" en app.js, y eso no cambia.
-        window.__CACHE_BUST__ = '2026.09.18.9';
+        window.__CACHE_BUST__ = '2026.09.18.10';
     </script>
     <script>document.write('<link rel="stylesheet" href="styles.css?v=' + window.__CACHE_BUST__ + '">');</script>
 </head>
@@ -289,6 +289,24 @@
                 <div style="display: flex; gap: 10px; margin-top: 20px;">
                     <button class="btn-modal-eliminar" style="margin:0;" onclick="confirmarEliminarPlato()">🗑️ Eliminar definitivamente</button>
                     <button class="btn-modal-cancelar" style="margin:0;" onclick="cerrarModalEliminarPlato()">Cancelar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- NUEVO (18 sept, traído de la web de cartelitos -- ver mostrarCorreccionOrtografiaEN()/
+             responderCorreccionEN() en app.js): confirmación editable "¿Quisiste decir...?" que se
+             muestra ANTES del modal de opciones en Inglés de abajo, solo cuando prompts.js >
+             opcionesEN detecta una posible falta de ortografía en el nombre en español (nunca para
+             vinos). Aceptar corrige el campo 'edit-es'; Mantener lo deja como estaba -- en ambos
+             casos las 3 opciones de traducción, ya generadas, se muestran igual a continuación. -->
+        <div id="modal-correccion-en" class="modal">
+            <div class="modal-content" style="max-width: 440px; text-align: center; padding: 30px;">
+                <h3 style="margin-top:0; margin-bottom: 10px;">✏️ ¿Quisiste decir...?</h3>
+                <p style="color: #666; margin-bottom: 15px; font-size: 0.85rem;">La IA cree que el nombre en español puede tener una falta de ortografía. Revísalo o edítalo antes de traducir:</p>
+                <input type="text" id="correccion-en-input" class="input-estandar" style="margin-bottom: 20px;" onkeydown="if(event.key==='Enter') responderCorreccionEN(true)">
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-modal-aceptar" style="margin:0;" onclick="responderCorreccionEN(true)">✅ Usar esta corrección</button>
+                    <button class="btn-modal-cancelar" style="margin:0;" onclick="responderCorreccionEN(false)">Mantener como estaba</button>
                 </div>
             </div>
         </div>

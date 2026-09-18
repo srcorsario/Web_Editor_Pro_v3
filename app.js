@@ -1,7 +1,7 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '2.12.0'; // CORREGIDO: bug real -- reabrir con la rueda ⚙️ un plato NUEVO (aún sin pulsar "GUARDAR CAMBIOS EN WEB") y volver a pulsar "Aplicar Cambios" disparaba la Info automática contra una fila que todavía no existe en la hoja; como el guardado usa fetch en modo no-cors, el editor no podía leer el error real de Código.gs y mostraba "generado con éxito" sin haberse guardado nada. Ahora se decide por p.filaExisteEnHoja (false hasta el primer "GUARDAR CAMBIOS EN WEB" correcto) en vez de por esNuevoPlato, así que sigue encolando correctamente aunque se reabra el mismo plato nuevo varias veces antes de guardar
+window.APP_VERSIONS.app = '2.13.0'; // NUEVO: traído de la web de cartelitos (WB-main) -- generarTraduccionEN() ahora (1) revisa la ortografía del nombre en español antes de traducir y ofrece una confirmación "¿Quisiste decir...?" editable (modal-correccion-en) si detecta una falta clara, y (2) las opciones "directa"/"gastronomica" incluyen una breve explicación en inglés del plato cuando el nombre usa un término extranjero/regional no universalmente conocido (ver REGLA_EXPLICACION_TERMINOS_NO_UNIVERSALES en prompts.js). Solo cambia el prompt/flujo de este botón puntual ("🇬🇧 Generar opciones en Inglés con IA"); no toca los lotes de Fase 1/2/3 ni el backend.
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
@@ -35,6 +35,9 @@ let platoEditandoId = null;
 let esNuevoPlato = false;
 let datosTempNuevo = null;
 let opcionesENActuales = [];
+// NUEVO (18 sept): resuelve la promesa de mostrarCorreccionOrtografiaEN() cuando el usuario
+// responde al modal "¿Quisiste decir...?" (aceptar con el texto corregido, o null si lo rechaza).
+let resolverCorreccionEN = null;
 // NUEVO: estado del modo "Plato con ingredientes" (checkbox #chk-modo-ingredientes) — ver
 // abrirEditor(), toggleModoIngredientes() y aplicarCambiosPlato(). modoIngredientesActivo
 // indica si el plato que se está editando ahora mismo usa la lista editable de
@@ -1080,15 +1083,53 @@ async function generarTraduccionEN() {
         } 
     } 
     
-    if (exito) { 
-        abrirModalTraduccionEN(opciones); 
-    } else { 
-        alert("❌ Error al generar las opciones en Inglés.\nDetalles: " + ultimoError); 
-    } 
-    
-    btn.innerText = originalText; 
-    btn.disabled = false; 
-} 
+    if (exito) {
+        // NUEVO (18 sept): si el prompt detectó una posible falta de ortografía en el nombre en
+        // español (ver "correccion" en prompts.js > opcionesEN), se ofrece antes una confirmación
+        // editable "¿Quisiste decir...?" -- igual que ya hacía la web de cartelitos. Nunca se
+        // aplica a vinos (nombres propios/marca). Si el usuario acepta, se corrige el campo
+        // 'edit-es' antes de mostrar las opciones de traducción (que ya son válidas de todos
+        // modos, generadas entendiendo el plato pese a la posible falta).
+        if (!esVino && opciones.correccion && opciones.correccion.hayError && opciones.correccion.texto) {
+            const corregido = await mostrarCorreccionOrtografiaEN(opciones.correccion.texto);
+            if (corregido) {
+                const editEs = document.getElementById('edit-es');
+                if (editEs) editEs.value = corregido;
+            }
+        }
+        abrirModalTraduccionEN(opciones);
+    } else {
+        alert("❌ Error al generar las opciones en Inglés.\nDetalles: " + ultimoError);
+    }
+
+    btn.innerText = originalText;
+    btn.disabled = false;
+}
+
+// NUEVO (18 sept): confirmación "¿Quisiste decir...?" para la falta de ortografía que puede
+// detectar prompts.js > opcionesEN en el nombre en español. Es una promesa que se resuelve con el
+// texto corregido (editable antes de aceptar) si el usuario acepta, o null si prefiere dejarlo
+// como estaba -- mismo patrón que ya usa la web de cartelitos (WB-main/js/app.js).
+function mostrarCorreccionOrtografiaEN(textoCorregido) {
+    return new Promise(resolve => {
+        const modal = document.getElementById('modal-correccion-en');
+        const input = document.getElementById('correccion-en-input');
+        if (!modal || !input) { resolve(null); return; }
+        input.value = textoCorregido;
+        modal.style.display = 'block';
+        resolverCorreccionEN = resolve;
+        input.focus();
+    });
+}
+
+function responderCorreccionEN(aceptar) {
+    const modal = document.getElementById('modal-correccion-en');
+    const input = document.getElementById('correccion-en-input');
+    const resolver = resolverCorreccionEN;
+    resolverCorreccionEN = null;
+    if (modal) modal.style.display = 'none';
+    if (resolver) resolver(aceptar && input ? input.value.trim() : null);
+}
 
 function abrirModalTraduccionEN(opciones) {
     const container = document.getElementById('opciones-en-container');
@@ -1100,8 +1141,14 @@ function abrirModalTraduccionEN(opciones) {
 
     let html = "";
     const mapaOpciones = { directa: "Directa / Literal", gastronomica: "Gastronómica / Elegante", corta: "Corta / Menú" };
+    // NUEVO (18 sept): se recorren solo las claves de traducción, EN ESTE ORDEN fijo, en vez de
+    // Object.entries(opciones) -- desde que el JSON también trae "correccion" (objeto, no texto;
+    // ver prompts.js > opcionesEN), iterar todas las claves del objeto lo pintaba como una opción
+    // más ("[object Object]"). Así además el orden de los botones queda siempre igual, sin
+    // depender del orden en que Gemini haya escrito las claves del JSON.
     let index = 0;
-    for (const [key, value] of Object.entries(opciones)) {
+    for (const key of ['directa', 'gastronomica', 'corta']) {
+        const value = opciones[key];
         if (value) {
             opcionesENActuales.push(value);
             html += `<div class="opcion-en-btn" onclick="seleccionarOpcionEN(this, ${index})"><span class="opcion-en-label">${mapaOpciones[key] || key}</span>${value}</div>`;
