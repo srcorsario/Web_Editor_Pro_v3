@@ -2,8 +2,9 @@ Web_Editor_Pro_v3 — URLs de Apps Script (Google Apps Script Web App)
 =====================================================================
 
 Este editor gestiona 2 restaurantes, cada uno con su propia hoja de Google
-Sheets y su propio proyecto de Apps Script (Codigo.gs). Los dos archivos
-.gs de esta carpeta son copias de referencia del código actualmente
+Sheets y su propio proyecto de Apps Script (Codigo.gs), más un tercer
+proyecto independiente para la pestaña "Menú Especial" (ver más abajo). Los
+archivos .gs de esta carpeta son copias de referencia del código actualmente
 desplegado — sirven para tenerlo a mano al actualizar, NO se editan aquí
 para que surtan efecto: hay que pegarlos en el proyecto de Apps Script
 correspondiente (Extensiones > Apps Script) y desplegar.
@@ -20,8 +21,28 @@ US OPEN (restaurante002)
   APP_SCRIPT_URL en script.js de la web pública "usopen-main"):
   https://script.google.com/macros/s/AKfycbwouqhWugYlrVuc1Pv0h4BVaI3PPRkL13snFNxsntR1CLR7AxsloFvJ2b3l0JDFT788/exec
 
-CÓMO DESPLEGAR UN CAMBIO EN CUALQUIERA DE LOS DOS
-  1. Abrir la hoja de Google Sheets del restaurante correspondiente.
+MENÚ ESPECIAL (proyecto independiente, no pertenece a RG ni a US Open)
+  Archivo de referencia: Codigo_MenusEspeciales.gs
+  URL /exec actual (WEBAPP_URL_MENUS_ESPECIALES en config.js):
+  https://script.google.com/macros/s/AKfycbwTkbN5AJkY8xww5yRON78TZ69hetMQdCiByDrAf2SREmXJWbjmR7tRNU2rCe_yGEICCA/exec
+  Guarda las plantillas de evento en una hoja de cálculo propia (pestaña
+  "MenusEspeciales" dentro de esa hoja), con cabecera fija en la fila 1
+  (ID, Nombre, Config_JSON, Fecha_Creacion, Fecha_Modificacion) y los
+  menús guardados a partir de la fila 2 — tanto guardarMenu() (appendRow)
+  como listarMenus() (lee desde la fila 2) dan por hecho que la fila 1
+  SIEMPRE es la cabecera. Si esa hoja llegó a tener datos reales en la
+  fila 1 (por ejemplo si la pestaña "MenusEspeciales" ya existía sin
+  cabecera antes de la primera ejecución de obtenerHojaMenus(), que solo
+  escribe la cabecera al crear la hoja desde cero), ese primer menú queda
+  invisible para siempre en listarMenus() -- 18/19 septiembre: así se
+  diagnosticó el caso real del usuario ("solo se ven los menús a partir de
+  la línea 2"). Arreglo: insertar manualmente una fila 1 con esa cabecera
+  en Google Sheets (desplazando los datos existentes a partir de la fila
+  2), sin tocar el código.
+
+CÓMO DESPLEGAR UN CAMBIO EN CUALQUIERA DE LOS TRES
+  1. Abrir la hoja de Google Sheets correspondiente (la del restaurante,
+     o la propia de Menús Especiales).
   2. Extensiones > Apps Script.
   3. Sustituir todo el contenido de Código.gs por la versión actualizada.
   4. Implementar > Gestionar implementaciones > icono de lápiz sobre la
@@ -51,4 +72,4 @@ esos datos con normalidad — no es urgente tocar los repos públicos por esto. 
 en algún momento se quiere dejar una única implementación activa (borrando la
 vieja), entonces sí habría que actualizar antes la URL en esos dos script.js.
 
-Última actualización de este archivo: 2026-09-16.
+Última actualización de este archivo: 2026-09-19.
