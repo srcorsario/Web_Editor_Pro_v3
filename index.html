@@ -18,7 +18,7 @@
         // todo el JS/CSS de golpe en cada visita.
         // OJO: esto NO afecta a los datos del menu (platos/precios) — esos se piden
         // siempre en fresco con cache:"no-store" en app.js, y eso no cambia.
-        window.__CACHE_BUST__ = '2026.09.19.3';
+        window.__CACHE_BUST__ = '2026.09.19.4';
     </script>
     <script>document.write('<link rel="stylesheet" href="styles.css?v=' + window.__CACHE_BUST__ + '">');</script>
 </head>
@@ -539,7 +539,16 @@
 
         async function switchTab(tabId, btnElement) {
             const loader = document.getElementById('loading-overlay');
-            if (loader) loader.style.display = 'flex';
+            // CORREGIDO (19 sept): antes se mostraba este overlay aquí mismo para CUALQUIER
+            // pestaña, incluida "6. Menú Especial" -- eso anulaba la lógica de
+            // MenuEspecial.init() (ver más abajo) que evita mostrar overlay cuando los índices de
+            // platos/vinos YA están cargados y solo hace falta un GET ligero (listarMenus) para
+            // refrescar la lista de menús guardados. Como este "flex" de aquí se ponía SIEMPRE,
+            // el overlay "Cargando datos..." volvía a aparecer cada vez que se volvía a esa
+            // pestaña -- aunque solo tardase el tiempo de esa petición ligera (2-3s), daba la
+            // sensación de que recargaba todo de cero. Ahora Menú Especial gestiona su propio
+            // overlay (mostrarCargando() en menu-especial.js), que sí sabe si hace falta o no.
+            if (loader && tabId !== 'menu-especial') loader.style.display = 'flex';
 
             try {
                 const esEditorActual = document.getElementById('tab-editor').style.display !== 'none' || document.getElementById('tab-editor').classList.contains('active');

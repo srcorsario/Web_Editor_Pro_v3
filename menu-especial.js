@@ -14,7 +14,7 @@
 // ventana emergente (window.open + document.write), para no depender de @media print peleándose
 // con el resto de la interfaz del editor.
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.menuEspecial = '1.9.1'; // MODIFICADO: quitada también la línea de puntos vertical continua entre los dos menús (border-left de .me-print-cutline) -- ahora solo quedan las dos marcas finas sueltas (arriba y abajo) de v1.9.0, sin línea de por medio.
+window.APP_VERSIONS.menuEspecial = '1.9.2'; // MODIFICADO: la marca de corte de ARRIBA no se veía en el PDF (sangrado negativo, top:-4mm, no se pintaba de forma fiable por encima del borde superior del área imprimible) -- las dos marcas pasan a top:0/bottom:0, dentro del área imprimible, sin sangrado, así se ven siempre las dos.
 
 (function () {
     'use strict';
@@ -957,16 +957,18 @@ window.APP_VERSIONS.menuEspecial = '1.9.1'; // MODIFICADO: quitada también la l
             /* Marcas de corte (antes: línea de puntos vertical de arriba a abajo + emoji de
                tijeras ✂ rotado en cada punta): ahora, SOLO dos trazos finos sueltos, uno arriba y
                otro abajo -- se quita el border-left (la línea de puntos continua) porque ya no
-               hace falta, las dos marcas solas bastan para alinear una guillotina de papel. Igual
-               que antes, .me-print-cutline se estira a los 198mm EXACTOS del área imprimible (para
-               poder centrar el contenido verticalmente), así que las marcas se quedan a -4mm/4mm
-               de alto, dejando 2mm de margen de sobra antes del borde físico real de la hoja (el
-               margen de @page es de 6mm) -- si se pegaran más al borde, arriesgan forzar una
-               segunda página casi vacía como pasaba antes con las tijeras a -6mm. */
+               hace falta, las dos marcas solas bastan para alinear una guillotina de papel.
+               CORREGIDO: con un sangrado negativo (p.ej. top:-4mm) la marca de ARRIBA no
+               aparecía en el PDF -- los navegadores no pintan de forma fiable contenido que
+               sobresale por encima del borde superior del área imprimible (la de ABAJO sí se
+               veía porque ahí "sobresalir" cae dentro de la misma página, no hay página anterior
+               a la que "faltarle" ese trozo). Ahora las dos marcas se quedan DENTRO del área
+               imprimible (top:0 / bottom:0, sin sangrado), pegadas a los bordes exactos de esos
+               198mm -- se ven siempre, en las dos puntas, con el mismo aspecto. */
             .me-print-cutline { width:0; position:relative; margin:0 2mm; }
             .me-print-cutline::before, .me-print-cutline::after { content:''; position:absolute; left:50%; transform:translateX(-50%); width:1.5px; height:4mm; background:#999; }
-            .me-print-cutline::before { top:-4mm; }
-            .me-print-cutline::after { bottom:-4mm; }
+            .me-print-cutline::before { top:0; }
+            .me-print-cutline::after { bottom:0; }
             .me-print-logo { max-height:4.4em; max-width:13em; object-fit:contain; margin-bottom:0.5em; }
             .me-print-titulo { font-size:1.65em; font-weight:800; letter-spacing:0.02em; margin-bottom:0.85em; }
             .me-print-seccion { width:100%; max-width:35em; margin:0 auto 0.5em auto; }
