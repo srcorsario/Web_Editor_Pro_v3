@@ -18,7 +18,7 @@
         // todo el JS/CSS de golpe en cada visita.
         // OJO: esto NO afecta a los datos del menu (platos/precios) — esos se piden
         // siempre en fresco con cache:"no-store" en app.js, y eso no cambia.
-        window.__CACHE_BUST__ = '2026.09.18.15';
+        window.__CACHE_BUST__ = '2026.09.18.16';
     </script>
     <script>document.write('<link rel="stylesheet" href="styles.css?v=' + window.__CACHE_BUST__ + '">');</script>
 </head>
@@ -578,7 +578,19 @@
                 const modoAnterior = window.currentMode;
 
                 // MODIFICADO: Mapeo estricto a Abstract Keys
-                if (tabId === 'sugerencias-usopen' || tabId === 'editor-usopen') {
+                // CORREGIDO: "6. Menú Especial" es una pestaña común, independiente del
+                // restaurante activo del Editor normal -- antes SÍ entraba en este mapeo (caía
+                // en el "else"), así que cada vez que se entraba a Menú Especial se forzaba
+                // window.currentMode a 'restaurante001' aunque se viniera de US Open. Eso
+                // disparaba el bloque de "necesitaRecargar" de abajo (currentMode distinto del
+                // anterior) y volvía a descargar/reprocesar el CSV entero de RG para el Editor
+                // de carta -- trabajo pesado y completamente ajeno a esta pestaña, que carga sus
+                // propios datos por separado (ver MenuEspecial.init() más abajo). Por eso tardaba
+                // mucho más que el resto de pestañas y parecía quedarse colgada en "Cargando
+                // datos...". Ahora Menú Especial no toca window.currentMode en absoluto.
+                if (tabId === 'menu-especial') {
+                    // no-op: se deja window.currentMode tal cual estaba
+                } else if (tabId === 'sugerencias-usopen' || tabId === 'editor-usopen') {
                     window.currentMode = 'restaurante002';
                 } else {
                     window.currentMode = 'restaurante001';
@@ -606,10 +618,15 @@
                 // todavía no hay datos cargados (primera vez, o la carga anterior falló). Para
                 // forzar una recarga manual desde Google Sheets sigue estando el botón de
                 // "Cargar desde Google Sheets" / "Sincronizar", que no ha cambiado.
-                const necesitaRecargar = (window.currentMode !== modoAnterior) ||
-                    !Array.isArray(window.datosLocales) || window.datosLocales.length === 0;
-                if (necesitaRecargar && typeof window.cargar === 'function') {
-                    try { await window.cargar(); } catch (e) { console.error("[Editor] Error cargando datos:", e); }
+                // CORREGIDO: se excluye 'menu-especial' de este bloque -- ver el comentario de
+                // arriba, junto al mapeo de currentMode. Esta recarga es solo para el Editor de
+                // carta normal (RG/US Open); Menú Especial nunca la necesita.
+                if (tabId !== 'menu-especial') {
+                    const necesitaRecargar = (window.currentMode !== modoAnterior) ||
+                        !Array.isArray(window.datosLocales) || window.datosLocales.length === 0;
+                    if (necesitaRecargar && typeof window.cargar === 'function') {
+                        try { await window.cargar(); } catch (e) { console.error("[Editor] Error cargando datos:", e); }
+                    }
                 }
 
                 // MODIFICADO: Llamadas abstractas a renderCarta

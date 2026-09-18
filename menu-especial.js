@@ -14,7 +14,7 @@
 // ventana emergente (window.open + document.write), para no depender de @media print peleándose
 // con el resto de la interfaz del editor.
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.menuEspecial = '1.3.0'; // MODIFICADO: el popup de platos ya NO descarta los inactivos en la web pública (una plantilla de evento es independiente de lo que esté activo ahora mismo en la carta en vivo); impresión con márgenes horizontales más ajustados y letra base algo mayor; Agua/Cerveza/Refresco en una sola línea; nombres de vino solo en castellano (la etiqueta de categoría sigue siendo bilingüe, "Vino Blanco / White Wine:"); títulos de sección (Entrantes, Primero - A Elegir, etc.) también salen en inglés si ese idioma está activo; los índices de platos/vinos ahora se precargan en segundo plano al arrancar la web (igual que ya se hace con "el otro restaurante" del Editor normal), así que abrir esta pestaña ya no suele mostrar overlay de carga.
+window.APP_VERSIONS.menuEspecial = '1.4.0'; // MODIFICADO: los platos/vinos idénticos en RG y US Open (mismo nombre normalizado y mismo tipo) ya no salen duplicados en los popups -- se fusionan en una sola entrada marcada "RG + US Open", visible pase lo que pase el filtro de restaurante. Fix real de la pestaña "colgada" en Cargando datos...: index.html forzaba window.currentMode a 'restaurante001' y disparaba una recarga completa del Editor de carta normal (ajena a esta pestaña) cada vez que se entraba aquí desde US Open -- corregido en index.html, no en este archivo.
 
 (function () {
     'use strict';
@@ -120,6 +120,7 @@ window.APP_VERSIONS.menuEspecial = '1.3.0'; // MODIFICADO: el popup de platos ya
             .me-tag-rg { background:#fde7d6; color:#c0530b; }
             .me-tag-us { background:#dbeafe; color:#1d4ed8; }
             .me-tag-manual { background:#e5e7eb; color:#4b5563; }
+            .me-tag-ambos { background:#ede9fe; color:#6d28d9; }
             .me-btn-quitar { background:#fdecea; color:#e74c3c; border:none; border-radius:6px; width:26px; height:26px; cursor:pointer; font-weight:700; flex-shrink:0; }
             .me-btn-quitar:hover { background:#f8d7d3; }
             .me-layout { display:flex; gap:20px; align-items:flex-start; }
@@ -164,6 +165,47 @@ window.APP_VERSIONS.menuEspecial = '1.3.0'; // MODIFICADO: el popup de platos ya
         // Limpia el "//" (segunda línea de ingredientes/opciones) del nombre para que la
         // plantilla de menú especial muestre solo el nombre principal del plato.
         function limpiarNombre(txt) { return (txt || '').split('//')[0].trim(); }
+
+        // Normaliza un nombre para comparar si "es el mismo plato/vino" entre RG y US Open (o
+        // duplicado dentro de la misma carta): minúsculas, sin acentos, espacios colapsados.
+        // Deliberadamente estricto (no busca coincidencias parciales) para no fusionar por error
+        // dos platos distintos que simplemente se parezcan.
+        function normalizarNombre(txt) {
+            return (txt || '')
+                .toLowerCase()
+                .normalize('NFD').replace(/[̀-ͯ]/g, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
+        // Si el mismo plato/vino (mismo nombre normalizado y mismo "tipo") aparece en RG Y en US
+        // Open -- muy habitual, muchos vinos y algunos platos son idénticos en las dos cartas --
+        // se queda con UNA sola entrada marcada "ambos:true" (nunca se ofrece duplicado en el
+        // popup). Si aparece en un solo restaurante (o 2 veces dentro del mismo, por error de
+        // datos) se queda con una sola entrada sin más.
+        function deduplicarComunes(lista) {
+            const grupos = new Map();
+            lista.forEach(item => {
+                const clave = item.tipo + '|' + normalizarNombre(item.es);
+                if (!grupos.has(clave)) grupos.set(clave, []);
+                grupos.get(clave).push(item);
+            });
+            const resultado = [];
+            grupos.forEach(items => {
+                const base = items[0];
+                if (items.length === 1) {
+                    resultado.push(Object.assign({}, base, { ambos: false }));
+                    return;
+                }
+                const modosDistintos = new Set(items.map(i => i.modo));
+                const conEn = items.find(i => i.en) || base;
+                resultado.push(Object.assign({}, base, {
+                    en: conEn.en || base.en,
+                    ambos: modosDistintos.size > 1
+                }));
+            });
+            return resultado;
+        }
 
         function procesar(datos, modo, alias) {
             if (!Array.isArray(datos)) return;
@@ -210,7 +252,10 @@ window.APP_VERSIONS.menuEspecial = '1.3.0'; // MODIFICADO: el popup de platos ya
         }
         procesar(datosRG, 'restaurante001', 'RG');
         procesar(datosUS, 'restaurante002', 'US Open');
+        platosParaPopup = deduplicarComunes(platosParaPopup);
+        indiceVinos = deduplicarComunes(indiceVinos);
         platosParaPopup.sort((a, b) => a.es.localeCompare(b.es, 'es'));
+        indiceVinos.sort((a, b) => a.es.localeCompare(b.es, 'es'));
     }
 
     // =================================================================================
@@ -441,7 +486,9 @@ window.APP_VERSIONS.menuEspecial = '1.3.0'; // MODIFICADO: el popup de platos ya
         return platos.map((p, i) => {
             const tag = p.manual
                 ? `<span class="me-plato-tag me-tag-manual">Manual</span>`
-                : (p.modo === 'restaurante002' ? `<span class="me-plato-tag me-tag-us">US Open</span>` : `<span class="me-plato-tag me-tag-rg">RG</span>`);
+                : p.ambos
+                    ? `<span class="me-plato-tag me-tag-ambos">RG + US Open</span>`
+                    : (p.modo === 'restaurante002' ? `<span class="me-plato-tag me-tag-us">US Open</span>` : `<span class="me-plato-tag me-tag-rg">RG</span>`);
             const nombre = (conEn && p.en) ? `${escHtml(p.es)} <span style="color:#999;">/ ${escHtml(p.en)}</span>` : escHtml(p.es);
             return `<div class="me-plato-row">
                 <span class="me-plato-nombre">${tag}${nombre}</span>
@@ -562,7 +609,10 @@ window.APP_VERSIONS.menuEspecial = '1.3.0'; // MODIFICADO: el popup de platos ya
 
         const items = poolParaModal().filter(p => {
             if (yaAnadidos.has(claveModoId(p.modo, p.id))) return false;
-            if (filtroModo && p.modo !== filtroModo) return false;
+            // Un plato/vino común a los 2 restaurantes (p.ambos) pasa el filtro de restaurante
+            // pase lo que pase -- de verdad está disponible en RG Y en US Open, así que "Solo
+            // RG" o "Solo US Open" no deberían ocultarlo.
+            if (filtroModo && p.modo !== filtroModo && !p.ambos) return false;
             if (textoBusqueda && p.es.toLowerCase().indexOf(textoBusqueda) === -1) return false;
             return true;
         });
@@ -576,7 +626,9 @@ window.APP_VERSIONS.menuEspecial = '1.3.0'; // MODIFICADO: el popup de platos ya
         cont.innerHTML = items.map(p => {
             const clave = claveModoId(p.modo, p.id);
             const marcado = !!seleccionEnModal[clave];
-            const tag = p.modo === 'restaurante002' ? `<span class="me-plato-tag me-tag-us">US Open</span>` : `<span class="me-plato-tag me-tag-rg">RG</span>`;
+            const tag = p.ambos
+                ? `<span class="me-plato-tag me-tag-ambos">RG + US Open</span>`
+                : (p.modo === 'restaurante002' ? `<span class="me-plato-tag me-tag-us">US Open</span>` : `<span class="me-plato-tag me-tag-rg">RG</span>`);
             return `<label class="me-modal-plato-row">
                 <input type="checkbox" ${marcado ? 'checked' : ''} onchange="MenuEspecial.toggleSeleccionModal('${clave}', this.checked)">
                 <span>${tag}${escHtml(p.es)}</span>
@@ -608,7 +660,7 @@ window.APP_VERSIONS.menuEspecial = '1.3.0'; // MODIFICADO: el popup de platos ya
                 const modo = clave.substring(0, idxSep);
                 const id = parseInt(clave.substring(idxSep + 1), 10);
                 const p = poolOrigen.find(x => x.modo === modo && x.id === id);
-                if (p) destino.push({ manual: false, modo: p.modo, id: p.id, es: p.es, en: p.en });
+                if (p) destino.push({ manual: false, modo: p.modo, id: p.id, es: p.es, en: p.en, ambos: !!p.ambos });
             });
         }
         cerrarModalPlatos();
