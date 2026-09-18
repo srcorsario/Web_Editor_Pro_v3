@@ -14,7 +14,7 @@
 // ventana emergente (window.open + document.write), para no depender de @media print peleándose
 // con el resto de la interfaz del editor.
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.menuEspecial = '1.1.0'; // MODIFICADO: check "A elegir" en Primero/Principal/Postre; selector de platos ahora es un popup grande con checks (multi-selección) que descarta cafés/refrescos/cervezas/vinos de la lista de "platos"; vinos ahora incluyen Cavas & Champagne y nunca platos de comida; impresión reescrita para encajar SIEMPRE en una sola hoja A4 (reduce la letra automáticamente) con márgenes más ajustados.
+window.APP_VERSIONS.menuEspecial = '1.2.0'; // MODIFICADO: los platos de Postre y los del resto de secciones (Entrantes/Primero/Principal) ya nunca se mezclan en el popup (clasificación por "tipo": postre / principal); Bebida pasa de 2 a 4 vinos independientes activables (Vino Blanco, Vino Rosado, Vino Tinto, Cava), cada uno con su PROPIO popup grande con checks (igual que los platos) que solo ofrece vinos de su propio tipo (nunca se mezclan blancos/rosados/tintos/cavas entre sí).
 
 (function () {
     'use strict';
@@ -22,11 +22,12 @@ window.APP_VERSIONS.menuEspecial = '1.1.0'; // MODIFICADO: check "A elegir" en P
     // =================================================================================
     // ESTADO DEL MÓDULO
     // =================================================================================
-    let platosParaPopup = [];                 // [{modo,alias,id,es,en}] -- solo comida de verdad (ver CARPETAS_EXCLUIDAS_DE_PLATOS)
-    let indiceVinos = [];                     // [{modo,id,es,en}] -- SOLO vinos y cavas (id 13100-14499)
+    let platosParaPopup = [];                 // [{modo,alias,id,es,en,tipo}] -- solo comida de verdad (ver CARPETAS_EXCLUIDAS_DE_PLATOS); tipo: 'postre' | 'principal'
+    let indiceVinos = [];                     // [{modo,id,es,en,tipo}] -- SOLO vinos y cavas (id 13100-14499); tipo: 'blanco'|'rosado'|'tinto'|'cava'
     let menusGuardados = [];                  // última lista conocida (GET listarMenus), más recientes primero
     let menuActual = null;                    // el menú que se está editando ahora mismo en pantalla
-    let modalSeccionActual = null;            // sección ('entrantes'/'primero'/...) a la que añade el popup de platos abierto
+    let modalGrupoActual = null;              // 'comida' | 'vino' -- a qué pool pertenece el popup abierto ahora mismo
+    let modalSeccionActual = null;            // clave de sección ('entrantes'/'primero'/.../'postre') o de vino ('vinoBlanco'/'vinoRosado'/'vinoTinto'/'cava') a la que añade el popup abierto
     const seleccionEnModal = {};              // "modo|id" -> true, mientras el popup está abierto
 
     // Cafés, refrescos/bebidas y cervezas nunca son "platos" de una sección de comida -- ver
@@ -45,7 +46,20 @@ window.APP_VERSIONS.menuEspecial = '1.1.0'; // MODIFICADO: check "A elegir" en P
         { key: 'postre', titulo: 'Postre', conAElegir: true }
     ];
 
+    // Los 4 vinos/cavas de la sección Bebida -- cada uno se activa/desactiva por separado ("por
+    // si hay veces que lo ponemos y otras que no") y tiene su PROPIO popup grande con checks que
+    // SOLO ofrece vinos de su propio "tipo" (ver indiceVinos más abajo) -- nunca se mezclan
+    // blancos con tintos, ni cavas con rosados, etc.
+    const WINES_INFO = [
+        { key: 'vinoBlanco', tituloEs: 'Vino Blanco', tituloEn: 'White Wine', emoji: '🥂', tipo: 'blanco' },
+        { key: 'vinoRosado', tituloEs: 'Vino Rosado', tituloEn: 'Rosé Wine', emoji: '🌸', tipo: 'rosado' },
+        { key: 'vinoTinto', tituloEs: 'Vino Tinto', tituloEn: 'Red Wine', emoji: '🍷', tipo: 'tinto' },
+        { key: 'cava', tituloEs: 'Cava', tituloEn: 'Cava', emoji: '🍾', tipo: 'cava' }
+    ];
+
     function nuevoMenuVacio() {
+        const bebida = { agua: true, cerveza: true, refresco: true, cafe: true };
+        WINES_INFO.forEach(w => { bebida[w.key] = { activo: false, platos: [] }; });
         return {
             id: null,
             nombre: '',
@@ -57,11 +71,7 @@ window.APP_VERSIONS.menuEspecial = '1.1.0'; // MODIFICADO: check "A elegir" en P
                 principal: { activo: true, aElegir: false, platos: [] },
                 postre: { activo: true, aElegir: false, platos: [] }
             },
-            bebida: {
-                agua: true, cerveza: true, refresco: true, cafe: true,
-                vinoBlanco: { activo: false, texto: '' },
-                vinoTinto: { activo: false, texto: '' }
-            }
+            bebida: bebida
         };
     }
 
@@ -160,10 +170,19 @@ window.APP_VERSIONS.menuEspecial = '1.1.0'; // MODIFICADO: check "A elegir" en P
 
                 // Vinos y cavas de verdad (blancos/rosados/tintos/Cavas & Champagne -- mismos
                 // rangos en RG y en US Open, ver estructuras.js): van SOLO al selector de
-                // Bebida, nunca al de comida.
+                // Bebida, nunca al de comida. Se etiquetan con su "tipo" exacto para que el
+                // popup de cada uno de los 4 vinos de Bebida ofrezca SOLO su propio tipo (un
+                // Vino Blanco jamás debe poder añadir un tinto, ni un Cava un rosado, etc.).
                 if (item.id >= 13100 && item.id <= 14499) {
                     const nombreVino = limpiarNombre(item.es);
-                    if (nombreVino) indiceVinos.push({ modo: modo, id: item.id, es: nombreVino, en: limpiarNombre(item.en) });
+                    if (nombreVino) {
+                        let tipoVino;
+                        if (item.id <= 13199) tipoVino = 'blanco';
+                        else if (item.id <= 13299) tipoVino = 'rosado';
+                        else if (item.id <= 13399) tipoVino = 'tinto';
+                        else tipoVino = 'cava';
+                        indiceVinos.push({ modo: modo, id: item.id, es: nombreVino, en: limpiarNombre(item.en), tipo: tipoVino });
+                    }
                     return;
                 }
                 if (item.id >= 13000) return; // otro ID de vino fuera del rango reconocido: se descarta (ni plato ni vino)
@@ -176,24 +195,15 @@ window.APP_VERSIONS.menuEspecial = '1.1.0'; // MODIFICADO: check "A elegir" en P
 
                 const nombreEs = limpiarNombre(item.es);
                 if (!nombreEs) return;
-                platosParaPopup.push({ modo: modo, alias: alias, id: item.id, es: nombreEs, en: limpiarNombre(item.en) });
+                // "tipo" separa Postre del resto (Entrantes/Primero/Principal comparten pool,
+                // pero Postre nunca se mezcla con ellos en ningún sentido -- ver poolParaModal).
+                const tipo = (carpeta === 'postres') ? 'postre' : 'principal';
+                platosParaPopup.push({ modo: modo, alias: alias, id: item.id, es: nombreEs, en: limpiarNombre(item.en), tipo: tipo });
             });
         }
         procesar(datosRG, 'restaurante001', 'RG');
         procesar(datosUS, 'restaurante002', 'US Open');
         platosParaPopup.sort((a, b) => a.es.localeCompare(b.es, 'es'));
-    }
-
-    function renderDatalists() {
-        // Los dos campos (Vino Blanco / Vino Tinto) comparten las mismas sugerencias -- son
-        // campos de texto libre, esto es solo autocompletado, y evita duplicar lógica de
-        // clasificar cada botella por color (que además puede variar de matiz real a real).
-        const nombresUnicos = Array.from(new Set(indiceVinos.map(v => v.es))).sort((a, b) => a.localeCompare(b, 'es'));
-        const opciones = nombresUnicos.map(n => `<option value="${escHtml(n)}">`).join('');
-        const dlBlanco = document.getElementById('me-datalist-vinoblanco');
-        if (dlBlanco) dlBlanco.innerHTML = opciones;
-        const dlTinto = document.getElementById('me-datalist-vinotinto');
-        if (dlTinto) dlTinto.innerHTML = opciones;
     }
 
     // =================================================================================
@@ -271,8 +281,18 @@ window.APP_VERSIONS.menuEspecial = '1.1.0'; // MODIFICADO: check "A elegir" en P
             if (!Array.isArray(menu.secciones[k].platos)) menu.secciones[k].platos = [];
         });
         menu.bebida = Object.assign({}, base.bebida, cfg.bebida);
-        menu.bebida.vinoBlanco = Object.assign({}, base.bebida.vinoBlanco, (cfg.bebida && cfg.bebida.vinoBlanco) || {});
-        menu.bebida.vinoTinto = Object.assign({}, base.bebida.vinoTinto, (cfg.bebida && cfg.bebida.vinoTinto) || {});
+        WINES_INFO.forEach(w => {
+            const guardado = (cfg.bebida && cfg.bebida[w.key]) || {};
+            const slot = Object.assign({}, base.bebida[w.key], guardado);
+            if (!Array.isArray(slot.platos)) slot.platos = [];
+            // Compatibilidad con menús guardados con el modelo antiguo (solo 2 vinos, cada uno
+            // con un campo de texto libre "texto" en vez de una lista de platos): si tenía
+            // "texto" pero no lista, migra ese texto a una entrada manual para no perder el dato.
+            if (guardado.texto && !slot.platos.length) {
+                slot.platos = [{ manual: true, modo: null, id: null, es: guardado.texto, en: '' }];
+            }
+            menu.bebida[w.key] = slot;
+        });
         return menu;
     }
 
@@ -300,12 +320,10 @@ window.APP_VERSIONS.menuEspecial = '1.1.0'; // MODIFICADO: check "A elegir" en P
                 </div>
                 <div id="me-form-area" style="flex:1;min-width:0;"></div>
             </div>
-            <datalist id="me-datalist-vinoblanco"></datalist>
-            <datalist id="me-datalist-vinotinto"></datalist>
 
             <div id="me-modal-platos" class="modal">
                 <div class="modal-content" style="max-width:920px; max-height:88vh; display:flex; flex-direction:column;">
-                    <h2 style="margin-top:0;margin-bottom:4px;">🍽️ Elegir platos</h2>
+                    <h2 id="me-modal-titulo" style="margin-top:0;margin-bottom:4px;">🍽️ Elegir platos</h2>
                     <p id="me-modal-subtitulo" style="margin:0 0 14px 0; font-size:0.82rem; color:#777;"></p>
                     <div class="me-fila" style="margin-bottom:12px;">
                         <input type="text" id="me-modal-buscar" class="input-estandar" style="flex:2;min-width:200px;margin-bottom:0;" placeholder="Buscar por nombre..." oninput="MenuEspecial.filtrarModalLista()">
@@ -385,21 +403,33 @@ window.APP_VERSIONS.menuEspecial = '1.1.0'; // MODIFICADO: check "A elegir" en P
             ${sec.activo ? `
             <div style="margin-top:12px;">
                 <div class="me-fila" style="margin-bottom:10px;">
-                    <button class="btn btn-secondary" onclick="MenuEspecial.abrirModalPlatos('${info.key}')">🔍 Elegir platos de la carta (RG / US Open)...</button>
+                    <button class="btn btn-secondary" onclick="MenuEspecial.abrirModalPlatos('comida', '${info.key}')">🔍 Elegir platos de la carta (RG / US Open)...</button>
                 </div>
                 <div class="me-fila" style="margin-bottom:10px;">
-                    <input type="text" id="me-input-manual-${info.key}" class="input-estandar" style="flex:2;min-width:200px;margin-bottom:0;" placeholder="¿No está en la carta? Escríbelo aquí...">
-                    ${conEn ? `<input type="text" id="me-input-manual-${info.key}-en" class="input-estandar" style="flex:1;min-width:160px;margin-bottom:0;" placeholder="Nombre en inglés">` : ''}
-                    <button class="btn btn-secondary" onclick="MenuEspecial.agregarPlatoManual('${info.key}')">+ Añadir manual</button>
+                    <input type="text" id="me-input-manual-comida-${info.key}" class="input-estandar" style="flex:2;min-width:200px;margin-bottom:0;" placeholder="¿No está en la carta? Escríbelo aquí...">
+                    ${conEn ? `<input type="text" id="me-input-manual-comida-${info.key}-en" class="input-estandar" style="flex:1;min-width:160px;margin-bottom:0;" placeholder="Nombre en inglés">` : ''}
+                    <button class="btn btn-secondary" onclick="MenuEspecial.agregarPlatoManual('comida', '${info.key}')">+ Añadir manual</button>
                 </div>
-                <div id="me-lista-${info.key}">${renderListaPlatosHtml(info.key)}</div>
+                <div id="me-lista-${info.key}">${renderListaPlatosHtml('comida', info.key)}</div>
             </div>` : ''}
         </div>`;
     }
 
-    function renderListaPlatosHtml(key) {
-        const platos = menuActual.secciones[key].platos;
-        if (!platos.length) return `<p style="font-size:0.8rem;color:#999;margin:0;">Ningún plato añadido todavía.</p>`;
+    // Devuelve el array real (dentro de menuActual) donde viven los platos/vinos de un
+    // "grupo|key" concreto -- centraliza el único sitio donde hay que saber que 'comida' vive en
+    // menuActual.secciones[key].platos y 'vino' en menuActual.bebida[key].platos.
+    function obtenerListaDestino(grupo, key) {
+        return (grupo === 'vino') ? menuActual.bebida[key].platos : menuActual.secciones[key].platos;
+    }
+
+    // Id del <div> donde se pinta la lista de platos/vinos añadidos de un "grupo|key" concreto.
+    function idListaPara(grupo, key) {
+        return (grupo === 'vino') ? `me-lista-vino-${key}` : `me-lista-${key}`;
+    }
+
+    function renderListaPlatosHtml(grupo, key) {
+        const platos = obtenerListaDestino(grupo, key);
+        if (!platos.length) return `<p style="font-size:0.8rem;color:#999;margin:0;">Ningún ${grupo === 'vino' ? 'vino' : 'plato'} añadido todavía.</p>`;
         const conEn = menuActual.idiomas.en;
         return platos.map((p, i) => {
             const tag = p.manual
@@ -408,9 +438,28 @@ window.APP_VERSIONS.menuEspecial = '1.1.0'; // MODIFICADO: check "A elegir" en P
             const nombre = (conEn && p.en) ? `${escHtml(p.es)} <span style="color:#999;">/ ${escHtml(p.en)}</span>` : escHtml(p.es);
             return `<div class="me-plato-row">
                 <span class="me-plato-nombre">${tag}${nombre}</span>
-                <button class="me-btn-quitar" onclick="MenuEspecial.quitarPlato('${key}', ${i})" title="Quitar">✕</button>
+                <button class="me-btn-quitar" onclick="MenuEspecial.quitarPlato('${grupo}', '${key}', ${i})" title="Quitar">✕</button>
             </div>`;
         }).join('');
+    }
+
+    function renderVinoSlotHtml(w) {
+        const slot = menuActual.bebida[w.key];
+        const conEn = menuActual.idiomas.en;
+        return `<div style="flex:1;min-width:230px;">
+            <label class="me-check-label" style="margin-bottom:6px;"><input type="checkbox" ${slot.activo ? 'checked' : ''} onchange="MenuEspecial.toggleVino('${w.key}', this.checked)"> ${w.emoji} ${escHtml(w.tituloEs)}</label>
+            ${slot.activo ? `
+            <div class="me-fila" style="margin-bottom:8px;">
+                <button class="btn btn-secondary" style="font-size:0.78rem;padding:6px 10px;" onclick="MenuEspecial.abrirModalPlatos('vino', '${w.key}')">🔍 Elegir de la carta...</button>
+            </div>
+            <div class="me-fila" style="margin-bottom:8px;">
+                <input type="text" id="me-input-manual-vino-${w.key}" class="input-estandar" style="flex:1;min-width:140px;margin-bottom:0;font-size:0.8rem;" placeholder="¿No está en la carta? Escríbelo...">
+                ${conEn ? `<input type="text" id="me-input-manual-vino-${w.key}-en" class="input-estandar" style="flex:1;min-width:120px;margin-bottom:0;font-size:0.8rem;" placeholder="En inglés">` : ''}
+                <button class="btn btn-secondary" style="font-size:0.78rem;padding:6px 10px;" onclick="MenuEspecial.agregarPlatoManual('vino', '${w.key}')">+ Añadir</button>
+            </div>
+            <div id="me-lista-vino-${w.key}">${renderListaPlatosHtml('vino', w.key)}</div>
+            ` : ''}
+        </div>`;
     }
 
     function renderBebidaHtml() {
@@ -423,35 +472,49 @@ window.APP_VERSIONS.menuEspecial = '1.1.0'; // MODIFICADO: check "A elegir" en P
                 <label class="me-check-label me-sub-check"><input type="checkbox" ${b.refresco ? 'checked' : ''} onchange="MenuEspecial.toggleBebida('refresco', this.checked)"> Refresco</label>
                 <label class="me-check-label me-sub-check"><input type="checkbox" ${b.cafe ? 'checked' : ''} onchange="MenuEspecial.toggleBebida('cafe', this.checked)"> Café o infusiones</label>
             </div>
-            <div class="me-fila" style="align-items:flex-start;">
-                <div style="flex:1;min-width:220px;">
-                    <label class="me-check-label" style="margin-bottom:6px;"><input type="checkbox" ${b.vinoBlanco.activo ? 'checked' : ''} onchange="MenuEspecial.toggleVino('vinoBlanco', this.checked)"> 🥂 Vino Blanco</label>
-                    ${b.vinoBlanco.activo ? `<input list="me-datalist-vinoblanco" class="input-estandar" style="margin-bottom:0;" placeholder="Elige un vino/cava de la carta o escribe el nombre..." value="${escHtml(b.vinoBlanco.texto)}" oninput="MenuEspecial.actualizarVinoTexto('vinoBlanco', this.value)">` : ''}
-                </div>
-                <div style="flex:1;min-width:220px;">
-                    <label class="me-check-label" style="margin-bottom:6px;"><input type="checkbox" ${b.vinoTinto.activo ? 'checked' : ''} onchange="MenuEspecial.toggleVino('vinoTinto', this.checked)"> 🍷 Vino Tinto</label>
-                    ${b.vinoTinto.activo ? `<input list="me-datalist-vinotinto" class="input-estandar" style="margin-bottom:0;" placeholder="Elige un vino/cava de la carta o escribe el nombre..." value="${escHtml(b.vinoTinto.texto)}" oninput="MenuEspecial.actualizarVinoTexto('vinoTinto', this.value)">` : ''}
-                </div>
+            <div class="me-fila" style="align-items:flex-start;flex-wrap:wrap;gap:18px;">
+                ${WINES_INFO.map(renderVinoSlotHtml).join('')}
             </div>
         </div>`;
     }
 
     // =================================================================================
-    // POPUP DE SELECCIÓN DE PLATOS — grande, con buscador + filtro de restaurante, un check por
-    // plato (multi-selección) y "+ Añadir seleccionados" para meterlos todos de golpe. Solo
-    // ofrece platos de verdad (platosParaPopup ya descarta cafés/refrescos/cervezas/vinos al
-    // construirse, ver cargarIndiceDePlatos) y nunca repite uno que la sección ya tenga.
+    // POPUP DE SELECCIÓN — grande, con buscador + filtro de restaurante, un check por fila
+    // (multi-selección) y "+ Añadir seleccionados" para meterlos todos de golpe. Un ÚNICO popup
+    // genérico sirve tanto para elegir platos (grupo 'comida', para Entrantes/Primero/
+    // Principal/Postre) como para elegir vinos (grupo 'vino', para cada uno de los 4 vinos de
+    // Bebida) -- lo único que cambia es de qué "pool" saca las opciones (poolParaModal) y en qué
+    // lista de menuActual las mete al confirmar (obtenerListaDestino). El pool está SIEMPRE
+    // acotado de forma estricta:
+    //  - grupo 'comida': solo Postre ve platos tipo:'postre'; el resto de secciones ve todo lo
+    //    demás (tipo:'principal') -- nunca se mezclan platos de Postre con los de otra sección.
+    //  - grupo 'vino': cada uno de los 4 vinos ve SOLO su propio tipo (blanco/rosado/tinto/cava),
+    //    nunca los de otro vino.
     // =================================================================================
-    function abrirModalPlatos(key) {
+    function abrirModalPlatos(grupo, key) {
+        modalGrupoActual = grupo;
         modalSeccionActual = key;
         Object.keys(seleccionEnModal).forEach(k => delete seleccionEnModal[k]);
         const buscar = document.getElementById('me-modal-buscar');
         const filtro = document.getElementById('me-modal-filtro-restaurante');
         if (buscar) buscar.value = '';
         if (filtro) filtro.value = '';
-        const infoSeccion = SECCIONES_INFO.find(s => s.key === key);
+
+        let titulo = '';
+        let tituloModal = '🍽️ Elegir platos';
+        if (grupo === 'vino') {
+            const w = WINES_INFO.find(x => x.key === key);
+            titulo = w ? w.tituloEs : '';
+            tituloModal = '🍷 Elegir vinos';
+        } else {
+            const s = SECCIONES_INFO.find(x => x.key === key);
+            titulo = s ? s.titulo : '';
+        }
+        const tituloEl = document.getElementById('me-modal-titulo');
+        if (tituloEl) tituloEl.textContent = tituloModal;
         const sub = document.getElementById('me-modal-subtitulo');
-        if (sub) sub.textContent = infoSeccion ? `Añadiendo a: ${infoSeccion.titulo}` : '';
+        if (sub) sub.textContent = titulo ? `Añadiendo a: ${titulo}` : '';
+
         renderModalLista();
         const modal = document.getElementById('me-modal-platos');
         if (modal) modal.style.display = 'flex';
@@ -460,24 +523,37 @@ window.APP_VERSIONS.menuEspecial = '1.1.0'; // MODIFICADO: check "A elegir" en P
     function cerrarModalPlatos() {
         const modal = document.getElementById('me-modal-platos');
         if (modal) modal.style.display = 'none';
+        modalGrupoActual = null;
         modalSeccionActual = null;
     }
 
     function filtrarModalLista() { renderModalLista(); }
 
+    // El conjunto de opciones que puede ofrecer el popup abierto ahora mismo, ya estrictamente
+    // acotado según grupo/tipo (ver comentario de arriba).
+    function poolParaModal() {
+        if (modalGrupoActual === 'vino') {
+            const w = WINES_INFO.find(x => x.key === modalSeccionActual);
+            const tipo = w ? w.tipo : null;
+            return indiceVinos.filter(v => v.tipo === tipo);
+        }
+        const esPostre = modalSeccionActual === 'postre';
+        return platosParaPopup.filter(p => esPostre ? p.tipo === 'postre' : p.tipo !== 'postre');
+    }
+
     function renderModalLista() {
         const cont = document.getElementById('me-modal-lista');
-        if (!cont || !modalSeccionActual) return;
+        if (!cont || !modalSeccionActual || !modalGrupoActual) return;
         const buscarEl = document.getElementById('me-modal-buscar');
         const filtroEl = document.getElementById('me-modal-filtro-restaurante');
         const textoBusqueda = (buscarEl && buscarEl.value || '').trim().toLowerCase();
         const filtroModo = filtroEl ? filtroEl.value : '';
 
         const yaAnadidos = new Set(
-            menuActual.secciones[modalSeccionActual].platos.filter(p => !p.manual).map(p => claveModoId(p.modo, p.id))
+            obtenerListaDestino(modalGrupoActual, modalSeccionActual).filter(p => !p.manual).map(p => claveModoId(p.modo, p.id))
         );
 
-        const items = platosParaPopup.filter(p => {
+        const items = poolParaModal().filter(p => {
             if (yaAnadidos.has(claveModoId(p.modo, p.id))) return false;
             if (filtroModo && p.modo !== filtroModo) return false;
             if (textoBusqueda && p.es.toLowerCase().indexOf(textoBusqueda) === -1) return false;
@@ -485,7 +561,7 @@ window.APP_VERSIONS.menuEspecial = '1.1.0'; // MODIFICADO: check "A elegir" en P
         });
 
         if (!items.length) {
-            cont.innerHTML = `<p style="font-size:0.82rem;color:#999;text-align:center;padding:24px 0;">No hay platos que coincidan (o ya están todos añadidos a esta sección).</p>`;
+            cont.innerHTML = `<p style="font-size:0.82rem;color:#999;text-align:center;padding:24px 0;">No hay ${modalGrupoActual === 'vino' ? 'vinos' : 'platos'} que coincidan (o ya están todos añadidos).</p>`;
             actualizarContadorModal();
             return;
         }
@@ -513,21 +589,24 @@ window.APP_VERSIONS.menuEspecial = '1.1.0'; // MODIFICADO: check "A elegir" en P
     }
 
     function confirmarSeleccionPlatos() {
-        if (!modalSeccionActual) return;
+        if (!modalSeccionActual || !modalGrupoActual) return;
         const claves = Object.keys(seleccionEnModal);
+        const grupo = modalGrupoActual;
         const key = modalSeccionActual;
         if (claves.length) {
+            const poolOrigen = (grupo === 'vino') ? indiceVinos : platosParaPopup;
+            const destino = obtenerListaDestino(grupo, key);
             claves.forEach(clave => {
                 const idxSep = clave.indexOf('|');
                 const modo = clave.substring(0, idxSep);
                 const id = parseInt(clave.substring(idxSep + 1), 10);
-                const p = platosParaPopup.find(x => x.modo === modo && x.id === id);
-                if (p) menuActual.secciones[key].platos.push({ manual: false, modo: p.modo, id: p.id, es: p.es, en: p.en });
+                const p = poolOrigen.find(x => x.modo === modo && x.id === id);
+                if (p) destino.push({ manual: false, modo: p.modo, id: p.id, es: p.es, en: p.en });
             });
         }
         cerrarModalPlatos();
-        const listaEl = document.getElementById(`me-lista-${key}`);
-        if (listaEl) listaEl.innerHTML = renderListaPlatosHtml(key);
+        const listaEl = document.getElementById(idListaPara(grupo, key));
+        if (listaEl) listaEl.innerHTML = renderListaPlatosHtml(grupo, key);
     }
 
     // =================================================================================
@@ -553,25 +632,25 @@ window.APP_VERSIONS.menuEspecial = '1.1.0'; // MODIFICADO: check "A elegir" en P
     function toggleAElegir(key, v) { menuActual.secciones[key].aElegir = v; }
     function toggleBebida(key, v) { menuActual.bebida[key] = v; }
     function toggleVino(key, v) { menuActual.bebida[key].activo = v; renderFormulario(); }
-    function actualizarVinoTexto(key, v) { menuActual.bebida[key].texto = v; }
 
-    function agregarPlatoManual(key) {
-        const inputEs = document.getElementById(`me-input-manual-${key}`);
-        const inputEn = document.getElementById(`me-input-manual-${key}-en`);
+    function agregarPlatoManual(grupo, key) {
+        const prefijo = `me-input-manual-${grupo}-${key}`;
+        const inputEs = document.getElementById(prefijo);
+        const inputEn = document.getElementById(prefijo + '-en');
         if (!inputEs) return;
         const valor = (inputEs.value || '').trim();
         if (!valor) return;
-        menuActual.secciones[key].platos.push({ manual: true, modo: null, id: null, es: valor, en: inputEn ? (inputEn.value || '').trim() : '' });
+        obtenerListaDestino(grupo, key).push({ manual: true, modo: null, id: null, es: valor, en: inputEn ? (inputEn.value || '').trim() : '' });
         inputEs.value = '';
         if (inputEn) inputEn.value = '';
-        const listaEl = document.getElementById(`me-lista-${key}`);
-        if (listaEl) listaEl.innerHTML = renderListaPlatosHtml(key);
+        const listaEl = document.getElementById(idListaPara(grupo, key));
+        if (listaEl) listaEl.innerHTML = renderListaPlatosHtml(grupo, key);
     }
 
-    function quitarPlato(key, index) {
-        menuActual.secciones[key].platos.splice(index, 1);
-        const listaEl = document.getElementById(`me-lista-${key}`);
-        if (listaEl) listaEl.innerHTML = renderListaPlatosHtml(key);
+    function quitarPlato(grupo, key, index) {
+        obtenerListaDestino(grupo, key).splice(index, 1);
+        const listaEl = document.getElementById(idListaPara(grupo, key));
+        if (listaEl) listaEl.innerHTML = renderListaPlatosHtml(grupo, key);
     }
 
     function nuevoMenu() {
@@ -678,13 +757,30 @@ window.APP_VERSIONS.menuEspecial = '1.1.0'; // MODIFICADO: check "A elegir" en P
             return `<div class="me-print-seccion"><div class="me-print-seccion-titulo">${escHtml(titulo)}</div>${items}</div>`;
         }
 
+        // Une los nombres de una lista de platos/vinos en una sola línea de texto, respetando el
+        // mismo criterio ES/EN que nombrePlato() para los platos de comida.
+        function nombresLista(lista) {
+            return lista.map(p => {
+                const es = escHtml(p.es);
+                const en = escHtml(p.en);
+                if (mostrarEs && mostrarEn && en) return `${es} / ${en}`;
+                if (mostrarEn && !mostrarEs) return en || es;
+                return es;
+            }).join(', ');
+        }
+
         const bebidaItems = [];
         if (menu.bebida.agua) bebidaItems.push(mostrarEs ? 'Agua' : 'Water');
         if (menu.bebida.cerveza) bebidaItems.push(mostrarEs ? 'Cerveza' : 'Beer');
         if (menu.bebida.refresco) bebidaItems.push(mostrarEs ? 'Refresco' : 'Soft drink');
         if (menu.bebida.cafe) bebidaItems.push(mostrarEs ? 'Café o infusiones' : 'Coffee or tea');
-        if (menu.bebida.vinoBlanco.activo && menu.bebida.vinoBlanco.texto) bebidaItems.push(`${mostrarEs ? 'Vino Blanco' : 'White Wine'}: ${escHtml(menu.bebida.vinoBlanco.texto)}`);
-        if (menu.bebida.vinoTinto.activo && menu.bebida.vinoTinto.texto) bebidaItems.push(`${mostrarEs ? 'Vino Tinto' : 'Red Wine'}: ${escHtml(menu.bebida.vinoTinto.texto)}`);
+        WINES_INFO.forEach(w => {
+            const slot = menu.bebida[w.key];
+            if (slot.activo && slot.platos && slot.platos.length) {
+                const etiqueta = mostrarEs ? w.tituloEs : w.tituloEn;
+                bebidaItems.push(`${escHtml(etiqueta)}: ${nombresLista(slot.platos)}`);
+            }
+        });
         const bebidaHtml = bebidaItems.length
             ? `<div class="me-print-seccion"><div class="me-print-seccion-titulo">${mostrarEs ? 'Bebida' : 'Drinks'}</div>${bebidaItems.map(t => `<div class="me-print-plato">${t}</div>`).join('')}</div>`
             : '';
@@ -830,7 +926,6 @@ window.APP_VERSIONS.menuEspecial = '1.1.0'; // MODIFICADO: check "A elegir" en P
         mostrarCargando(true, '🍽️ Cargando cartas de RG y US Open...');
         try {
             await cargarIndiceDePlatos();
-            renderDatalists();
             menusGuardados = await listarMenus();
         } finally {
             mostrarCargando(false);
@@ -858,7 +953,6 @@ window.APP_VERSIONS.menuEspecial = '1.1.0'; // MODIFICADO: check "A elegir" en P
         toggleAElegir: toggleAElegir,
         toggleBebida: toggleBebida,
         toggleVino: toggleVino,
-        actualizarVinoTexto: actualizarVinoTexto,
         agregarPlatoManual: agregarPlatoManual,
         quitarPlato: quitarPlato,
         abrirModalPlatos: abrirModalPlatos,
