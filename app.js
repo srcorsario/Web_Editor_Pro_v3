@@ -1,7 +1,7 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '2.13.0'; // NUEVO: traído de la web de cartelitos (WB-main) -- generarTraduccionEN() ahora (1) revisa la ortografía del nombre en español antes de traducir y ofrece una confirmación "¿Quisiste decir...?" editable (modal-correccion-en) si detecta una falta clara, y (2) las opciones "directa"/"gastronomica" incluyen una breve explicación en inglés del plato cuando el nombre usa un término extranjero/regional no universalmente conocido (ver REGLA_EXPLICACION_TERMINOS_NO_UNIVERSALES en prompts.js). Solo cambia el prompt/flujo de este botón puntual ("🇬🇧 Generar opciones en Inglés con IA"); no toca los lotes de Fase 1/2/3 ni el backend.
+window.APP_VERSIONS.app = '2.14.0'; // NUEVO: mostrarOverlayCarga()/ocultarOverlayCarga() -- generarTraduccionEN() ("🇬🇧 Generar opciones en Inglés") y ejecutarTraduccionAutomatica() ("✨ Auto-Traducir resto de idiomas") ahora muestran la misma rueda de carga a pantalla completa que ya se usaba solo para "Cargando datos..." al cambiar de pestaña, con texto propio, mientras esperan la respuesta de Gemini -- HAR real (18 sept) mostró hasta ~45s en un solo botón por reintentos ante 503 "modelo saturado" de Gemini, con el único aviso siendo el texto del botón (poco visible). No cambia nada del backend ni de los lotes automáticos de Fase 1/2/3.
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
@@ -38,6 +38,29 @@ let opcionesENActuales = [];
 // NUEVO (18 sept): resuelve la promesa de mostrarCorreccionOrtografiaEN() cuando el usuario
 // responde al modal "¿Quisiste decir...?" (aceptar con el texto corregido, o null si lo rechaza).
 let resolverCorreccionEN = null;
+
+// NUEVO (18 sept): overlay de carga reutilizable para las llamadas de traducción con IA que
+// pueden tardar bastante (visto en la práctica: Gemini responde 503 "modelo saturado" y hay que
+// reintentar con varias claves antes de conseguir respuesta, hasta 30-45s en total). Reutiliza el
+// mismo overlay/rueda giratoria que ya se usaba solo para "Cargando datos..." al cambiar de
+// pestaña (#loading-overlay en index.html), con el texto que le pases, para dejar claro que sigue
+// trabajando y no que el editor se ha colgado. ocultarOverlayCarga() restaura el texto por
+// defecto "Cargando datos..." al ocultarlo, para no dejarlo puesto la próxima vez que switchTab()
+// (index.html) reutilice este mismo overlay al cambiar de pestaña.
+function mostrarOverlayCarga(texto) {
+    const overlay = document.getElementById('loading-overlay');
+    if (!overlay) return;
+    const textoEl = document.getElementById('loading-text');
+    if (textoEl) textoEl.textContent = texto;
+    overlay.style.display = 'flex';
+}
+
+function ocultarOverlayCarga() {
+    const overlay = document.getElementById('loading-overlay');
+    if (overlay) overlay.style.display = 'none';
+    const textoEl = document.getElementById('loading-text');
+    if (textoEl) textoEl.textContent = 'Cargando datos...';
+}
 // NUEVO: estado del modo "Plato con ingredientes" (checkbox #chk-modo-ingredientes) — ver
 // abrirEditor(), toggleModoIngredientes() y aplicarCambiosPlato(). modoIngredientesActivo
 // indica si el plato que se está editando ahora mismo usa la lista editable de
@@ -1039,16 +1062,20 @@ async function generarTraduccionEN() {
     const originalText = btn.innerText;
     btn.innerText = "🇬🇧 Generando opciones...";
     btn.disabled = true;
+    // NUEVO (18 sept): rueda de carga a pantalla completa mientras se espera a Gemini -- este
+    // paso puede tardar bastante si hay que reintentar con varias claves (ver mostrarOverlayCarga
+    // más arriba), y sin esto el único aviso era el texto del propio botón, poco visible.
+    mostrarOverlayCarga("🇬🇧 Generando opciones de traducción...");
 
     const textoCompletoEs = construirTextoCompletoParaTraducir('es').replace(/"/g, "'");
     // Prompt centralizado en prompts.js (window.PROMPTS.opcionesEN)
     const instruccion = window.PROMPTS.opcionesEN(textoCompletoEs, esVino);
-    
-    let exito = false; 
-    let intentos = 0; 
-    let ultimoError = ""; 
+
+    let exito = false;
+    let intentos = 0;
+    let ultimoError = "";
     let opciones = {};
-    
+
     while (!exito && intentos < keys.length) {
         try {
             const apiKey = keys[intentos];
@@ -1077,12 +1104,14 @@ async function generarTraduccionEN() {
                     throw new Error("El JSON no contiene las claves esperadas."); 
                 } 
             } 
-        } catch(err) { 
-            ultimoError = err.message; 
-            intentos++; 
-        } 
-    } 
-    
+        } catch(err) {
+            ultimoError = err.message;
+            intentos++;
+        }
+    }
+
+    ocultarOverlayCarga();
+
     if (exito) {
         // NUEVO (18 sept): si el prompt detectó una posible falta de ortografía en el nombre en
         // español (ver "correccion" en prompts.js > opcionesEN), se ofrece antes una confirmación
@@ -1191,15 +1220,20 @@ async function ejecutarTraduccionAutomatica() {
     const btn = document.getElementById('btn-autotraducir'); 
     if (!btn) return; 
     
-    const originalText = btn.innerText; 
-    btn.innerText = "✨ Traduciendo con Gemini 2.5..."; 
-    btn.disabled = true; 
-    
+    const originalText = btn.innerText;
+    btn.innerText = "✨ Traduciendo con Gemini 2.5...";
+    btn.disabled = true;
+
     const esVino = (platoEditandoId >= 13000);
 
     let keys = [];
     if (typeof getKeys === 'function') keys = getKeys();
     if (keys.length === 0) { alert("❌ No hay API Keys de Gemini configuradas."); btn.innerText = originalText; btn.disabled = false; return; }
+
+    // NUEVO (18 sept): misma rueda de carga a pantalla completa que en generarTraduccionEN() --
+    // esta llamada traduce a ~24 idiomas de golpe y puede tardar bastante, sobre todo si hay que
+    // reintentar con varias claves por un 503 "modelo saturado" de Gemini.
+    mostrarOverlayCarga("✨ Traduciendo al resto de idiomas...");
 
     const textoCompletoEs = construirTextoCompletoParaTraducir('es').replace(/"/g, "'");
     const textoCompletoEn = construirTextoCompletoParaTraducir('en').replace(/"/g, "'");
@@ -1274,13 +1308,15 @@ async function ejecutarTraduccionAutomatica() {
         }
     }
 
+    ocultarOverlayCarga();
+
     if (!exito) {
         alert("❌ Error al traducir con Gemini.\nDetalles del error: " + ultimoError);
     }
-    
-    btn.innerText = originalText; 
-    btn.disabled = false; 
-} 
+
+    btn.innerText = originalText;
+    btn.disabled = false;
+}
 
 function aplicarCambiosPlato() {
     let p = esNuevoPlato ? datosTempNuevo : datosLocales.find(x => x.id === platoEditandoId);

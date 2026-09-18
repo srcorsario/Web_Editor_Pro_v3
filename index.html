@@ -18,7 +18,7 @@
         // todo el JS/CSS de golpe en cada visita.
         // OJO: esto NO afecta a los datos del menu (platos/precios) — esos se piden
         // siempre en fresco con cache:"no-store" en app.js, y eso no cambia.
-        window.__CACHE_BUST__ = '2026.09.18.10';
+        window.__CACHE_BUST__ = '2026.09.18.12';
     </script>
     <script>document.write('<link rel="stylesheet" href="styles.css?v=' + window.__CACHE_BUST__ + '">');</script>
 </head>
@@ -60,6 +60,10 @@
             <button id="tab-btn-qa" class="tab-btn" onclick="switchTab('qa', this)">3.1. Preguntas y respuestas</button>
             <button id="tab-btn-usopen" class="tab-btn" onclick="switchTab('editor-usopen', this)">4. Editor Carta USOpen</button>
             <button id="tab-btn-sug-usopen" class="tab-btn" onclick="switchTab('sugerencias-usopen', this)">5. Sugerencias USOpen</button>
+            <!-- NUEVO: pestaña común a los dos restaurantes (no la oculta el sistema de
+                 Enable/Disable de RESTAURANTES_CONFIG ni depende de window.currentMode) — un
+                 menú especial puede mezclar platos de RG y de US Open en la misma plantilla. -->
+            <button id="tab-btn-menu-especial" class="tab-btn" onclick="switchTab('menu-especial', this)">6. Menú Especial</button>
         </div>
 
         <div id="tab-apikeys" class="tab-content" style="display: none;">
@@ -175,6 +179,15 @@
 
         <div id="tab-sugerencias-usopen" class="tab-content" style="display: none;">
             <div id="sugerencias-contenido-usopen"></div>
+        </div>
+
+        <!-- NUEVO: pestaña "6. Menú Especial" — plantillas de menú de evento (boda/grupo), sin
+             precio, con platos de RG y/o US Open, guardadas en su propio backend (ver
+             menu-especial.js y config.js/WEBAPP_URL_MENUS_ESPECIALES). El contenido lo construye
+             menu-especial.js dentro de #menu-especial-contenido, igual que ya hace
+             sugerencias-print.js con #sugerencias-contenido. -->
+        <div id="tab-menu-especial" class="tab-content" style="display: none;">
+            <div id="menu-especial-contenido"></div>
         </div>
 
         <button class="btn-add-float" onclick="abrirSelector()">+</button>
@@ -496,11 +509,17 @@
         document.write('<scr' + 'ipt src="app.js?v=' + __v + '"></scr' + 'ipt>');
         document.write('<scr' + 'ipt type="module" src="ui.js?v=' + __v + '"></scr' + 'ipt>');
         document.write('<scr' + 'ipt src="sugerencias-print.js?v=' + __v + '"></scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="menu-especial.js?v=' + __v + '"></scr' + 'ipt>');
     </script>
 
     <div id="loading-overlay" class="loading-overlay">
         <div class="spinner"></div>
-        <div class="loading-text">Cargando datos...</div>
+        <!-- NUEVO (18 sept): id añadido para poder cambiar el texto desde JS (ver
+             mostrarOverlayCarga()/ocultarOverlayCarga() en app.js) -- se reutiliza este mismo
+             overlay/rueda para las llamadas de traducción con IA (que a veces tardan bastante,
+             sobre todo si Gemini responde 503 "modelo saturado" y hay que reintentar con varias
+             claves), no solo para "Cargando datos..." al cambiar de pestaña. -->
+        <div id="loading-text" class="loading-text">Cargando datos...</div>
     </div>
 
     <div id="debug-panel" style="display: none; position: fixed; bottom: 20px; left: 20px; background: #111827; color: #4ade80; padding: 12px; border-radius: 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11px; z-index: 9998; max-width: 320px; border: 1px solid #334155; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); line-height: 1.4; cursor: grab;">
@@ -600,6 +619,14 @@
                     if (typeof window.renderCarta === 'function') window.renderCarta('restaurante002');
                 } else if (tabId === 'qa') {
                     if (window.UI && typeof window.UI.renderQA === 'function') window.UI.renderQA();
+                } else if (tabId === 'menu-especial') {
+                    // NUEVO: pestaña común RG/US Open — no depende de window.currentMode ni del
+                    // "necesitaRecargar" de arriba (ese solo mira window.datosLocales, que es del
+                    // editor de carta). MenuEspecial.init() se encarga de cargar (una sola vez,
+                    // con su propia caché) tanto la carta de RG como la de US Open en paralelo.
+                    if (window.MenuEspecial && typeof window.MenuEspecial.init === 'function') {
+                        try { await window.MenuEspecial.init(); } catch (e) { console.error('[MenuEspecial] Error al iniciar:', e); }
+                    }
                 }
                 
                 actualizarTextoBotonGuardar();

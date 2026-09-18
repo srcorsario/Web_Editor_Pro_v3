@@ -1,7 +1,7 @@
 // --- config.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.config = '2.3.0'; // NUEVO: PASSWORD_ELIMINAR_PLATO — contraseña que pide el editor antes de borrar un plato de verdad
+window.APP_VERSIONS.config = '2.4.0'; // NUEVO: WEBAPP_URL_MENUS_ESPECIALES — URL del Apps Script NUEVO e independiente (Codigo_MenusEspeciales.gs) que guarda las plantillas de la pestaña "Menú Especial"
 
 // =====================================================================
 // NUEVO: SISTEMA DE ENABLE/DISABLE DE RESTAURANTES (Desacoplamiento Visual)
@@ -137,6 +137,16 @@ const INFO_OTROS_IDIOMAS_CONCURRENCIA = null; // null = usar el nº de keys carg
 // de esta sesión, la diferencia apenas se nota).
 const INFO_EXTENDIDA_CONCURRENCIA = null; // Paso 1 (ES/EN) — null = usar el nº de keys cargadas
 const TRADUCCION_CONCURRENCIA = null;     // Paso 2 (nombres) — null = usar el nº de keys cargadas
+
+// =====================================================================
+// NUEVO: MENÚS ESPECIALES (plantillas de menú de evento — pestaña "6. Menú Especial")
+// =====================================================================
+// URL del Apps Script INDEPENDIENTE (ni RG ni US Open) que guarda/lee las plantillas de menú
+// especial en su propia Google Sheet — ver Codigo_MenusEspeciales.gs (repo aparte). Común a los
+// dos restaurantes: un menú especial puede mezclar platos de ambas cartas, así que no tiene
+// sentido que "pertenezca" a WEB_APP_URL_RESTAURANTE001 ni a WEB_APP_URL_RESTAURANTE002.
+const WEBAPP_URL_MENUS_ESPECIALES = 'https://script.google.com/macros/s/AKfycbwTkbN5AJkY8xww5yRON78TZ69hetMQdCiByDrAf2SREmXJWbjmR7tRNU2rCe_yGEICCA/exec';
+window.WEBAPP_URL_MENUS_ESPECIALES = WEBAPP_URL_MENUS_ESPECIALES;
 
 // NUEVO: Exposición explícita en window para que ui.js (script type="module", con su propio
 // scope) pueda leer esta constante de forma fiable, igual que ya se hace con RESTAURANTES_CONFIG.
