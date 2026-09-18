@@ -14,7 +14,7 @@
 // ventana emergente (window.open + document.write), para no depender de @media print peleándose
 // con el resto de la interfaz del editor.
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.menuEspecial = '1.4.0'; // MODIFICADO: los platos/vinos idénticos en RG y US Open (mismo nombre normalizado y mismo tipo) ya no salen duplicados en los popups -- se fusionan en una sola entrada marcada "RG + US Open", visible pase lo que pase el filtro de restaurante. Fix real de la pestaña "colgada" en Cargando datos...: index.html forzaba window.currentMode a 'restaurante001' y disparaba una recarga completa del Editor de carta normal (ajena a esta pestaña) cada vez que se entraba aquí desde US Open -- corregido en index.html, no en este archivo.
+window.APP_VERSIONS.menuEspecial = '1.5.0'; // MODIFICADO: Agua/Cerveza/Refresco y Café o infusiones ahora también bilingües si ES+EN están los dos activos (misma etiquetaBilingue que el resto), manteniendo las mismas 2 líneas de siempre; cada vino/cava (Blanco/Rosado/Tinto/Cava) pasa a selección ÚNICA -- el popup solo deja marcar uno a la vez, y elegir uno nuevo (del popup o manual) sustituye al que hubiera antes en ese slot en vez de acumularse.
 
 (function () {
     'use strict';
@@ -388,7 +388,7 @@ window.APP_VERSIONS.menuEspecial = '1.4.0'; // MODIFICADO: los platos/vinos idé
                     <div id="me-modal-lista" style="flex:1;overflow-y:auto;border:1px solid #eee;border-radius:8px;padding:6px 10px;min-height:200px;"></div>
                     <div class="me-fila" style="margin-top:14px;justify-content:flex-end;">
                         <button class="btn btn-secondary" onclick="MenuEspecial.cerrarModalPlatos()">Cancelar</button>
-                        <button class="btn btn-success" onclick="MenuEspecial.confirmarSeleccionPlatos()">+ Añadir seleccionados (<span id="me-modal-contador">0</span>)</button>
+                        <button class="btn btn-success" onclick="MenuEspecial.confirmarSeleccionPlatos()">+ <span id="me-modal-btn-confirmar-texto">Añadir seleccionados</span> (<span id="me-modal-contador">0</span>)</button>
                     </div>
                 </div>
             </div>
@@ -500,17 +500,22 @@ window.APP_VERSIONS.menuEspecial = '1.4.0'; // MODIFICADO: los platos/vinos idé
     function renderVinoSlotHtml(w) {
         const slot = menuActual.bebida[w.key];
         const conEn = menuActual.idiomas.en;
+        // Solo se permite UN vino/cava por slot (ver confirmarSeleccionPlatos/agregarPlatoManual,
+        // que sustituyen en vez de acumular): si ya hay uno elegido, el botón/campo pasa a decir
+        // "cambiar" en vez de "añadir", para dejar claro que sustituye al que ya está.
+        const yaHayUno = slot.platos.length > 0;
         return `<div style="flex:1;min-width:230px;">
             <label class="me-check-label" style="margin-bottom:6px;"><input type="checkbox" ${slot.activo ? 'checked' : ''} onchange="MenuEspecial.toggleVino('${w.key}', this.checked)"> ${w.emoji} ${escHtml(w.tituloEs)}</label>
             ${slot.activo ? `
             <div class="me-fila" style="margin-bottom:8px;">
-                <button class="btn btn-secondary" style="font-size:0.78rem;padding:6px 10px;" onclick="MenuEspecial.abrirModalPlatos('vino', '${w.key}')">🔍 Elegir de la carta...</button>
+                <button class="btn btn-secondary" style="font-size:0.78rem;padding:6px 10px;" onclick="MenuEspecial.abrirModalPlatos('vino', '${w.key}')">${yaHayUno ? '🔄 Cambiar por otro de la carta...' : '🔍 Elegir de la carta...'}</button>
             </div>
-            <div class="me-fila" style="margin-bottom:8px;">
+            <div class="me-fila" style="margin-bottom:4px;">
                 <input type="text" id="me-input-manual-vino-${w.key}" class="input-estandar" style="flex:1;min-width:140px;margin-bottom:0;font-size:0.8rem;" placeholder="¿No está en la carta? Escríbelo...">
                 ${conEn ? `<input type="text" id="me-input-manual-vino-${w.key}-en" class="input-estandar" style="flex:1;min-width:120px;margin-bottom:0;font-size:0.8rem;" placeholder="En inglés">` : ''}
-                <button class="btn btn-secondary" style="font-size:0.78rem;padding:6px 10px;" onclick="MenuEspecial.agregarPlatoManual('vino', '${w.key}')">+ Añadir</button>
+                <button class="btn btn-secondary" style="font-size:0.78rem;padding:6px 10px;" onclick="MenuEspecial.agregarPlatoManual('vino', '${w.key}')">${yaHayUno ? '🔄 Cambiar' : '+ Añadir'}</button>
             </div>
+            <div style="font-size:0.68rem;color:#999;margin-bottom:8px;">Solo se puede elegir un ${w.tituloEs.toLowerCase()} -- elegir uno nuevo sustituye al anterior.</div>
             <div id="me-lista-vino-${w.key}">${renderListaPlatosHtml('vino', w.key)}</div>
             ` : ''}
         </div>`;
@@ -559,7 +564,7 @@ window.APP_VERSIONS.menuEspecial = '1.4.0'; // MODIFICADO: los platos/vinos idé
         if (grupo === 'vino') {
             const w = WINES_INFO.find(x => x.key === key);
             titulo = w ? w.tituloEs : '';
-            tituloModal = '🍷 Elegir vinos';
+            tituloModal = '🍷 Elegir vino';
         } else {
             const s = SECCIONES_INFO.find(x => x.key === key);
             titulo = s ? s.titulo : '';
@@ -567,7 +572,15 @@ window.APP_VERSIONS.menuEspecial = '1.4.0'; // MODIFICADO: los platos/vinos idé
         const tituloEl = document.getElementById('me-modal-titulo');
         if (tituloEl) tituloEl.textContent = tituloModal;
         const sub = document.getElementById('me-modal-subtitulo');
-        if (sub) sub.textContent = titulo ? `Añadiendo a: ${titulo}` : '';
+        if (sub) {
+            // Vinos/cavas: selección única (un solo check a la vez, ver toggleSeleccionModal) --
+            // se avisa aquí mismo, junto al título, para que quede claro antes de elegir.
+            sub.textContent = titulo
+                ? `Añadiendo a: ${titulo}${grupo === 'vino' ? ' (solo se puede elegir uno)' : ''}`
+                : '';
+        }
+        const textoBtn = document.getElementById('me-modal-btn-confirmar-texto');
+        if (textoBtn) textoBtn.textContent = (grupo === 'vino') ? 'Añadir vino elegido' : 'Añadir seleccionados';
 
         renderModalLista();
         const modal = document.getElementById('me-modal-platos');
@@ -638,6 +651,15 @@ window.APP_VERSIONS.menuEspecial = '1.4.0'; // MODIFICADO: los platos/vinos idé
     }
 
     function toggleSeleccionModal(clave, marcado) {
+        if (modalGrupoActual === 'vino') {
+            // Vinos/cavas: selección ÚNICA -- marcar uno desmarca cualquier otro que hubiera
+            // marcado (a diferencia de los platos, que sí son multi-selección). Se repinta la
+            // lista entera para reflejar visualmente el desmarcado del resto de checks.
+            Object.keys(seleccionEnModal).forEach(k => delete seleccionEnModal[k]);
+            if (marcado) seleccionEnModal[clave] = true;
+            renderModalLista();
+            return;
+        }
         if (marcado) seleccionEnModal[clave] = true; else delete seleccionEnModal[clave];
         actualizarContadorModal();
     }
@@ -655,6 +677,11 @@ window.APP_VERSIONS.menuEspecial = '1.4.0'; // MODIFICADO: los platos/vinos idé
         if (claves.length) {
             const poolOrigen = (grupo === 'vino') ? indiceVinos : platosParaPopup;
             const destino = obtenerListaDestino(grupo, key);
+            // Vinos/cavas: como solo se permite UNO por slot, la nueva selección sustituye a
+            // cualquier vino que hubiera antes en ese slot (venga del popup o fuera manual) --
+            // solo se vacía aquí, dentro de "hay selección nueva", para no borrar el vino ya
+            // puesto si el usuario abre el popup y cierra sin marcar nada.
+            if (grupo === 'vino') destino.length = 0;
             claves.forEach(clave => {
                 const idxSep = clave.indexOf('|');
                 const modo = clave.substring(0, idxSep);
@@ -699,7 +726,9 @@ window.APP_VERSIONS.menuEspecial = '1.4.0'; // MODIFICADO: los platos/vinos idé
         if (!inputEs) return;
         const valor = (inputEs.value || '').trim();
         if (!valor) return;
-        obtenerListaDestino(grupo, key).push({ manual: true, modo: null, id: null, es: valor, en: inputEn ? (inputEn.value || '').trim() : '' });
+        const destino = obtenerListaDestino(grupo, key);
+        if (grupo === 'vino') destino.length = 0; // un solo vino/cava por slot, sustituye al que hubiera
+        destino.push({ manual: true, modo: null, id: null, es: valor, en: inputEn ? (inputEn.value || '').trim() : '' });
         inputEs.value = '';
         if (inputEn) inputEn.value = '';
         const listaEl = document.getElementById(idListaPara(grupo, key));
@@ -833,12 +862,15 @@ window.APP_VERSIONS.menuEspecial = '1.4.0'; // MODIFICADO: los platos/vinos idé
         const bebidaItems = [];
         // Agua/Cerveza/Refresco en una única línea (más compacto); Café e infusiones aparte,
         // como pidió el usuario.
+        // Cada palabra suelta también bilingüe (misma etiquetaBilingue que el resto), pero
+        // manteniendo la misma estructura de 2 líneas de siempre: Agua/Cerveza/Refresco juntos
+        // en una línea, Café e infusiones en la suya propia.
         const basicos = [];
-        if (menu.bebida.agua) basicos.push(mostrarEs ? 'Agua' : 'Water');
-        if (menu.bebida.cerveza) basicos.push(mostrarEs ? 'Cerveza' : 'Beer');
-        if (menu.bebida.refresco) basicos.push(mostrarEs ? 'Refresco' : 'Soft drink');
-        if (basicos.length) bebidaItems.push(basicos.join(mostrarEs && mostrarEn ? ' · ' : ', '));
-        if (menu.bebida.cafe) bebidaItems.push(mostrarEs ? 'Café o infusiones' : 'Coffee or tea');
+        if (menu.bebida.agua) basicos.push(etiquetaBilingue('Agua', 'Water'));
+        if (menu.bebida.cerveza) basicos.push(etiquetaBilingue('Cerveza', 'Beer'));
+        if (menu.bebida.refresco) basicos.push(etiquetaBilingue('Refresco', 'Soft drink'));
+        if (basicos.length) bebidaItems.push(basicos.join(' · '));
+        if (menu.bebida.cafe) bebidaItems.push(etiquetaBilingue('Café o infusiones', 'Coffee or tea'));
         // Los NOMBRES de los vinos van solo en castellano (son nombres propios/marca, no hace
         // falta repetirlos en inglés) -- solo la ETIQUETA de la categoría ("Vino Blanco / White
         // Wine:") es bilingüe si ES+EN están los dos activos.
