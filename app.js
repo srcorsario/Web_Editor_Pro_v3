@@ -1895,5 +1895,13 @@ function agregarKeyDesdeInput() {
     }
 }
 
-// Auto-invocación inicial
-cargar();
+// ELIMINADO (2026.09.18): esta "Auto-invocación inicial" (`cargar();` a pelo) se ejecutaba
+// SIEMPRE al cargar app.js, ANTES de que index.html llegase a fijar window.currentMode —
+// así que por dentro caía siempre en su valor por defecto 'restaurante001' (RG) y disparaba
+// una carga de RG *aunque el usuario tuviera oculta esa pestaña* en "👁️ Pestañas", sin pasar
+// por switchTab() (por eso tampoco mostraba el overlay "Cargando datos..." — de ahí la
+// sensación de que la web se quedaba colgada antes de que existiera ese overlay). La carga
+// inicial de verdad la dispara ahora index.html, que sí respeta qué pestaña/restaurante está
+// realmente visible antes de llamar a cargar() — ver el bloque "NUEVO: carga automática..."
+// cerca del final de index.html. Dejar esta línea aquí solo provocaba una descarga duplicada
+// e innecesaria del restaurante equivocado.
