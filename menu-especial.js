@@ -14,7 +14,7 @@
 // ventana emergente (window.open + document.write), para no depender de @media print peleándose
 // con el resto de la interfaz del editor.
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.menuEspecial = '1.5.0'; // MODIFICADO: Agua/Cerveza/Refresco y Café o infusiones ahora también bilingües si ES+EN están los dos activos (misma etiquetaBilingue que el resto), manteniendo las mismas 2 líneas de siempre; cada vino/cava (Blanco/Rosado/Tinto/Cava) pasa a selección ÚNICA -- el popup solo deja marcar uno a la vez, y elegir uno nuevo (del popup o manual) sustituye al que hubiera antes en ese slot en vez de acumularse.
+window.APP_VERSIONS.menuEspecial = '1.6.0'; // MODIFICADO: título de sección "Principal (Segundo) - A Elegir / Main Course - To Choose" ya no se parte en 2 líneas (márgenes laterales de impresión más reducidos + letra/letter-spacing del título de sección más compactos + white-space:nowrap de seguridad); corregido el bug del nombre de menú guardado apareciendo como fecha ISO cruda ("2026-09-19T22:00:00.000Z") -- Google Sheets autoconvertía la celda "Nombre" a fecha si el texto "parecía" una; ahora siempre se usa nombreVisible(m), que prefiere el nombre embebido en Config_JSON (inmune a esa autoconversión) sobre el de la celda; las "Copas" (venta por copa/vaso) de vino Y cava ya no aparecen como opción en el selector de vinos, solo botellas; el ajuste automático de impresión ahora también AGRANDA la letra/espaciado (no solo encoge) cuando el menú es corto y sobra espacio en la página, para aprovecharlo en vez de dejarlo en blanco.
 
 (function () {
     'use strict';
@@ -166,6 +166,19 @@ window.APP_VERSIONS.menuEspecial = '1.5.0'; // MODIFICADO: Agua/Cerveza/Refresco
         // plantilla de menú especial muestre solo el nombre principal del plato.
         function limpiarNombre(txt) { return (txt || '').split('//')[0].trim(); }
 
+        // Dentro de cada tipo de vino, estructuras.js reserva el último tramo de IDs para
+        // "Copas" (venta por copa, no por botella) -- ver ESTRUCTURA_RESTAURANTE001/002: Vinos
+        // Blancos 13190-13199, Rosados 13250-13259, Tintos 13390-13399, Cavas 13450-13459. Un
+        // "Menú Especial" es para elegir el VINO/CAVA que se sirve (la botella), nunca la
+        // opción de venderlo por copa, así que esos tramos se descartan por completo del
+        // selector de vinos -- ni siquiera se ofrecen como opción.
+        function esCopaDeVino(id) {
+            return (id >= 13190 && id <= 13199) ||
+                (id >= 13250 && id <= 13259) ||
+                (id >= 13390 && id <= 13399) ||
+                (id >= 13450 && id <= 13459);
+        }
+
         // Normaliza un nombre para comparar si "es el mismo plato/vino" entre RG y US Open (o
         // duplicado dentro de la misma carta): minúsculas, sin acentos, espacios colapsados.
         // Deliberadamente estricto (no busca coincidencias parciales) para no fusionar por error
@@ -223,7 +236,11 @@ window.APP_VERSIONS.menuEspecial = '1.5.0'; // MODIFICADO: Agua/Cerveza/Refresco
                 // popup de cada uno de los 4 vinos de Bebida ofrezca SOLO su propio tipo (un
                 // Vino Blanco jamás debe poder añadir un tinto, ni un Cava un rosado, etc.).
                 if (item.id >= 13100 && item.id <= 14499) {
+                    if (esCopaDeVino(item.id)) return; // "Copas" (venta por copa): fuera del selector
                     const nombreVino = limpiarNombre(item.es);
+                    // Salvaguarda extra por nombre, por si algún dato no tuviera el ID exacto de
+                    // "Copas" bien puesto -- una botella real no debería empezar por "Copa".
+                    if (nombreVino && /^copas?\b/i.test(nombreVino)) return;
                     if (nombreVino) {
                         let tipoVino;
                         if (item.id <= 13199) tipoVino = 'blanco';
@@ -319,13 +336,25 @@ window.APP_VERSIONS.menuEspecial = '1.5.0'; // MODIFICADO: Agua/Cerveza/Refresco
 
     function buscarMenuPorId(id) { return menusGuardados.find(m => String(m.id) === String(id)); }
 
+    // El "Nombre" de la fila en Google Sheets puede corromperse si Sheets detecta que el texto
+    // "parece una fecha" y lo autoconvierte a un valor Date real -- al leerlo de vuelta, Apps
+    // Script devuelve un objeto Date, que se serializa como ISO ("2026-09-19T22:00:00.000Z") en
+    // vez del texto original. El nombre dentro de config (Config_JSON) SÍ es fiable, porque va
+    // embebido como texto dentro de un JSON más grande, nunca como el valor "crudo" de una
+    // celda -- así que aquí siempre se prefiere ese, y solo se cae al nombre de la fila si config
+    // no lo tiene.
+    function nombreVisible(m) {
+        if (m && m.config && typeof m.config.nombre === 'string' && m.config.nombre.trim()) return m.config.nombre;
+        return (m && m.nombre) || '';
+    }
+
     // Reconstruye un menú editable a partir de lo guardado, rellenando con los valores por
     // defecto de nuevoMenuVacio() cualquier campo que faltara (por si se guardó con una versión
     // anterior de la plantilla y luego se ha añadido algún campo nuevo, p.ej. "aElegir").
     function mergeMenuDesdeGuardado(m) {
         const base = nuevoMenuVacio();
         const cfg = m.config || {};
-        const menu = Object.assign({}, base, cfg, { id: m.id, nombre: m.nombre });
+        const menu = Object.assign({}, base, cfg, { id: m.id, nombre: nombreVisible(m) });
         menu.idiomas = Object.assign({}, base.idiomas, cfg.idiomas);
         menu.secciones = {};
         Object.keys(base.secciones).forEach(k => {
@@ -405,7 +434,7 @@ window.APP_VERSIONS.menuEspecial = '1.5.0'; // MODIFICADO: Agua/Cerveza/Refresco
         cont.innerHTML = menusGuardados.map(m => {
             const activo = menuActual && String(menuActual.id) === String(m.id);
             return `<div class="me-menu-item" style="${activo ? 'border-color:var(--primario);box-shadow:0 0 0 1px var(--primario);' : ''}">
-                <span class="me-menu-item-nombre">${escHtml(m.nombre)}</span>
+                <span class="me-menu-item-nombre">${escHtml(nombreVisible(m))}</span>
                 <span class="me-menu-item-fecha">Modificado: ${escHtml(formatearFecha(m.fechaModificacion))}</span>
                 <div class="me-menu-item-btns">
                     <button onclick="MenuEspecial.cargarMenu('${m.id}')">✏️ Editar</button>
@@ -768,7 +797,7 @@ window.APP_VERSIONS.menuEspecial = '1.5.0'; // MODIFICADO: Agua/Cerveza/Refresco
         if (!m) return;
         menuActual = mergeMenuDesdeGuardado(m);
         menuActual.id = null;
-        menuActual.nombre = m.nombre + ' (copia)';
+        menuActual.nombre = nombreVisible(m) + ' (copia)';
         renderFormulario();
         renderSidebarLista();
     }
@@ -793,7 +822,7 @@ window.APP_VERSIONS.menuEspecial = '1.5.0'; // MODIFICADO: Agua/Cerveza/Refresco
 
     async function eliminarMenu(id) {
         const m = buscarMenuPorId(id);
-        const nombre = m ? m.nombre : '';
+        const nombre = nombreVisible(m);
         if (!confirm(`¿Seguro que quieres borrar el menú "${nombre}"? Esta acción no se puede deshacer.`)) return;
         mostrarCargando(true, '🗑️ Borrando menú...');
         try {
@@ -903,16 +932,18 @@ window.APP_VERSIONS.menuEspecial = '1.5.0'; // MODIFICADO: Agua/Cerveza/Refresco
         }
         const menuHtml = construirHtmlMenuImpreso(menu);
         // ALTO_DISPONIBLE_MM = 210mm (A4 horizontal) - 2×6mm de margen VERTICAL de @page = 198mm
-        // (el margen HORIZONTAL se apretó más, a 4mm, a petición del usuario -- no afecta a este
-        // cálculo, que solo mide el alto disponible de la página). Ver ALTO_DISPONIBLE_MM más
-        // abajo en scriptAjuste, debe coincidir con este margen vertical si se vuelve a tocar.
+        // (el margen HORIZONTAL se ha apretado más, a 3mm, para ganar sitio y que los títulos
+        // bilingües largos como "Principal (Segundo) - A Elegir / Main Course - To Choose" quepan
+        // en una sola línea -- no afecta a este cálculo, que solo mide el alto disponible). Ver
+        // ALTO_DISPONIBLE_MM más abajo en scriptAjuste, debe coincidir con este margen vertical
+        // si se vuelve a tocar.
         const estilos = `
             * { box-sizing: border-box; }
             html, body { margin:0; }
             body { font-family: 'Montserrat', Georgia, serif; -webkit-print-color-adjust: exact; }
-            @page { size: A4 landscape; margin: 6mm 4mm; }
+            @page { size: A4 landscape; margin: 6mm 3mm; }
             .me-print-sheet { display:flex; width:100%; }
-            .me-print-menu { flex:1 1 50%; padding: 4mm 5mm; display:flex; flex-direction:column; align-items:center; }
+            .me-print-menu { flex:1 1 50%; padding: 4mm 4mm; display:flex; flex-direction:column; align-items:center; }
             .me-print-inner { width:100%; display:flex; flex-direction:column; align-items:center; text-align:center; font-size:13px; }
             .me-print-cutline { width:0; border-left:1.5px dashed #999; position:relative; margin:0 2mm; }
             .me-print-cutline::before, .me-print-cutline::after { content:'✂'; position:absolute; left:50%; transform:translateX(-50%) rotate(90deg); font-size:13px; color:#999; }
@@ -920,8 +951,8 @@ window.APP_VERSIONS.menuEspecial = '1.5.0'; // MODIFICADO: Agua/Cerveza/Refresco
             .me-print-cutline::after { bottom:-6mm; }
             .me-print-logo { max-height:4.4em; max-width:13em; object-fit:contain; margin-bottom:0.5em; }
             .me-print-titulo { font-size:1.65em; font-weight:800; letter-spacing:0.02em; text-transform:uppercase; margin-bottom:0.85em; }
-            .me-print-seccion { width:100%; max-width:31em; margin:0 auto 0.5em auto; }
-            .me-print-seccion-titulo { font-size:0.82em; font-weight:800; text-transform:uppercase; letter-spacing:0.06em; color:#b8860b; border-bottom:1px solid #ddd; padding-bottom:0.15em; margin-bottom:0.3em; }
+            .me-print-seccion { width:100%; max-width:35em; margin:0 auto 0.5em auto; }
+            .me-print-seccion-titulo { font-size:0.76em; font-weight:800; text-transform:uppercase; letter-spacing:0.03em; white-space:nowrap; color:#b8860b; border-bottom:1px solid #ddd; padding-bottom:0.15em; margin-bottom:0.3em; }
             .me-print-plato { font-size:0.92em; line-height:1.25; margin-bottom:0.22em; }
             .me-print-plato em { font-style:italic; color:#555; font-size:0.85em; }
         `;
@@ -930,17 +961,21 @@ window.APP_VERSIONS.menuEspecial = '1.5.0'; // MODIFICADO: Agua/Cerveza/Refresco
         // Script embebido en la propia ventana emergente: espera imágenes/fuentes, mide el
         // alto real disponible de la página (misma técnica de "sonda" que ya usa
         // ajustarAUnaPagina en sugerencias-print.js: crear un div oculto con una altura en mm
-        // conocida y leer a cuántos px equivale, evitando asumir una resolución fija) y reduce
-        // el font-size de .me-print-inner (todo lo demás está en "em", así que espaciados y
-        // logo se achican en proporción) hasta que quepa en una sola hoja, o hasta un mínimo
-        // legible -- si ni así cupiera (menú realmente muy largo), avisa y deja decidir.
+        // conocida y leer a cuántos px equivale, evitando asumir una resolución fija) y AJUSTA
+        // el font-size de .me-print-inner (todo lo demás está en "em", así que espaciados y logo
+        // escalan en la misma proporción) EN LOS DOS SENTIDOS: si un menú corto sobra espacio a
+        // tamaño normal, sube el factor para aprovechar el hueco (letra más grande Y más
+        // separación entre secciones a la vez, sin quedarse chico en una hoja medio vacía); si un
+        // menú largo no cabe, lo reduce como siempre, hasta un mínimo legible -- si ni así cupiera,
+        // avisa y deja decidir.
         const scriptAjuste = `
             (function () {
                 var ALTO_DISPONIBLE_MM = 198;
                 var BASE_PX = 13;
                 var FACTOR_MIN = 0.62;
+                var FACTOR_MAX = 1.6;
                 var PASO = 0.035;
-                var MAX_INTENTOS = 16;
+                var MAX_INTENTOS = 24;
 
                 function alturaDisponiblePx() {
                     var probe = document.createElement('div');
@@ -965,10 +1000,23 @@ window.APP_VERSIONS.menuEspecial = '1.5.0'; // MODIFICADO: Agua/Cerveza/Refresco
 
                     var factor = 1, intentos = 0;
                     aplicarFactor(factor);
-                    while (!cabe() && intentos < MAX_INTENTOS && (factor - PASO) >= FACTOR_MIN) {
-                        factor -= PASO;
-                        aplicarFactor(factor);
-                        intentos++;
+
+                    if (cabe()) {
+                        // Sobra espacio a tamaño normal -- en vez de dejarlo en blanco, se sube
+                        // el factor (letra y espaciados crecen juntos, todo va en "em") hasta
+                        // llenar mejor la hoja, sin pasarse de FACTOR_MAX.
+                        while (cabe() && intentos < MAX_INTENTOS && (factor + PASO) <= FACTOR_MAX) {
+                            factor += PASO;
+                            aplicarFactor(factor);
+                            intentos++;
+                        }
+                        if (!cabe()) { factor -= PASO; aplicarFactor(factor); }
+                    } else {
+                        while (!cabe() && intentos < MAX_INTENTOS && (factor - PASO) >= FACTOR_MIN) {
+                            factor -= PASO;
+                            aplicarFactor(factor);
+                            intentos++;
+                        }
                     }
 
                     if (cabe()) {
