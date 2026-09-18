@@ -135,9 +135,9 @@ async function cargarEstadoCategorias(modo) {
     }
 }
 
-async function cargar(retryCount = 0) {
+async function cargar(retryCount = 0, forzarRecarga = false) {
     const modo = window.currentMode || 'restaurante001';
-    
+
     // NUEVO: Validar si el restaurante está habilitado antes de cargar
     if (typeof isRestauranteA === 'function' && !isRestauranteA(modo)) {
         const alias = getModoAlias(modo);
@@ -150,7 +150,29 @@ async function cargar(retryCount = 0) {
         }
         return;
     }
-    
+
+    // NUEVO: caché en memoria por restaurante. Antes, cada vez que se cruzaba de RG a US
+    // Open (o al revés) se volvía a pedir el CSV entero (~2,7 MB) y el estado de categorías
+    // a Google Sheets/Apps Script, aunque ya se hubiera cargado ese mismo restaurante hace
+    // un momento. Ahora, si este modo ya se cargó una vez en esta sesión del navegador, se
+    // reutilizan esos datos directamente — son los mismos objetos que editan las funciones
+    // de guardado (push/splice sobre datosLocales), así que la caché ya refleja cualquier
+    // cambio hecho desde este editor. Lo único que NO recoge es un cambio hecho DIRECTAMENTE
+    // en la hoja de Google Sheets (por otra persona u otro dispositivo) mientras este
+    // restaurante ya estaba en caché aquí — para eso hay que recargar la página entera (F5).
+    // forzarRecarga=true se salta la caché a propósito (por si en el futuro hace falta un
+    // botón de "Refrescar" explícito).
+    window.__datosLocalesCache = window.__datosLocalesCache || {};
+    if (!forzarRecarga && window.__datosLocalesCache[modo]) {
+        datosLocales = window.__datosLocalesCache[modo];
+        window.datosLocales = datosLocales;
+        console.log(`[Editor] ${datosLocales.length} platos (${modo}) recuperados de caché en memoria — sin red.`);
+        window.hayCambiosSinGuardar = false;
+        renderizar();
+        generarMenuAgrupado();
+        return;
+    }
+
     const state = window.optimisticState[modo];
     const timeSinceSave = Date.now() - state.t;
     const isConsistencyZone = timeSinceSave < CONSISTENCY_WINDOW_MS;
@@ -250,6 +272,11 @@ async function cargar(retryCount = 0) {
 
         console.log(`[Editor] ${datosLocales.length} platos cargados (${modo}).`);
         window.datosLocales = datosLocales;
+        // NUEVO: guarda esta carga en la caché en memoria del restaurante (ver el bloque de
+        // caché al principio de esta función) para no tener que repetirla la próxima vez que
+        // se cruce a este modo.
+        window.__datosLocalesCache = window.__datosLocalesCache || {};
+        window.__datosLocalesCache[modo] = datosLocales;
 
         const statusCarga = document.getElementById('status-carga');
         if (statusCarga) {
