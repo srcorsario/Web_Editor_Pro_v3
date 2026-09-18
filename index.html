@@ -18,7 +18,7 @@
         // todo el JS/CSS de golpe en cada visita.
         // OJO: esto NO afecta a los datos del menu (platos/precios) — esos se piden
         // siempre en fresco con cache:"no-store" en app.js, y eso no cambia.
-        window.__CACHE_BUST__ = '2026.09.18.3';
+        window.__CACHE_BUST__ = '2026.09.18.4';
     </script>
     <script>document.write('<link rel="stylesheet" href="styles.css?v=' + window.__CACHE_BUST__ + '">');</script>
 </head>
@@ -584,6 +584,18 @@
 
         if (!window.currentMode) window.currentMode = 'restaurante001';
         actualizarTextoBotonGuardar();
+
+        // NUEVO: carga automática de la pestaña activa al abrir la web. Antes, nada disparaba
+        // la primera carga de datos hasta que el usuario hacía clic en una pestaña — aunque
+        // "1. Editor Carta RG" ya apareciera marcada como activa, su contenido se quedaba
+        // vacío y SIN ningún indicador de carga hasta ese primer clic. En una pestaña nueva
+        // del navegador (que no tiene la caché en memoria de otra pestaña ya abierta) eso
+        // podía tardar varios segundos y dar la sensación de que la web se había quedado
+        // colgada. Ahora se simula el mismo clic que haría el usuario en "1. Editor Carta RG"
+        // nada más cargar la página, reutilizando switchTab() tal cual — con su mismo overlay
+        // "Cargando datos..." — para que quede claro que está trabajando.
+        const tabBtnInicial = document.getElementById('tab-btn-rg');
+        if (tabBtnInicial) switchTab('editor', tabBtnInicial);
 
         // NUEVO: muestra la versión general de la app (window.APP_VERSIONS.app, la que se
         // incrementa en app.js con cada cambio significativo) junto al título, como
