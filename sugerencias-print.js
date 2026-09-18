@@ -55,7 +55,6 @@
         const stylePrint = document.createElement('style');
         stylePrint.id = 'sugerencias-print-styles';
         stylePrint.innerHTML = `
-            @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap');
             @page { size: A4; margin: 15mm 10mm; } /* Margen superior/inferior a 15mm (10mm original + 5mm más) */
             /* MODIFICADO: ancho FIJO de 190mm (antes width:100% con tope max-width:190mm) — con
                width:100% el panel se encogía para caber en el hueco disponible dentro de la pestaña
@@ -389,8 +388,9 @@
         }));
     }
 
-    // NUEVO: espera a que la fuente Montserrat (importada por @import en el <style> de más abajo)
-    // termine de cargar Y de aplicarse antes de medir nada. Sin esto, la primera vez que se
+    // NUEVO: espera a que la fuente Montserrat (cargada desde el <link> de Google Fonts en el
+    // <head> de index.html, que ya incluye los pesos 300/400/600/700) termine de cargar Y de
+    // aplicarse antes de medir nada. Sin esto, la primera vez que se
     // renderiza la hoja (nada más entrar en la pestaña, con la fuente todavía descargándose de
     // Google Fonts) el texto se mide con la fuente de reserva del sistema — que puede envolver los
     // nombres de los platos en más o menos líneas que Montserrat — y eso puede hacer que el
