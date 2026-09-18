@@ -14,7 +14,7 @@
 // ventana emergente (window.open + document.write), para no depender de @media print peleándose
 // con el resto de la interfaz del editor.
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.menuEspecial = '1.9.0'; // MODIFICADO: quitado el emoji de tijeras (✂) de la línea de corte -- sustituido por dos marcas finas (un trazo de 1.5px), una arriba y otra abajo, sobre la propia línea de puntos, pensadas para alinear una guillotina de papel.
+window.APP_VERSIONS.menuEspecial = '1.9.1'; // MODIFICADO: quitada también la línea de puntos vertical continua entre los dos menús (border-left de .me-print-cutline) -- ahora solo quedan las dos marcas finas sueltas (arriba y abajo) de v1.9.0, sin línea de por medio.
 
 (function () {
     'use strict';
@@ -954,15 +954,16 @@ window.APP_VERSIONS.menuEspecial = '1.9.0'; // MODIFICADO: quitado el emoji de t
             .me-print-sheet { display:flex; width:100%; height:198mm; }
             .me-print-menu { flex:1 1 50%; padding: 4mm 4mm; display:flex; flex-direction:column; align-items:center; justify-content:center; }
             .me-print-inner { width:100%; display:flex; flex-direction:column; align-items:center; text-align:center; font-size:13px; }
-            .me-print-cutline { width:0; border-left:1.5px dashed #999; position:relative; margin:0 2mm; }
-            /* Marcas de corte (antes: emoji de tijeras ✂ rotado): dos trazos finos, uno arriba y
-               otro abajo, sobre la propia línea de puntos, pensados para alinear una guillotina
-               de papel -- no decorativos. Igual que antes, .me-print-cutline se estira a los
-               198mm EXACTOS del área imprimible (para poder centrar el contenido verticalmente),
-               así que las marcas se quedan a -4mm/4mm de alto, dejando 2mm de margen de sobra
-               antes del borde físico real de la hoja (el margen de @page es de 6mm) -- si se
-               pegaran más al borde, arriesgan forzar una segunda página casi vacía como pasaba
-               antes con las tijeras a -6mm. */
+            /* Marcas de corte (antes: línea de puntos vertical de arriba a abajo + emoji de
+               tijeras ✂ rotado en cada punta): ahora, SOLO dos trazos finos sueltos, uno arriba y
+               otro abajo -- se quita el border-left (la línea de puntos continua) porque ya no
+               hace falta, las dos marcas solas bastan para alinear una guillotina de papel. Igual
+               que antes, .me-print-cutline se estira a los 198mm EXACTOS del área imprimible (para
+               poder centrar el contenido verticalmente), así que las marcas se quedan a -4mm/4mm
+               de alto, dejando 2mm de margen de sobra antes del borde físico real de la hoja (el
+               margen de @page es de 6mm) -- si se pegaran más al borde, arriesgan forzar una
+               segunda página casi vacía como pasaba antes con las tijeras a -6mm. */
+            .me-print-cutline { width:0; position:relative; margin:0 2mm; }
             .me-print-cutline::before, .me-print-cutline::after { content:''; position:absolute; left:50%; transform:translateX(-50%); width:1.5px; height:4mm; background:#999; }
             .me-print-cutline::before { top:-4mm; }
             .me-print-cutline::after { bottom:-4mm; }
