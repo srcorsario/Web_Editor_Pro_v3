@@ -14,7 +14,7 @@
 // ventana emergente (window.open + document.write), para no depender de @media print peleándose
 // con el resto de la interfaz del editor.
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.menuEspecial = '1.23.0'; // CORREGIDO: la 1.22.0 añadió el aviso de posible falta de ortografía SOLO en el último paso (al pulsar "Añadir plato"/"Guardar", vía revisarOrtografiaManual()) -- pero al pulsar antes "🌐 Traducir" (traducirAIngles), que YA usa window.PROMPTS.opcionesEN() y esa función YA revisa la ortografía en la misma llamada, el resultado de esa revisión (obj.correccion) se estaba descartando sin más: el traductor entendía bien el plato pese a la falta (p.ej. "gaspaxo" se traducía correctamente) pero no avisaba hasta el paso final. Ahora traducirAIngles() también recoge obj.correccion y, si hay falta, muestra el mismo aviso "¿Quisiste decir...?" justo ahí, nada más traducir -- el aviso del paso de "Añadir/Guardar" se mantiene igual, por si el usuario no llega a pulsar "Traducir" (escribe el inglés a mano o lo deja para luego). NUEVO (1.22.0): aviso de posible falta de ortografía al añadir un plato manualmente (agregarPlatoManual) o al editar el nombre de uno ya añadido (guardarEdicionPlato) -- mismo patrón "¿Quisiste decir...?" que ya usa el editor de carta normal (mostrarCorreccionOrtografiaEN, en app.js) y que se inspiró originalmente en la web de Cartelitos Buffet. Usa un prompt nuevo y más ligero (window.PROMPTS.revisionOrtografica, en prompts.js) que solo revisa ortografía sin pedir traducciones. Nunca se aplica a vinos (nombres propios/marca), y si falla por lo que sea no bloquea el añadido/guardado.
+window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los platos de comida (no vino) que se añaden escribiéndolos a mano (agregarPlatoManual) se guardan automáticamente en una biblioteca propia y permanente en el backend (Codigo_MenusEspeciales.gs, hoja "PlatosManuales", acciones listarPlatosManuales/guardarPlatoManual/eliminarPlatoManual -- deduplica por nombre normalizado, sin acentos ni mayúsculas). Esos platos guardados aparecen mezclados en el mismo buscador "🔍 Elegir platos de la carta" (popup), como una categoría más llamada "Mis Platos" (la primera de la lista), con su propia etiqueta verde y un botón 🗑️ para quitarlos de la biblioteca sin afectar a menús ya guardados que los usen. El guardado en la biblioteca es en segundo plano (no bloquea el añadido del plato al menú) y solo aplica a platos de comida, nunca a vinos. (1.23.0) CORREGIDO: la 1.22.0 añadió el aviso de posible falta de ortografía SOLO en el último paso (al pulsar "Añadir plato"/"Guardar", vía revisarOrtografiaManual()) -- pero al pulsar antes "🌐 Traducir" (traducirAIngles), que YA usa window.PROMPTS.opcionesEN() y esa función YA revisa la ortografía en la misma llamada, el resultado de esa revisión (obj.correccion) se estaba descartando sin más: el traductor entendía bien el plato pese a la falta (p.ej. "gaspaxo" se traducía correctamente) pero no avisaba hasta el paso final. Ahora traducirAIngles() también recoge obj.correccion y, si hay falta, muestra el mismo aviso "¿Quisiste decir...?" justo ahí, nada más traducir -- el aviso del paso de "Añadir/Guardar" se mantiene igual, por si el usuario no llega a pulsar "Traducir" (escribe el inglés a mano o lo deja para luego). (1.22.0) NUEVO: aviso de posible falta de ortografía al añadir un plato manualmente (agregarPlatoManual) o al editar el nombre de uno ya añadido (guardarEdicionPlato) -- mismo patrón "¿Quisiste decir...?" que ya usa el editor de carta normal (mostrarCorreccionOrtografiaEN, en app.js) y que se inspiró originalmente en la web de Cartelitos Buffet. Usa un prompt nuevo y más ligero (window.PROMPTS.revisionOrtografica, en prompts.js) que solo revisa ortografía sin pedir traducciones. Nunca se aplica a vinos (nombres propios/marca), y si falla por lo que sea no bloquea el añadido/guardado.
 
 (function () {
     'use strict';
@@ -22,8 +22,9 @@ window.APP_VERSIONS.menuEspecial = '1.23.0'; // CORREGIDO: la 1.22.0 añadió el
     // =================================================================================
     // ESTADO DEL MÓDULO
     // =================================================================================
-    let platosParaPopup = [];                 // [{modo,alias,id,es,en,tipo}] -- solo comida de verdad (ver CARPETAS_EXCLUIDAS_DE_PLATOS); tipo: 'postre' | 'principal'
+    let platosParaPopup = [];                 // [{modo,alias,id,es,en,tipo}] -- solo comida de verdad (ver CARPETAS_EXCLUIDAS_DE_PLATOS); tipo: 'postre' | 'principal'. Incluye también los de platosManuales (modo:'manual'), fusionados al final de cargarIndiceDePlatos().
     let indiceVinos = [];                     // [{modo,id,es,en,tipo}] -- SOLO vinos y cavas (id 13100-14499); tipo: 'blanco'|'rosado'|'tinto'|'cava'
+    let platosManuales = [];                  // [{id,es,en,tipo}] -- biblioteca "Mis Platos" (Codigo_MenusEspeciales.gs, hoja PlatosManuales): platos escritos a mano y guardados para reutilizar en futuros menús. Se funden dentro de platosParaPopup con modo:'manual' (ver cargarIndiceDePlatos/refrescarPlatosManualesEnPool); esta lista es solo la "fuente" tal cual viene del servidor.
     let menusGuardados = [];                  // última lista conocida (GET listarMenus), más recientes primero
     let menuActual = null;                    // el menú que se está editando ahora mismo en pantalla
     let modalGrupoActual = null;              // 'comida' | 'vino' -- a qué pool pertenece el popup abierto ahora mismo
@@ -63,6 +64,11 @@ window.APP_VERSIONS.menuEspecial = '1.23.0'; // CORREGIDO: la 1.22.0 añadió el
         { label: 'Pastas y Pizzas', carpetas: ['pasta', 'pastas', 'pizzas'] }
     ];
     const CATEGORIA_OTROS_LABEL = 'Otros';
+    // NUEVO (19 sept): categoría fija para los platos de la biblioteca "Mis Platos" (ver
+    // platosManuales/cargarIndiceDePlatos) -- se identifican por p.modo==='manual' (nunca por
+    // carpeta, no tienen), y siempre van los primeros en el popup (ver renderModalListaAgrupada)
+    // para que sea rápido reutilizar lo ya guardado.
+    const CATEGORIA_MIS_PLATOS_LABEL = 'Mis Platos';
 
     function categoriaDeCarpeta(carpeta) {
         const c = (carpeta || '').toLowerCase().trim();
@@ -102,6 +108,10 @@ window.APP_VERSIONS.menuEspecial = '1.23.0'; // CORREGIDO: la 1.22.0 añadió el
     // (Fideuá/hamburguesas/pescado, pensados sobre todo para Sugerencias); 3) si ninguno encaja,
     // categoriaDeCarpeta() de toda la vida.
     function categoriaDePlato(p) {
+        // Los de "Mis Platos" (biblioteca de platos manuales guardados, ver platosManuales) van
+        // SIEMPRE en su propia categoría, por delante de cualquier otro criterio -- no tienen
+        // "carpeta" real de la que deducir nada.
+        if (p.modo === 'manual') return CATEGORIA_MIS_PLATOS_LABEL;
         const nombreNorm = normalizarNombre(p.es);
         const carpetaNorm = (p.carpeta || '').toLowerCase().trim();
         if (carpetaNorm === 'ensaladas' || carpetaNorm === 'pokes' || /ensalada|poke/.test(nombreNorm)) {
@@ -227,6 +237,7 @@ window.APP_VERSIONS.menuEspecial = '1.23.0'; // CORREGIDO: la 1.22.0 añadió el
             .me-tag-us { background:#dbeafe; color:#1d4ed8; }
             .me-tag-manual { background:#e5e7eb; color:#4b5563; }
             .me-tag-ambos { background:#ede9fe; color:#6d28d9; }
+            .me-tag-mis-platos { background:#dcfce7; color:#15803d; }
             .me-btn-quitar { background:#fdecea; color:#e74c3c; border:none; border-radius:6px; width:26px; height:26px; cursor:pointer; font-weight:700; flex-shrink:0; }
             .me-btn-quitar:hover { background:#f8d7d3; }
             .me-plato-row-btns { display:flex; gap:6px; flex-shrink:0; }
@@ -247,6 +258,9 @@ window.APP_VERSIONS.menuEspecial = '1.23.0'; // CORREGIDO: la 1.22.0 añadió el
             .me-modal-plato-row { display:flex; align-items:center; gap:10px; padding:7px 6px; border-bottom:1px solid #f2f2f2; font-size:0.85rem; cursor:pointer; }
             .me-modal-plato-row:hover { background:#f8f9fa; }
             .me-modal-plato-row input { width:16px; height:16px; cursor:pointer; flex-shrink:0; margin:0; }
+            .me-modal-plato-row > span { flex:1; }
+            .me-btn-borrar-mis-platos { flex-shrink:0; border:none; background:none; cursor:pointer; font-size:0.85rem; padding:2px 6px; border-radius:5px; opacity:0.6; }
+            .me-btn-borrar-mis-platos:hover { opacity:1; background:#fee2e2; }
             .me-modal-grupo-titulo { font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.03em; color:#666; background:#f3f4f6; padding:6px 8px; margin:10px 0 2px; border-radius:5px; }
             .me-modal-grupo-titulo:first-child { margin-top:0; }
             .me-modal-grupo-contador { font-weight:500; color:#999; text-transform:none; letter-spacing:0; }
@@ -265,12 +279,16 @@ window.APP_VERSIONS.menuEspecial = '1.23.0'; // CORREGIDO: la 1.22.0 añadió el
     async function cargarIndiceDePlatos() {
         let datosRG = null, datosUS = null;
         try {
+            // "Mis Platos" (platosManuales, ver más abajo) se pide en PARALELO con las 2 cartas --
+            // es independiente de ellas y así no añade tiempo de carga extra.
             const resultados = await Promise.all([
                 (typeof window.cargarYCachearModo === 'function') ? window.cargarYCachearModo('restaurante001') : Promise.resolve(null),
-                (typeof window.cargarYCachearModo === 'function') ? window.cargarYCachearModo('restaurante002') : Promise.resolve(null)
+                (typeof window.cargarYCachearModo === 'function') ? window.cargarYCachearModo('restaurante002') : Promise.resolve(null),
+                listarPlatosManuales()
             ]);
             datosRG = resultados[0];
             datosUS = resultados[1];
+            platosManuales = resultados[2] || [];
         } catch (e) {
             console.error('[MenuEspecial] Error cargando las cartas de RG/US Open:', e);
         }
@@ -397,8 +415,32 @@ window.APP_VERSIONS.menuEspecial = '1.23.0'; // CORREGIDO: la 1.22.0 añadió el
         procesar(datosUS, 'restaurante002', 'US Open');
         platosParaPopup = deduplicarComunes(platosParaPopup);
         indiceVinos = deduplicarComunes(indiceVinos);
+
+        // Funde "Mis Platos" (platosManuales) dentro del mismo pool que RG/US Open, con
+        // modo:'manual' -- así se benefician gratis de todo lo que ya sabe manejar el popup
+        // (categoría propia vía categoriaDePlato, filtro Postre/no-Postre por "tipo", búsqueda,
+        // orden alfabético...) sin tener que duplicar esa lógica. NUNCA pasan por
+        // deduplicarComunes() de arriba (es solo para el cruce RG/US Open) ni tienen "carpeta".
+        platosParaPopup = platosParaPopup.concat(platosManuales.map(p => ({
+            modo: 'manual', alias: 'Mis Platos', id: p.id, es: p.es, en: p.en || '',
+            tipo: (p.tipo === 'postre') ? 'postre' : 'principal', carpeta: ''
+        })));
+
         platosParaPopup.sort((a, b) => a.es.localeCompare(b.es, 'es'));
         indiceVinos.sort((a, b) => a.es.localeCompare(b.es, 'es'));
+    }
+
+    // Vuelve a pedir SOLO "Mis Platos" al servidor (GET, ligero) y refresca su parte dentro de
+    // platosParaPopup -- se usa tras guardar/borrar un plato de la biblioteca, para que el popup
+    // ya abierto (o el próximo que se abra) refleje el cambio sin tener que recargar las 2
+    // cartas completas de RG/US Open otra vez.
+    async function refrescarPlatosManualesEnPool() {
+        platosManuales = await listarPlatosManuales();
+        platosParaPopup = platosParaPopup.filter(p => p.modo !== 'manual').concat(platosManuales.map(p => ({
+            modo: 'manual', alias: 'Mis Platos', id: p.id, es: p.es, en: p.en || '',
+            tipo: (p.tipo === 'postre') ? 'postre' : 'principal', carpeta: ''
+        })));
+        platosParaPopup.sort((a, b) => a.es.localeCompare(b.es, 'es'));
     }
 
     // =================================================================================
@@ -467,6 +509,60 @@ window.APP_VERSIONS.menuEspecial = '1.23.0'; // CORREGIDO: la 1.22.0 añadió el
             body: JSON.stringify({ id: id })
         });
         menusGuardados = await listarMenus();
+    }
+
+    // NUEVO (19 sept): "Mis Platos" -- biblioteca de platos añadidos a mano, MISMO backend
+    // (Codigo_MenusEspeciales.gs), hoja/acciones nuevas e independientes de las de menús. Mismo
+    // patrón de lectura normal (GET) / escritura no-cors fire-and-forget (POST) que el resto.
+    async function listarPlatosManuales() {
+        const url = urlBackend();
+        if (!url) return [];
+        try {
+            const resp = await fetch(url + '?accion=listarPlatosManuales&zx=' + Date.now(), { cache: 'no-store' });
+            const data = await resp.json();
+            return (data && data.ok && Array.isArray(data.platos)) ? data.platos : [];
+        } catch (e) {
+            console.error('[MenuEspecial] Error al listar Mis Platos:', e);
+            return [];
+        }
+    }
+
+    // Guarda (o actualiza, si ya existe un plato con el mismo nombre en español) un plato en la
+    // biblioteca "Mis Platos". No lanza ni bloquea nada si falla -- ver comentario en
+    // agregarPlatoManual() sobre por qué esto nunca debe impedir añadir el plato al menú actual.
+    async function guardarPlatoManualEnBiblioteca(es, en, tipo) {
+        const url = urlBackend();
+        if (!url || !es) return;
+        try {
+            await fetch(url + '?accion=guardarPlatoManual', {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ es: es, en: en || '', tipo: tipo })
+            });
+            await refrescarPlatosManualesEnPool();
+        } catch (e) {
+            console.error('[MenuEspecial] Error al guardar en Mis Platos:', e);
+        }
+    }
+
+    // Quita un plato de la biblioteca "Mis Platos" (nunca de ningún menú ya guardado, ni de la
+    // carta real de RG/US Open -- solo de esta lista propia). Se usa desde el 🗑️ del popup.
+    async function eliminarPlatoManualDeBiblioteca(id) {
+        const url = urlBackend();
+        if (!url) return;
+        try {
+            await fetch(url + '?accion=eliminarPlatoManual', {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: id })
+            });
+            await refrescarPlatosManualesEnPool();
+            renderModalLista();
+        } catch (e) {
+            console.error('[MenuEspecial] Error al borrar de Mis Platos:', e);
+        }
     }
 
     function buscarMenuPorId(id) { return menusGuardados.find(m => String(m.id) === String(id)); }
@@ -668,9 +764,11 @@ window.APP_VERSIONS.menuEspecial = '1.23.0'; // CORREGIDO: la 1.22.0 añadió el
             }
             const tag = p.manual
                 ? `<span class="me-plato-tag me-tag-manual">Manual</span>`
-                : p.ambos
-                    ? `<span class="me-plato-tag me-tag-ambos">RG + US Open</span>`
-                    : (p.modo === 'restaurante002' ? `<span class="me-plato-tag me-tag-us">US Open</span>` : `<span class="me-plato-tag me-tag-rg">RG</span>`);
+                : p.modo === 'manual'
+                    ? `<span class="me-plato-tag me-tag-mis-platos">Mis Platos</span>`
+                    : p.ambos
+                        ? `<span class="me-plato-tag me-tag-ambos">RG + US Open</span>`
+                        : (p.modo === 'restaurante002' ? `<span class="me-plato-tag me-tag-us">US Open</span>` : `<span class="me-plato-tag me-tag-rg">RG</span>`);
             const nombre = (conEn && p.en) ? `${escHtml(p.es)} <span style="color:#999;">/ ${escHtml(p.en)}</span>` : escHtml(p.es);
             return `<div class="me-plato-row">
                 <span class="me-plato-nombre">${tag}${nombre}</span>
@@ -838,12 +936,19 @@ window.APP_VERSIONS.menuEspecial = '1.23.0'; // CORREGIDO: la 1.22.0 añadió el
     function renderModalFilaHtml(p) {
         const clave = claveModoId(p.modo, p.id);
         const marcado = !!seleccionEnModal[clave];
-        const tag = p.ambos
-            ? `<span class="me-plato-tag me-tag-ambos">RG + US Open</span>`
-            : (p.modo === 'restaurante002' ? `<span class="me-plato-tag me-tag-us">US Open</span>` : `<span class="me-plato-tag me-tag-rg">RG</span>`);
+        const esMisPlatos = p.modo === 'manual';
+        const tag = esMisPlatos
+            ? `<span class="me-plato-tag me-tag-mis-platos">Mis Platos</span>`
+            : p.ambos
+                ? `<span class="me-plato-tag me-tag-ambos">RG + US Open</span>`
+                : (p.modo === 'restaurante002' ? `<span class="me-plato-tag me-tag-us">US Open</span>` : `<span class="me-plato-tag me-tag-rg">RG</span>`);
+        const btnBorrar = esMisPlatos
+            ? `<button type="button" class="me-btn-borrar-mis-platos" title="Quitar de Mis Platos" onclick="event.preventDefault(); event.stopPropagation(); MenuEspecial.eliminarPlatoManualDeBiblioteca(${JSON.stringify(p.id)});">🗑️</button>`
+            : '';
         return `<label class="me-modal-plato-row">
             <input type="checkbox" ${marcado ? 'checked' : ''} onchange="MenuEspecial.toggleSeleccionModal('${clave}', this.checked)">
             <span>${tag}${escHtml(p.es)}</span>
+            ${btnBorrar}
         </label>`;
     }
 
@@ -858,7 +963,9 @@ window.APP_VERSIONS.menuEspecial = '1.23.0'; // CORREGIDO: la 1.22.0 añadió el
             if (!grupos.has(label)) grupos.set(label, []);
             grupos.get(label).push(p);
         });
-        const ordenLabels = CATEGORIAS_POPUP_COMIDA.map(c => c.label).concat([CATEGORIA_OTROS_LABEL]);
+        // "Mis Platos" va SIEMPRE primero (biblioteca propia, la más rápida de reutilizar),
+        // luego las categorías de carta de siempre, y "Otros" al final -- igual que antes.
+        const ordenLabels = [CATEGORIA_MIS_PLATOS_LABEL].concat(CATEGORIAS_POPUP_COMIDA.map(c => c.label), [CATEGORIA_OTROS_LABEL]);
         let html = '';
         ordenLabels.forEach(label => {
             const lista = grupos.get(label);
@@ -1012,17 +1119,26 @@ window.APP_VERSIONS.menuEspecial = '1.23.0'; // CORREGIDO: la 1.22.0 añadió el
             if (!document.getElementById(prefijo)) return;
         }
 
+        const esFinal = formatearTituloInteligente(valor);
+        const enFinal = inputEn ? formatearTituloInteligente((inputEn.value || '').trim()) : '';
+
         const destino = obtenerListaDestino(grupo, key);
         if (grupo === 'vino') destino.length = 0; // un solo vino/cava por slot, sustituye al que hubiera
-        destino.push({
-            manual: true, modo: null, id: null,
-            es: formatearTituloInteligente(valor),
-            en: inputEn ? formatearTituloInteligente((inputEn.value || '').trim()) : ''
-        });
+        destino.push({ manual: true, modo: null, id: null, es: esFinal, en: enFinal });
         inputEs.value = '';
         if (inputEn) inputEn.value = '';
         const listaEl = document.getElementById(idListaPara(grupo, key));
         if (listaEl) listaEl.innerHTML = renderListaPlatosHtml(grupo, key);
+
+        // NUEVO (19 sept): guarda este plato en la biblioteca "Mis Platos" para poder reutilizarlo
+        // en menús futuros sin volver a escribirlo ni traducirlo -- automático, sin ningún paso
+        // extra (a petición del usuario), nunca para vinos (nombres propios/marca). Deliberadamente
+        // SIN "await": no debe retrasar ni un instante que el plato aparezca ya añadido al menú, y
+        // si falla (sin red, backend caído...) no debe impedir añadirlo -- guardarPlatoManualEnBiblioteca()
+        // ya se traga sus propios errores.
+        if (grupo !== 'vino') {
+            guardarPlatoManualEnBiblioteca(esFinal, enFinal, key === 'postre' ? 'postre' : 'principal');
+        }
     }
 
     function quitarPlato(grupo, key, index) {
@@ -1715,6 +1831,7 @@ window.APP_VERSIONS.menuEspecial = '1.23.0'; // CORREGIDO: la 1.22.0 añadió el
         cerrarModalPlatos: cerrarModalPlatos,
         filtrarModalLista: filtrarModalLista,
         toggleSeleccionModal: toggleSeleccionModal,
-        confirmarSeleccionPlatos: confirmarSeleccionPlatos
+        confirmarSeleccionPlatos: confirmarSeleccionPlatos,
+        eliminarPlatoManualDeBiblioteca: eliminarPlatoManualDeBiblioteca
     };
 })();

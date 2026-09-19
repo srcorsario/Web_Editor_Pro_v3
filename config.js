@@ -1,7 +1,7 @@
 // --- config.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.config = '2.4.0'; // NUEVO: WEBAPP_URL_MENUS_ESPECIALES — URL del Apps Script NUEVO e independiente (Codigo_MenusEspeciales.gs) que guarda las plantillas de la pestaña "Menú Especial"
+window.APP_VERSIONS.config = '2.5.0'; // ACTUALIZADO: WEBAPP_URL_MENUS_ESPECIALES apunta a la nueva implementación de Codigo_MenusEspeciales.gs (19 sept, tras añadir la biblioteca "Mis Platos" -- ver menu-especial.js) -- el usuario creó una implementación NUEVA (no "nueva versión" de la existente), así que la URL /exec cambió.
 
 // =====================================================================
 // NUEVO: SISTEMA DE ENABLE/DISABLE DE RESTAURANTES (Desacoplamiento Visual)
@@ -145,7 +145,7 @@ const TRADUCCION_CONCURRENCIA = null;     // Paso 2 (nombres) — null = usar el
 // especial en su propia Google Sheet — ver Codigo_MenusEspeciales.gs (repo aparte). Común a los
 // dos restaurantes: un menú especial puede mezclar platos de ambas cartas, así que no tiene
 // sentido que "pertenezca" a WEB_APP_URL_RESTAURANTE001 ni a WEB_APP_URL_RESTAURANTE002.
-const WEBAPP_URL_MENUS_ESPECIALES = 'https://script.google.com/macros/s/AKfycbwTkbN5AJkY8xww5yRON78TZ69hetMQdCiByDrAf2SREmXJWbjmR7tRNU2rCe_yGEICCA/exec';
+const WEBAPP_URL_MENUS_ESPECIALES = 'https://script.google.com/macros/s/AKfycbxm8GKuFpkwJgyZP5W5sz-_0fs536rbbL5ANYwCjQqslqQeWAoMjX9Xi_aXAmRnb47krA/exec';
 window.WEBAPP_URL_MENUS_ESPECIALES = WEBAPP_URL_MENUS_ESPECIALES;
 
 // NUEVO: Exposición explícita en window para que ui.js (script type="module", con su propio
