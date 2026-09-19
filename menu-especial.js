@@ -14,7 +14,7 @@
 // ventana emergente (window.open + document.write), para no depender de @media print peleándose
 // con el resto de la interfaz del editor.
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.menuEspecial = '1.20.0'; // CORREGIDO: text-wrap:balance del navegador a veces dejaba la 1ª línea de un nombre partido en 2 más CORTA que la 2ª -- sustituido por un reequilibrado manual (balancearLineasDobles(), dentro del script de la ventana de impresión) que mide con canvas.measureText() y elige, de entre todos los cortes por palabra que caben en el ancho disponible, el más equilibrado que además deje la línea 1 igual o más larga que la línea 2, nunca al revés. El nombre (ES) y su traducción (EN) pasan a ir cada uno en su propio <div class="me-print-plato-linea">, igual que ya las líneas de Bebida.
+window.APP_VERSIONS.menuEspecial = '1.21.0'; // CORREGIDO: la 1.20.0 dejaba, en la impresión real, algunos nombres partidos a mitad de palabra con letras "desaparecidas" (p.ej. "Queso Parmesano" -> "Que o" / "Parme" + "ano"). Causa: se dejó activo `text-wrap:balance` en CSS a la vez que balancearLineasDobles() forzaba su propio <br> -- el navegador intentaba re-equilibrar ese <br> manual con su propio algoritmo de balance, con resultado indefinido según motor/plataforma (no reproducido en local, pero balancearLineasDobles() por construcción SOLO corta por palabra completa, nunca a mitad de palabra, así que la causa tenía que ser esa doble gestión del corte). Se quita `text-wrap:balance` del CSS por completo -- el reparto de las 2 líneas pasa a ser SIEMPRE cosa de balancearLineasDobles(), sin que el navegador vuelva a tocarlo. De paso, esa función deja de medir anchos con canvas.measureText() (podía no resolver exactamente la misma fuente que el DOM real) y pasa a medir con una sonda DOM oculta (mismo motor de layout que el render real), y añade una comprobación de seguridad antes de escribir: si las 2 líneas elegidas, unidas con un espacio, no reconstruyen EXACTAMENTE el texto original, no se toca ese plato y se deja el texto tal cual.
 
 (function () {
     'use strict';
@@ -1177,12 +1177,13 @@ window.APP_VERSIONS.menuEspecial = '1.20.0'; // CORREGIDO: text-wrap:balance del
         const mostrarEn = menu.idiomas.en;
 
         // Cada "línea" (nombre en ES, y si aplica su traducción EN) va en su propio <div
-        // class="me-print-plato-linea"> -- además de mantenerlas independientes para el
-        // text-wrap:balance de CSS, es el gancho que usa balancearLineasDobles() en el script de
-        // la ventana de impresión (más abajo) para reequilibrar manualmente el corte de una
-        // línea que se parte en 2, dejando SIEMPRE la primera línea igual o más larga que la
-        // segunda (19 sept, corregido: text-wrap:balance del navegador a veces hacía justo lo
-        // contrario).
+        // class="me-print-plato-linea"> -- es el gancho que usa balancearLineasDobles() en el
+        // script de la ventana de impresión (más abajo) para reequilibrar manualmente el corte
+        // de una línea que se parte en 2, dejando SIEMPRE la primera línea igual o más larga que
+        // la segunda. IMPORTANTE (19 sept, 2º arreglo): el CSS de estas clases NO debe llevar
+        // text-wrap:balance -- balancearLineasDobles() ya decide el corte a mano insertando un
+        // <br>; si el navegador además intenta "balancear" ese <br> con su propio algoritmo, el
+        // resultado en la impresión real puede salir mal (nombres partidos a mitad de palabra).
         function nombrePlato(p) {
             const es = escHtml(p.es);
             const en = escHtml(p.en);
@@ -1299,8 +1300,8 @@ window.APP_VERSIONS.menuEspecial = '1.20.0'; // CORREGIDO: text-wrap:balance del
             .me-print-seccion { width:100%; max-width:35em; margin:0 auto 0.5em auto; }
             .me-print-seccion-titulo { font-size:0.76em; font-weight:800; text-transform:uppercase; letter-spacing:0.03em; white-space:nowrap; color:#b8860b; border-bottom:1px solid #ddd; padding-bottom:0.15em; margin-bottom:0.3em; }
             .me-print-plato { margin-bottom:0.22em; }
-            .me-print-plato-linea { font-size:0.92em; line-height:1.25; text-wrap:balance; }
-            .me-print-plato-en { font-style:italic; color:#555; font-size:0.85em; line-height:1.25; text-wrap:balance; }
+            .me-print-plato-linea { font-size:0.92em; line-height:1.25; }
+            .me-print-plato-en { font-style:italic; color:#555; font-size:0.85em; line-height:1.25; }
         `;
         const bodyHtml = `<div class="me-print-sheet">${menuHtml}<div class="me-print-cutline"></div>${menuHtml}</div>`;
 
@@ -1338,28 +1339,55 @@ window.APP_VERSIONS.menuEspecial = '1.20.0'; // CORREGIDO: text-wrap:balance del
                 }
 
                 // Reequilibra manualmente el corte de cada ".me-print-plato-linea" que se parte en
-                // 2 líneas -- CORREGIDO (19 sept): el text-wrap:balance nativo del navegador a
-                // veces dejaba la PRIMERA línea más corta que la segunda; aquí, de entre todos los
-                // cortes (por palabra) que caben en el ancho disponible, se elige siempre el más
-                // equilibrado que deje la línea 1 igual o más larga que la línea 2, nunca al
-                // revés. Solo actúa si el texto necesita EXACTAMENTE 2 líneas a este ancho/tamaño
-                // (si cupiera en 1 no toca nada; si necesitara 3 o más, no se ha encontrado ningún
-                // corte válido y se deja tal cual, a merced del ajuste normal del navegador). Se
-                // llama DESPUÉS de fijar el factor de letra definitivo (ajustarYimprimir), así que
-                // mide con el tamaño real ya asentado -- y como el texto ya envolvía a 2 líneas de
-                // forma natural, cambiar SOLO el punto de corte no cambia el alto total del bloque,
-                // por lo que no invalida el cálculo de "cabe()" ya hecho.
+                // 2 líneas: de entre todos los cortes (por palabra completa, nunca a mitad de
+                // palabra) que caben en el ancho disponible, elige siempre el más equilibrado que
+                // deje la línea 1 igual o más larga que la línea 2, nunca al revés. Solo actúa si
+                // el texto necesita EXACTAMENTE 2 líneas a este ancho/tamaño (si cupiera en 1 no
+                // toca nada; si necesitara 3 o más, no se ha encontrado ningún corte válido y se
+                // deja tal cual, a merced del ajuste normal del navegador). Se llama DESPUÉS de
+                // fijar el factor de letra definitivo (ajustarYimprimir), así que mide con el
+                // tamaño real ya asentado -- y como el texto ya envolvía a 2 líneas de forma
+                // natural, cambiar SOLO el punto de corte no cambia el alto total del bloque, por
+                // lo que no invalida el cálculo de "cabe()" ya hecho.
+                //
+                // CORREGIDO (19 sept, 2º arreglo): la 1.20.0 medía los anchos con
+                // canvas.measureText(), que puede resolver la fuente de forma ligeramente distinta
+                // al motor de layout real del navegador -- y encima el CSS dejaba activo
+                // text-wrap:balance a la vez que aquí se insertaba un <br> a mano, así que el
+                // navegador podía intentar "rebalancear" ese <br> por su cuenta con resultado
+                // impredecible (nombres partidos a mitad de palabra en la impresión real, aunque
+                // esta función por construcción SOLO corta por espacios, nunca a mitad de
+                // palabra). Ahora: (a) el CSS ya no lleva text-wrap:balance en absoluto -- el
+                // corte a 2 líneas es SIEMPRE cosa de esta función, el navegador no vuelve a
+                // tocarlo; (b) los anchos se miden con una sonda DOM oculta (mismo motor de layout
+                // que el render real) en vez de canvas; (c) antes de escribir cada corte se
+                // comprueba que línea 1 + espacio + línea 2 reconstruye EXACTAMENTE el texto
+                // original -- si por lo que sea no cuadrara, no se toca ese plato y se deja el
+                // texto tal cual, nunca a medias.
                 function balancearLineasDobles() {
-                    var MARGEN_SEGURIDAD_PX = 2; // colchón por si measureText no calca 100% el layout real
-                    var canvas = document.createElement('canvas');
-                    var ctx = canvas.getContext('2d');
-                    if (!ctx) return;
+                    var MARGEN_SEGURIDAD_PX = 3; // colchón por si la sonda no calca al 100% el layout real
+                    var elementos = document.querySelectorAll('.me-print-plato-linea');
+                    if (!elementos.length) return;
+
+                    // Sonda oculta, hermana del propio elemento (mismo padre, así hereda EXACTAMENTE
+                    // el mismo font-size en cascada -- incluido el factor dinámico en em que aplica
+                    // aplicarFactor() más arriba en .me-print-inner) y con la fuente ya resuelta a
+                    // px/estilo concretos vía getComputedStyle(), para no depender de en qué
+                    // elemento del DOM esté insertada.
+                    var sonda = document.createElement('span');
+                    sonda.style.cssText = 'position:absolute; visibility:hidden; white-space:nowrap; left:-9999px; top:0;';
+                    document.body.appendChild(sonda);
+
+                    function anchoTexto(fontCss, texto) {
+                        sonda.style.font = fontCss;
+                        sonda.textContent = texto;
+                        return sonda.getBoundingClientRect().width;
+                    }
 
                     function escaparHtml(t) {
                         return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
                     }
 
-                    var elementos = document.querySelectorAll('.me-print-plato-linea');
                     for (var idx = 0; idx < elementos.length; idx++) {
                         var el = elementos[idx];
                         var texto = (el.textContent || '').trim();
@@ -1370,16 +1398,16 @@ window.APP_VERSIONS.menuEspecial = '1.20.0'; // CORREGIDO: text-wrap:balance del
                         if (!maxWidth) continue;
                         var maxWidthSeguro = maxWidth - MARGEN_SEGURIDAD_PX;
 
-                        ctx.font = window.getComputedStyle(el).font;
-                        var anchoCompleto = ctx.measureText(texto).width;
+                        var fontCss = window.getComputedStyle(el).font;
+                        var anchoCompleto = anchoTexto(fontCss, texto);
                         if (anchoCompleto <= maxWidth) continue; // ya cabe en 1 línea, no tocar
 
                         var candidatos = [];
                         for (var i = 1; i < palabras.length; i++) {
                             var linea1 = palabras.slice(0, i).join(' ');
                             var linea2 = palabras.slice(i).join(' ');
-                            var w1 = ctx.measureText(linea1).width;
-                            var w2 = ctx.measureText(linea2).width;
+                            var w1 = anchoTexto(fontCss, linea1);
+                            var w2 = anchoTexto(fontCss, linea2);
                             if (w1 > maxWidthSeguro || w2 > maxWidthSeguro) continue;
                             candidatos.push({ linea1: linea1, linea2: linea2, w1: w1, w2: w2 });
                         }
@@ -1390,8 +1418,16 @@ window.APP_VERSIONS.menuEspecial = '1.20.0'; // CORREGIDO: text-wrap:balance del
                         pool.sort(function (a, b) { return Math.abs(a.w1 - a.w2) - Math.abs(b.w1 - b.w2); });
                         var elegido = pool[0];
 
+                        // Red de seguridad: si por lo que sea las 2 líneas elegidas no reconstruyen
+                        // EXACTAMENTE el texto original (uniéndolas con un espacio), no se toca este
+                        // plato -- mejor dejarlo con el ajuste automático del navegador que arriesgar
+                        // un nombre incompleto o cortado.
+                        if ((elegido.linea1 + ' ' + elegido.linea2) !== texto) continue;
+
                         el.innerHTML = escaparHtml(elegido.linea1) + '<br>' + escaparHtml(elegido.linea2);
                     }
+
+                    document.body.removeChild(sonda);
                 }
 
                 function ajustarYimprimir() {
