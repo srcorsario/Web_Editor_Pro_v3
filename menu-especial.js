@@ -14,7 +14,7 @@
 // ventana emergente (window.open + document.write), para no depender de @media print peleándose
 // con el resto de la interfaz del editor.
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.menuEspecial = '1.13.0'; // MODIFICADO: (1) traducirAIngles() ahora reutiliza window.PROMPTS.opcionesEN() de prompts.js en vez de un prompt propio simplificado -- ya aplica la regla de explicación breve para términos de cocina no universales y la de fidelidad en carnes/pescados, igual que generarTraduccionEN() en app.js ("Ensaladilla Rusa" ya no sale como un "Russian Salad" seco); (2) el popup de selección de platos (comida, fuera de Postre) ahora agrupa por categoría (Entrantes/Ensaladas/Arroces/Carnes y Pescado/Otros, ver CATEGORIAS_POPUP_COMIDA); (3) los platos con guarnición marcada con "//" en la carta ya no la pierden al añadirse al menú especial -- se conserva entre paréntesis (ver nombreConGuarnicion).
+window.APP_VERSIONS.menuEspecial = '1.14.0'; // MODIFICADO: procesar() descarta ahora las filas con id < 1001 (fila 14 de la hoja de datos) tanto en RG como en US Open -- no son platos reales, no deben aparecer en el índice de platos/popup del menú especial.
 
 (function () {
     'use strict';
@@ -307,6 +307,12 @@ window.APP_VERSIONS.menuEspecial = '1.13.0'; // MODIFICADO: (1) traducirAIngles(
         function procesar(datos, modo, alias) {
             if (!Array.isArray(datos)) return;
             datos.forEach(item => {
+                // Las primeras filas de la hoja de datos (id < 1001, fila 14 en la hoja de
+                // Google Sheets) no son platos reales -- se descartan aquí, igual en RG que en
+                // US Open (a petición del usuario, 19 sept). No afecta a los vinos (13100+) ni a
+                // Sugerencias (12100+), muy por encima de este umbral.
+                if (item.id < 1001) return;
+
                 // NOTA: a diferencia de las webs públicas, aquí NO se filtra por item.activa --
                 // un "Menú Especial" es una plantilla propia para eventos, independiente de lo
                 // que esté visible/activo ahora mismo en la web pública (un plato desactivado
