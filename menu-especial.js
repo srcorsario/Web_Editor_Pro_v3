@@ -14,7 +14,7 @@
 // ventana emergente (window.open + document.write), para no depender de @media print peleándose
 // con el resto de la interfaz del editor.
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.menuEspecial = '1.10.0'; // MODIFICADO: cada plato/vino ya añadido a una sección se puede editar (✏️) en vez de solo quitar -- y tanto al añadir (de la carta o a mano) como al editar, el nombre ES/EN se reformatea automáticamente a "Title Case" inteligente (mayúscula en palabras principales, minúscula en artículos/preposiciones/conjunciones cortas salvo si son la primera o última palabra).
+window.APP_VERSIONS.menuEspecial = '1.11.0'; // MODIFICADO: al añadir un plato/vino manual (o al editar uno ya añadido) con el inglés activo, nuevo botón "🌐 Traducir" que traduce el nombre ES a EN con Gemini (mismo patrón de reintento por API Key que generarTraduccionEN() de app.js, pero en un solo paso -- sin el modal de 3 opciones, ya que aquí basta con un resultado directo y editable a mano después).
 
 (function () {
     'use strict';
@@ -541,6 +541,7 @@ window.APP_VERSIONS.menuEspecial = '1.10.0'; // MODIFICADO: cada plato/vino ya a
                 <div class="me-fila" style="margin-bottom:10px;">
                     <input type="text" id="me-input-manual-comida-${info.key}" class="input-estandar" style="flex:2;min-width:200px;margin-bottom:0;" placeholder="¿No está en la carta? Escríbelo aquí...">
                     ${conEn ? `<input type="text" id="me-input-manual-comida-${info.key}-en" class="input-estandar" style="flex:1;min-width:160px;margin-bottom:0;" placeholder="Nombre en inglés">` : ''}
+                    ${conEn ? `<button class="btn btn-secondary" id="me-btn-traducir-comida-${info.key}" onclick="MenuEspecial.traducirAIngles('me-input-manual-comida-${info.key}', 'me-input-manual-comida-${info.key}-en', 'me-btn-traducir-comida-${info.key}')" title="Traducir el nombre en español al inglés con IA">🌐 Traducir</button>` : ''}
                     <button class="btn btn-secondary" onclick="MenuEspecial.agregarPlatoManual('comida', '${info.key}')">+ Añadir manual</button>
                 </div>
                 <div id="me-lista-${info.key}">${renderListaPlatosHtml('comida', info.key)}</div>
@@ -573,6 +574,7 @@ window.APP_VERSIONS.menuEspecial = '1.10.0'; // MODIFICADO: cada plato/vino ya a
                     <div class="me-plato-edit-campos">
                         <input type="text" id="${prefijo}-es" class="input-estandar" value="${escHtml(p.es)}" placeholder="Nombre en español">
                         ${conEn ? `<input type="text" id="${prefijo}-en" class="input-estandar" value="${escHtml(p.en || '')}" placeholder="Nombre en inglés">` : ''}
+                        ${conEn ? `<button class="btn btn-secondary" id="${prefijo}-btn-traducir" style="font-size:0.78rem;padding:6px 10px;flex-shrink:0;" onclick="MenuEspecial.traducirAIngles('${prefijo}-es', '${prefijo}-en', '${prefijo}-btn-traducir')" title="Traducir el nombre en español al inglés con IA">🌐</button>` : ''}
                     </div>
                     <div class="me-plato-edit-btns">
                         <button class="btn btn-success" style="font-size:0.72rem;padding:5px 9px;" onclick="MenuEspecial.guardarEdicionPlato('${grupo}', '${key}', ${i})">✓ Guardar</button>
@@ -612,6 +614,7 @@ window.APP_VERSIONS.menuEspecial = '1.10.0'; // MODIFICADO: cada plato/vino ya a
             <div class="me-fila" style="margin-bottom:4px;">
                 <input type="text" id="me-input-manual-vino-${w.key}" class="input-estandar" style="flex:1;min-width:140px;margin-bottom:0;font-size:0.8rem;" placeholder="¿No está en la carta? Escríbelo...">
                 ${conEn ? `<input type="text" id="me-input-manual-vino-${w.key}-en" class="input-estandar" style="flex:1;min-width:120px;margin-bottom:0;font-size:0.8rem;" placeholder="En inglés">` : ''}
+                ${conEn ? `<button class="btn btn-secondary" id="me-btn-traducir-vino-${w.key}" style="font-size:0.78rem;padding:6px 10px;" onclick="MenuEspecial.traducirAIngles('me-input-manual-vino-${w.key}', 'me-input-manual-vino-${w.key}-en', 'me-btn-traducir-vino-${w.key}')" title="Traducir el nombre en español al inglés con IA">🌐</button>` : ''}
                 <button class="btn btn-secondary" style="font-size:0.78rem;padding:6px 10px;" onclick="MenuEspecial.agregarPlatoManual('vino', '${w.key}')">${yaHayUno ? '🔄 Cambiar' : '+ Añadir'}</button>
             </div>
             <div style="font-size:0.68rem;color:#999;margin-bottom:8px;">Solo se puede elegir un ${w.tituloEs.toLowerCase()} -- elegir uno nuevo sustituye al anterior.</div>
@@ -882,6 +885,78 @@ window.APP_VERSIONS.menuEspecial = '1.10.0'; // MODIFICADO: cada plato/vino ya a
         editGrupo = null; editKey = null; editIndex = null;
         const listaEl = document.getElementById(idListaPara(grupo, key));
         if (listaEl) listaEl.innerHTML = renderListaPlatosHtml(grupo, key);
+    }
+
+    // Construye el prompt de traducción -- un único resultado directo (no las 3 opciones de
+    // generarTraduccionEN() en app.js), pensado para un botón rápido junto a un campo manual:
+    // el resultado cae en el input de inglés tal cual, y el usuario lo revisa/corrige a mano si
+    // no le convence (el input sigue siendo editable normal).
+    function construirPromptTraduccion(textoEs) {
+        return `Actúa como traductor profesional de menús de restaurantes de alta gama. Traduce al inglés el siguiente nombre de plato o bebida, tal como aparecería en la carta impresa de un restaurante (nombre corto y natural, sin explicaciones ni alternativas ni comillas): "${textoEs.replace(/"/g, "'")}"\n\nResponde ÚNICAMENTE con un JSON de una sola clave, sin explicaciones ni markdown: {"en":"la traducción aquí"}`;
+    }
+
+    // Traduce al inglés con Gemini el texto de idInputEs y lo mete en idInputEn -- reutiliza las
+    // mismas API Keys/endpoint/reintentos que ya usa el resto del proyecto (getKeys(), config.js,
+    // utils.js), así que si hay Keys configuradas en el editor normal, funcionan aquí igual sin
+    // configuración aparte. Se usa tanto al añadir un plato/vino manual como dentro del editor
+    // in situ (✏️) de un plato ya añadido.
+    async function traducirAIngles(idInputEs, idInputEn, idBoton) {
+        const inputEs = document.getElementById(idInputEs);
+        const inputEn = document.getElementById(idInputEn);
+        if (!inputEs || !inputEn) return;
+        const textoEs = (inputEs.value || '').trim();
+        if (!textoEs) { alert('Escribe primero el nombre en español.'); return; }
+
+        let keys = [];
+        if (typeof getKeys === 'function') keys = getKeys();
+        if (!keys.length) { alert('❌ No hay API Keys de Gemini configuradas (icono ⚙️ de ajustes).'); return; }
+
+        const btn = idBoton ? document.getElementById(idBoton) : null;
+        const textoOriginalBtn = btn ? btn.innerHTML : '';
+        if (btn) { btn.innerHTML = '⏳'; btn.disabled = true; }
+        mostrarCargando(true, '🌐 Traduciendo al inglés...');
+
+        const endpoint = window.GEMINI_ENDPOINT_URL || 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent';
+        const instruccion = construirPromptTraduccion(textoEs);
+
+        let exito = false, intentos = 0, ultimoError = '', traduccion = '';
+        while (!exito && intentos < keys.length) {
+            try {
+                const apiKey = keys[intentos];
+                const response = await fetch(`${endpoint}?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: instruccion }] }], generationConfig: { maxOutputTokens: window.GEMINI_MAX_OUTPUT_TOKENS || 65536, thinkingConfig: { thinkingLevel: window.GEMINI_THINKING_LEVEL || 'medium' } } })
+                });
+                const data = await response.json();
+                if (!response.ok || data.error) {
+                    ultimoError = (data.error && data.error.message) || ('Error HTTP ' + response.status);
+                    if ((data.error && data.error.code === 429) || response.status === 429) await new Promise(r => setTimeout(r, 3000));
+                    intentos++;
+                    continue;
+                }
+                const txt = (typeof extraerTextoCompletoRespuesta === 'function')
+                    ? extraerTextoCompletoRespuesta(data.candidates && data.candidates[0])
+                    : (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text);
+                if (txt) {
+                    const obj = (typeof extraerJSON === 'function') ? extraerJSON(txt) : JSON.parse(txt);
+                    if (obj && obj.en) { traduccion = obj.en; exito = true; }
+                    else { throw new Error('El JSON no contiene la clave "en".'); }
+                }
+            } catch (err) {
+                ultimoError = err.message;
+                intentos++;
+            }
+        }
+
+        mostrarCargando(false);
+        if (btn) { btn.innerHTML = textoOriginalBtn; btn.disabled = false; }
+
+        if (exito) {
+            inputEn.value = formatearTituloInteligente(traduccion);
+        } else {
+            alert('❌ Error al traducir al inglés.\nDetalles: ' + ultimoError);
+        }
     }
 
     function nuevoMenu() {
@@ -1289,6 +1364,7 @@ window.APP_VERSIONS.menuEspecial = '1.10.0'; // MODIFICADO: cada plato/vino ya a
         iniciarEdicionPlato: iniciarEdicionPlato,
         cancelarEdicionPlato: cancelarEdicionPlato,
         guardarEdicionPlato: guardarEdicionPlato,
+        traducirAIngles: traducirAIngles,
         abrirModalPlatos: abrirModalPlatos,
         cerrarModalPlatos: cerrarModalPlatos,
         filtrarModalLista: filtrarModalLista,
