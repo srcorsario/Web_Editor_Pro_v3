@@ -14,7 +14,7 @@
 // ventana emergente (window.open + document.write), para no depender de @media print peleándose
 // con el resto de la interfaz del editor.
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.menuEspecial = '1.18.0'; // MODIFICADO: cuando el nombre (o su traducción) de un plato ocupa 2 líneas en la impresión, el reparto entre ambas líneas ahora se equilibra (text-wrap:balance en .me-print-plato/.me-print-plato-en) en vez de dejar la 2ª línea casi vacía -- el EN pasa de un <br> a su propio <div> anidado para que ES y EN se balanceen cada uno por su cuenta, sin mezclarse.
+window.APP_VERSIONS.menuEspecial = '1.19.0'; // MODIFICADO: nuevo checkbox "📝 Imprimir nombre" (mostrarNombre, activado por defecto) para poder imprimir el menú sin el título; logo de impresión un poco más grande (max-height 4.4em->5.4em, max-width 13em->16em).
 
 (function () {
     'use strict';
@@ -138,6 +138,7 @@ window.APP_VERSIONS.menuEspecial = '1.18.0'; // MODIFICADO: cuando el nombre (o 
             id: null,
             nombre: '',
             logo: true,
+            mostrarNombre: true, // NUEVO (19 sept): imprimir o no el nombre del menú como título -- activado por defecto
             idiomas: { es: true, en: false },
             secciones: {
                 entrantes: { activo: true, compartir: false, platos: [] },
@@ -591,6 +592,7 @@ window.APP_VERSIONS.menuEspecial = '1.18.0'; // MODIFICADO: cuando el nombre (o 
                     <input type="text" id="me-nombre" class="input-estandar" style="margin-bottom:0;" placeholder="Ej: Boda García — 20 septiembre" value="${escHtml(menuActual.nombre)}" oninput="MenuEspecial.actualizarNombre(this.value)">
                 </div>
                 <label class="me-check-label"><input type="checkbox" ${menuActual.logo ? 'checked' : ''} onchange="MenuEspecial.toggleLogo(this.checked)"> 🎾 Logo RG</label>
+                <label class="me-check-label"><input type="checkbox" ${menuActual.mostrarNombre ? 'checked' : ''} onchange="MenuEspecial.toggleMostrarNombre(this.checked)"> 📝 Imprimir nombre</label>
                 <label class="me-check-label"><input type="checkbox" ${menuActual.idiomas.es ? 'checked' : ''} onchange="MenuEspecial.toggleIdioma('es', this.checked)"> 🇪🇸 Español</label>
                 <label class="me-check-label"><input type="checkbox" ${menuActual.idiomas.en ? 'checked' : ''} onchange="MenuEspecial.toggleIdioma('en', this.checked)"> 🇬🇧 Inglés</label>
             </div>
@@ -918,6 +920,7 @@ window.APP_VERSIONS.menuEspecial = '1.18.0'; // MODIFICADO: cuando el nombre (o 
     // =================================================================================
     function actualizarNombre(v) { menuActual.nombre = v; }
     function toggleLogo(v) { menuActual.logo = v; }
+    function toggleMostrarNombre(v) { menuActual.mostrarNombre = v; }
 
     function toggleIdioma(lang, v) {
         const otro = (lang === 'es') ? 'en' : 'es';
@@ -1237,10 +1240,14 @@ window.APP_VERSIONS.menuEspecial = '1.18.0'; // MODIFICADO: cuando el nombre (o 
             : '';
 
         const logoHtml = menu.logo ? `<img src="logo RG_REST.png" class="me-print-logo" alt="Logo RG">` : '';
+        // NUEVO (19 sept): imprimir el nombre es opcional (checkbox "📝 Imprimir nombre",
+        // activado por defecto -- ver mostrarNombre en nuevoMenuVacio()); si se desactiva, el
+        // título no se pinta en absoluto, aunque el menú tenga nombre guardado.
+        const tituloHtml = menu.mostrarNombre ? `<div class="me-print-titulo">${escHtml(menu.nombre || 'Menú')}</div>` : '';
 
         return `<div class="me-print-menu"><div class="me-print-inner">
             ${logoHtml}
-            <div class="me-print-titulo">${escHtml(menu.nombre || 'Menú')}</div>
+            ${tituloHtml}
             ${SECCIONES_INFO.map(seccionHtml).join('')}
             ${bebidaHtml}
         </div></div>`;
@@ -1281,7 +1288,7 @@ window.APP_VERSIONS.menuEspecial = '1.18.0'; // MODIFICADO: cuando el nombre (o 
             .me-print-cutline::before, .me-print-cutline::after { content:''; position:absolute; left:50%; transform:translateX(-50%); width:1.5px; height:4mm; background:#999; }
             .me-print-cutline::before { top:0; }
             .me-print-cutline::after { bottom:0; }
-            .me-print-logo { max-height:4.4em; max-width:13em; object-fit:contain; margin-bottom:0.5em; }
+            .me-print-logo { max-height:5.4em; max-width:16em; object-fit:contain; margin-bottom:0.5em; }
             .me-print-titulo { font-size:1.65em; font-weight:800; letter-spacing:0.02em; margin-bottom:0.85em; }
             .me-print-seccion { width:100%; max-width:35em; margin:0 auto 0.5em auto; }
             .me-print-seccion-titulo { font-size:0.76em; font-weight:800; text-transform:uppercase; letter-spacing:0.03em; white-space:nowrap; color:#b8860b; border-bottom:1px solid #ddd; padding-bottom:0.15em; margin-bottom:0.3em; }
@@ -1485,6 +1492,7 @@ window.APP_VERSIONS.menuEspecial = '1.18.0'; // MODIFICADO: cuando el nombre (o 
         imprimirMenuGuardado: imprimirMenuGuardado,
         actualizarNombre: actualizarNombre,
         toggleLogo: toggleLogo,
+        toggleMostrarNombre: toggleMostrarNombre,
         toggleIdioma: toggleIdioma,
         toggleSeccion: toggleSeccion,
         toggleCompartir: toggleCompartir,
