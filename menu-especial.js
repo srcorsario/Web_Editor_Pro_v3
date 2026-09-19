@@ -14,7 +14,7 @@
 // ventana emergente (window.open + document.write), para no depender de @media print peleándose
 // con el resto de la interfaz del editor.
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.menuEspecial = '1.21.0'; // CORREGIDO: la 1.20.0 dejaba, en la impresión real, algunos nombres partidos a mitad de palabra con letras "desaparecidas" (p.ej. "Queso Parmesano" -> "Que o" / "Parme" + "ano"). Causa: se dejó activo `text-wrap:balance` en CSS a la vez que balancearLineasDobles() forzaba su propio <br> -- el navegador intentaba re-equilibrar ese <br> manual con su propio algoritmo de balance, con resultado indefinido según motor/plataforma (no reproducido en local, pero balancearLineasDobles() por construcción SOLO corta por palabra completa, nunca a mitad de palabra, así que la causa tenía que ser esa doble gestión del corte). Se quita `text-wrap:balance` del CSS por completo -- el reparto de las 2 líneas pasa a ser SIEMPRE cosa de balancearLineasDobles(), sin que el navegador vuelva a tocarlo. De paso, esa función deja de medir anchos con canvas.measureText() (podía no resolver exactamente la misma fuente que el DOM real) y pasa a medir con una sonda DOM oculta (mismo motor de layout que el render real), y añade una comprobación de seguridad antes de escribir: si las 2 líneas elegidas, unidas con un espacio, no reconstruyen EXACTAMENTE el texto original, no se toca ese plato y se deja el texto tal cual.
+window.APP_VERSIONS.menuEspecial = '1.22.0'; // NUEVO: aviso de posible falta de ortografía al añadir un plato manualmente (agregarPlatoManual) o al editar el nombre de uno ya añadido (guardarEdicionPlato) -- mismo patrón "¿Quisiste decir...?" que ya usa el editor de carta normal (mostrarCorreccionOrtografiaEN, en app.js) y que se inspiró originalmente en la web de Cartelitos Buffet. Usa un prompt nuevo y más ligero (window.PROMPTS.revisionOrtografica, en prompts.js) que solo revisa ortografía sin pedir traducciones, para no gastar la llamada más cara cuando no hace falta traducir. Nunca se aplica a vinos (nombres propios/marca), y si falla por lo que sea (sin claves de Gemini, sin cuota, sin red) no bloquea el añadido/guardado -- se comporta igual que antes de tener este aviso. CORREGIDO (heredado de la 1.21.0): la 1.20.0 dejaba, en la impresión real, algunos nombres partidos a mitad de palabra con letras "desaparecidas" (p.ej. "Queso Parmesano" -> "Que o" / "Parme" + "ano") por dejar activo `text-wrap:balance` en CSS a la vez que balancearLineasDobles() forzaba su propio <br> -- ver detalle completo en el historial de versiones.
 
 (function () {
     'use strict';
@@ -626,7 +626,7 @@ window.APP_VERSIONS.menuEspecial = '1.21.0'; // CORREGIDO: la 1.20.0 dejaba, en 
                     <input type="text" id="me-input-manual-comida-${info.key}" class="input-estandar" style="flex:2;min-width:200px;margin-bottom:0;" placeholder="¿No está en la carta? Escríbelo aquí...">
                     ${conEn ? `<input type="text" id="me-input-manual-comida-${info.key}-en" class="input-estandar" style="flex:1;min-width:160px;margin-bottom:0;" placeholder="Nombre en inglés">` : ''}
                     ${conEn ? `<button class="btn btn-secondary" id="me-btn-traducir-comida-${info.key}" onclick="MenuEspecial.traducirAIngles('me-input-manual-comida-${info.key}', 'me-input-manual-comida-${info.key}-en', 'me-btn-traducir-comida-${info.key}', false)" title="Traducir el nombre en español al inglés con IA">🌐 Traducir</button>` : ''}
-                    <button class="btn btn-secondary" onclick="MenuEspecial.agregarPlatoManual('comida', '${info.key}')">+ Añadir manual</button>
+                    <button class="btn btn-secondary" id="me-btn-manual-add-comida-${info.key}" onclick="MenuEspecial.agregarPlatoManual('comida', '${info.key}')">+ Añadir manual</button>
                 </div>
                 <div id="me-lista-${info.key}">${renderListaPlatosHtml('comida', info.key)}</div>
             </div>` : ''}
@@ -661,7 +661,7 @@ window.APP_VERSIONS.menuEspecial = '1.21.0'; // CORREGIDO: la 1.20.0 dejaba, en 
                         ${conEn ? `<button class="btn btn-secondary" id="${prefijo}-btn-traducir" style="font-size:0.78rem;padding:6px 10px;flex-shrink:0;" onclick="MenuEspecial.traducirAIngles('${prefijo}-es', '${prefijo}-en', '${prefijo}-btn-traducir', ${grupo === 'vino'})" title="Traducir el nombre en español al inglés con IA">🌐</button>` : ''}
                     </div>
                     <div class="me-plato-edit-btns">
-                        <button class="btn btn-success" style="font-size:0.72rem;padding:5px 9px;" onclick="MenuEspecial.guardarEdicionPlato('${grupo}', '${key}', ${i})">✓ Guardar</button>
+                        <button class="btn btn-success" id="${prefijo}-btn-guardar" style="font-size:0.72rem;padding:5px 9px;" onclick="MenuEspecial.guardarEdicionPlato('${grupo}', '${key}', ${i})">✓ Guardar</button>
                         <button class="btn btn-secondary" style="font-size:0.72rem;padding:5px 9px;" onclick="MenuEspecial.cancelarEdicionPlato()">✕ Cancelar</button>
                     </div>
                 </div>`;
@@ -939,13 +939,79 @@ window.APP_VERSIONS.menuEspecial = '1.21.0'; // CORREGIDO: la 1.20.0 dejaba, en 
     function toggleBebida(key, v) { menuActual.bebida[key] = v; }
     function toggleVino(key, v) { menuActual.bebida[key].activo = v; renderFormulario(); }
 
-    function agregarPlatoManual(grupo, key) {
+    // Revisa la ortografía del nombre en español de un plato manual (nunca de vinos -- son
+    // nombres propios/marca) ANTES de añadirlo/guardarlo, con window.PROMPTS.revisionOrtografica()
+    // -- versión ligera de opcionesEN() (mismo criterio conservador, entiende nombres "como
+    // suenan") que NO pide traducciones, para no gastar esa llamada más cara cuando no hace falta.
+    // Mismo patrón de reintento por API Key que traducirAIngles(). Si no hay ninguna clave
+    // configurada, o la llamada falla por lo que sea (cuota, red...), NO bloquea nada -- se
+    // devuelve "sin corrección" y el plato se añade igual, tal como se comportaba la app antes de
+    // tener este aviso.
+    async function revisarOrtografiaManual(textoEs) {
+        const sinCorreccion = { hayError: false, texto: textoEs };
+        let keys = [];
+        if (typeof getKeys === 'function') keys = getKeys();
+        if (!keys.length) return sinCorreccion;
+        if (typeof window.PROMPTS === 'undefined' || typeof window.PROMPTS.revisionOrtografica !== 'function') return sinCorreccion;
+
+        const endpoint = window.GEMINI_ENDPOINT_URL || 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent';
+        const instruccion = window.PROMPTS.revisionOrtografica(textoEs.replace(/"/g, "'"));
+
+        for (let i = 0; i < keys.length; i++) {
+            try {
+                const response = await fetch(`${endpoint}?key=${keys[i]}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: instruccion }] }], generationConfig: { maxOutputTokens: window.GEMINI_MAX_OUTPUT_TOKENS || 65536, thinkingConfig: { thinkingLevel: window.GEMINI_THINKING_LEVEL || 'medium' } } })
+                });
+                const data = await response.json();
+                if (!response.ok || data.error) continue; // prueba con la siguiente clave (p.ej. sin cuota)
+
+                const txt = (typeof extraerTextoCompletoRespuesta === 'function')
+                    ? extraerTextoCompletoRespuesta(data.candidates && data.candidates[0])
+                    : (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text);
+                if (!txt) continue;
+
+                const obj = (typeof extraerJSON === 'function') ? extraerJSON(txt) : JSON.parse(txt);
+                const textoCorregido = typeof obj.texto === 'string' ? obj.texto.trim() : '';
+                const hayError = obj.hayError === true && !!textoCorregido && textoCorregido.toLowerCase() !== textoEs.trim().toLowerCase();
+                return hayError ? { hayError: true, texto: textoCorregido } : sinCorreccion;
+            } catch (e) {
+                // sigue probando con la siguiente clave
+            }
+        }
+        return sinCorreccion; // ninguna clave funcionó: no se bloquea el añadido por esto
+    }
+
+    async function agregarPlatoManual(grupo, key) {
         const prefijo = `me-input-manual-${grupo}-${key}`;
         const inputEs = document.getElementById(prefijo);
         const inputEn = document.getElementById(prefijo + '-en');
         if (!inputEs) return;
-        const valor = (inputEs.value || '').trim();
+        let valor = (inputEs.value || '').trim();
         if (!valor) return;
+
+        // Aviso "¿Quisiste decir...?" (nunca en vinos, nombres propios/marca) -- reutiliza el
+        // MISMO modal que ya usa el editor de carta normal (mostrarCorreccionOrtografiaEN, en
+        // app.js, compartido en toda la web vía index.html), en vez de duplicarlo aquí.
+        if (grupo !== 'vino') {
+            const btnAdd = document.getElementById(`me-btn-manual-add-${grupo}-${key}`);
+            const textoOriginalBtn = btnAdd ? btnAdd.textContent : '';
+            if (btnAdd) { btnAdd.textContent = '⏳ Revisando...'; btnAdd.disabled = true; }
+            try {
+                const resultado = await revisarOrtografiaManual(valor);
+                if (resultado.hayError && typeof mostrarCorreccionOrtografiaEN === 'function') {
+                    const corregido = await mostrarCorreccionOrtografiaEN(resultado.texto);
+                    if (corregido) valor = corregido;
+                }
+            } finally {
+                if (btnAdd) { btnAdd.textContent = textoOriginalBtn; btnAdd.disabled = false; }
+            }
+            // Si mientras se revisaba el formulario se repintó entero (cambio de idioma/sección),
+            // este input ya no existe -- se aborta en vez de arriesgar un añadido a ciegas.
+            if (!document.getElementById(prefijo)) return;
+        }
+
         const destino = obtenerListaDestino(grupo, key);
         if (grupo === 'vino') destino.length = 0; // un solo vino/cava por slot, sustituye al que hubiera
         destino.push({
@@ -989,13 +1055,35 @@ window.APP_VERSIONS.menuEspecial = '1.21.0'; // CORREGIDO: la 1.20.0 dejaba, en 
     // Guarda el texto corregido de un plato/vino en edición -- reformatea a Title Case
     // inteligente igual que al añadir (misma regla para ES y EN), así el resultado es consistente
     // tanto si se retoca un plato traído de la carta como si se corrige uno escrito a mano.
-    function guardarEdicionPlato(grupo, key, index) {
+    async function guardarEdicionPlato(grupo, key, index) {
         const prefijo = `me-edit-${grupo}-${key}-${index}`;
         const inputEs = document.getElementById(prefijo + '-es');
         const inputEn = document.getElementById(prefijo + '-en');
         if (!inputEs) return;
-        const valorEs = (inputEs.value || '').trim();
+        let valorEs = (inputEs.value || '').trim();
         if (!valorEs) { alert('El nombre en español no puede quedar vacío.'); return; }
+
+        // Mismo aviso "¿Quisiste decir...?" que agregarPlatoManual() -- así corregir a mano el
+        // nombre de un plato ya añadido (venga de la carta o manual) también avisa si se cuela una
+        // falta, no solo al añadirlo la primera vez. Nunca en vinos (nombres propios/marca).
+        if (grupo !== 'vino') {
+            const btnGuardar = document.getElementById(`${prefijo}-btn-guardar`);
+            const textoOriginalBtn = btnGuardar ? btnGuardar.textContent : '';
+            if (btnGuardar) { btnGuardar.textContent = '⏳...'; btnGuardar.disabled = true; }
+            try {
+                const resultado = await revisarOrtografiaManual(valorEs);
+                if (resultado.hayError && typeof mostrarCorreccionOrtografiaEN === 'function') {
+                    const corregido = await mostrarCorreccionOrtografiaEN(resultado.texto);
+                    if (corregido) valorEs = corregido;
+                }
+            } finally {
+                if (btnGuardar) { btnGuardar.textContent = textoOriginalBtn; btnGuardar.disabled = false; }
+            }
+            // Si mientras se revisaba se canceló la edición, se quitó el plato o se abrió otra
+            // fila a editar, se aborta sin guardar en vez de escribir en el sitio equivocado.
+            if (!(editGrupo === grupo && editKey === key && editIndex === index)) return;
+        }
+
         const plato = obtenerListaDestino(grupo, key)[index];
         if (!plato) return;
         plato.es = formatearTituloInteligente(valorEs);
