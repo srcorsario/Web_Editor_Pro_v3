@@ -14,7 +14,7 @@
 // ventana emergente (window.open + document.write), para no depender de @media print peleándose
 // con el resto de la interfaz del editor.
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.menuEspecial = '1.15.0'; // MODIFICADO: nuevas categorías del popup de platos "Hamburguesas" y "Pastas y Pizzas" (carpetas pasta/pastas/pizzas); "pokes" pasa a agruparse dentro de "Ensaladas"; los platos de niño y las guarniciones (carpetas niños/guarnicion) ya no aparecen en absoluto en el índice de platos del menú especial (antes cayían sin más en "Otros").
+window.APP_VERSIONS.menuEspecial = '1.16.0'; // MODIFICADO: nuevos overrides de categoría POR NOMBRE (CATEGORIA_OVERRIDES_POR_NOMBRE, con prioridad sobre la carpeta) para platos de "Sugerencias" mal categorizados por su carpeta real -- Fideuá fuerza "Arroces", cualquier nombre que contenga "burgue" fuerza "Hamburguesas", Corvina/Salmón fuerzan "Carnes y Pescado".
 
 (function () {
     'use strict';
@@ -68,6 +68,38 @@ window.APP_VERSIONS.menuEspecial = '1.15.0'; // MODIFICADO: nuevas categorías d
         const c = (carpeta || '').toLowerCase().trim();
         const encontrada = CATEGORIAS_POPUP_COMIDA.find(cat => cat.carpetas.indexOf(c) !== -1);
         return encontrada ? encontrada.label : CATEGORIA_OTROS_LABEL;
+    }
+
+    // Normaliza un nombre para comparar/buscar: minúsculas, sin acentos, espacios colapsados.
+    // A nivel de módulo (antes vivía solo dentro de cargarIndiceDePlatos, para deduplicarComunes)
+    // porque categoriaDePlato() también la necesita para los overrides por nombre de abajo.
+    function normalizarNombre(txt) {
+        return (txt || '')
+            .toLowerCase()
+            .normalize('NFD').replace(/[̀-ͯ]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    // Overrides de categoría POR NOMBRE (19 sept, prioridad sobre la "carpeta" de
+    // categoriaDeCarpeta) -- pensados para platos que vienen de "Sugerencias" (rango de ID
+    // 12100-12999), donde la carpeta guardada por plato puede no coincidir con la categoría
+    // visual real que el usuario espera (p.ej. Fideuá tiene carpeta "pasta" en la estructura de
+    // RG pero para el usuario es un arroz; Corvina/Salmón y las hamburguesas sueltas de
+    // Sugerencias pueden no llevar bien puesta su carpeta real). Cada "test" se compara contra el
+    // nombre en español ya normalizado (minúsculas, sin acentos) con normalizarNombre().
+    const CATEGORIA_OVERRIDES_POR_NOMBRE = [
+        { test: /fideua/, label: 'Arroces' },
+        { test: /burgue/, label: 'Hamburguesas' },
+        { test: /corvina|salmon/, label: 'Carnes y Pescado' }
+    ];
+
+    // Categoría final de un plato para el popup -- primero prueba los overrides por nombre
+    // (más fiables para Sugerencias), y solo si ninguno encaja cae en categoriaDeCarpeta().
+    function categoriaDePlato(p) {
+        const nombreNorm = normalizarNombre(p.es);
+        const override = CATEGORIA_OVERRIDES_POR_NOMBRE.find(o => o.test.test(nombreNorm));
+        return override ? override.label : categoriaDeCarpeta(p.carpeta);
     }
 
     // "tituloEn" solo se usa al imprimir (etiquetaBilingue en construirHtmlMenuImpreso) -- el
@@ -267,18 +299,6 @@ window.APP_VERSIONS.menuEspecial = '1.15.0'; // MODIFICADO: nuevas categorías d
                 (id >= 13250 && id <= 13259) ||
                 (id >= 13390 && id <= 13399) ||
                 (id >= 13450 && id <= 13459);
-        }
-
-        // Normaliza un nombre para comparar si "es el mismo plato/vino" entre RG y US Open (o
-        // duplicado dentro de la misma carta): minúsculas, sin acentos, espacios colapsados.
-        // Deliberadamente estricto (no busca coincidencias parciales) para no fusionar por error
-        // dos platos distintos que simplemente se parezcan.
-        function normalizarNombre(txt) {
-            return (txt || '')
-                .toLowerCase()
-                .normalize('NFD').replace(/[̀-ͯ]/g, '')
-                .replace(/\s+/g, ' ')
-                .trim();
         }
 
         // Si el mismo plato/vino (mismo nombre normalizado y mismo "tipo") aparece en RG Y en US
@@ -823,7 +843,7 @@ window.APP_VERSIONS.menuEspecial = '1.15.0'; // MODIFICADO: nuevas categorías d
     function renderModalListaAgrupada(items) {
         const grupos = new Map();
         items.forEach(p => {
-            const label = categoriaDeCarpeta(p.carpeta);
+            const label = categoriaDePlato(p);
             if (!grupos.has(label)) grupos.set(label, []);
             grupos.get(label).push(p);
         });
