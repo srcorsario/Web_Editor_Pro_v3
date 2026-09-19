@@ -14,7 +14,7 @@
 // ventana emergente (window.open + document.write), para no depender de @media print peleándose
 // con el resto de la interfaz del editor.
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.menuEspecial = '1.17.0'; // CORREGIDO: el override de Corvina/Salmón se llevaba a "Carnes y Pescado" incluso una "Ensalada de salmón" o un "Poke de salmón" -- categoriaDePlato() ahora comprueba PRIMERO si el plato es una ensalada/poke (por carpeta o porque el nombre lo dice) y esa comprobación gana siempre, antes de mirar ningún otro override.
+window.APP_VERSIONS.menuEspecial = '1.18.0'; // MODIFICADO: cuando el nombre (o su traducción) de un plato ocupa 2 líneas en la impresión, el reparto entre ambas líneas ahora se equilibra (text-wrap:balance en .me-print-plato/.me-print-plato-en) en vez de dejar la 2ª línea casi vacía -- el EN pasa de un <br> a su propio <div> anidado para que ES y EN se balanceen cada uno por su cuenta, sin mezclarse.
 
 (function () {
     'use strict';
@@ -1176,7 +1176,11 @@ window.APP_VERSIONS.menuEspecial = '1.17.0'; // CORREGIDO: el override de Corvin
         function nombrePlato(p) {
             const es = escHtml(p.es);
             const en = escHtml(p.en);
-            if (mostrarEs && mostrarEn) return en ? `${es}<br><em>${en}</em>` : es;
+            // El EN va en su propio <div> anidado (antes era un <br>) para que el ES y el EN sean
+            // dos cajas de línea INDEPENDIENTES a efectos de text-wrap:balance (ver
+            // .me-print-plato/.me-print-plato-en más abajo) -- si compartieran una sola caja, el
+            // balanceo mezclaría las líneas del nombre con las de la traducción.
+            if (mostrarEs && mostrarEn) return en ? `${es}<div class="me-print-plato-en"><em>${en}</em></div>` : es;
             if (mostrarEn && !mostrarEs) return en || es;
             return es;
         }
@@ -1281,8 +1285,8 @@ window.APP_VERSIONS.menuEspecial = '1.17.0'; // CORREGIDO: el override de Corvin
             .me-print-titulo { font-size:1.65em; font-weight:800; letter-spacing:0.02em; margin-bottom:0.85em; }
             .me-print-seccion { width:100%; max-width:35em; margin:0 auto 0.5em auto; }
             .me-print-seccion-titulo { font-size:0.76em; font-weight:800; text-transform:uppercase; letter-spacing:0.03em; white-space:nowrap; color:#b8860b; border-bottom:1px solid #ddd; padding-bottom:0.15em; margin-bottom:0.3em; }
-            .me-print-plato { font-size:0.92em; line-height:1.25; margin-bottom:0.22em; }
-            .me-print-plato em { font-style:italic; color:#555; font-size:0.85em; }
+            .me-print-plato { font-size:0.92em; line-height:1.25; margin-bottom:0.22em; text-wrap:balance; }
+            .me-print-plato-en { font-style:italic; color:#555; font-size:0.85em; line-height:1.25; text-wrap:balance; }
         `;
         const bodyHtml = `<div class="me-print-sheet">${menuHtml}<div class="me-print-cutline"></div>${menuHtml}</div>`;
 
