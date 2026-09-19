@@ -14,7 +14,7 @@
 // ventana emergente (window.open + document.write), para no depender de @media print peleándose
 // con el resto de la interfaz del editor.
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.menuEspecial = '1.9.2'; // MODIFICADO: la marca de corte de ARRIBA no se veía en el PDF (sangrado negativo, top:-4mm, no se pintaba de forma fiable por encima del borde superior del área imprimible) -- las dos marcas pasan a top:0/bottom:0, dentro del área imprimible, sin sangrado, así se ven siempre las dos.
+window.APP_VERSIONS.menuEspecial = '1.10.0'; // MODIFICADO: cada plato/vino ya añadido a una sección se puede editar (✏️) en vez de solo quitar -- y tanto al añadir (de la carta o a mano) como al editar, el nombre ES/EN se reformatea automáticamente a "Title Case" inteligente (mayúscula en palabras principales, minúscula en artículos/preposiciones/conjunciones cortas salvo si son la primera o última palabra).
 
 (function () {
     'use strict';
@@ -29,6 +29,9 @@ window.APP_VERSIONS.menuEspecial = '1.9.2'; // MODIFICADO: la marca de corte de 
     let modalGrupoActual = null;              // 'comida' | 'vino' -- a qué pool pertenece el popup abierto ahora mismo
     let modalSeccionActual = null;            // clave de sección ('entrantes'/'primero'/.../'postre') o de vino ('vinoBlanco'/'vinoRosado'/'vinoTinto'/'cava') a la que añade el popup abierto
     const seleccionEnModal = {};              // "modo|id" -> true, mientras el popup está abierto
+    let editGrupo = null;                     // 'comida' | 'vino' | null -- grupo del plato/vino que se está editando in situ ahora mismo (null = nada en edición)
+    let editKey = null;                       // clave de sección/vino del que se está editando ahora mismo
+    let editIndex = null;                     // índice dentro de esa lista del que se está editando ahora mismo
 
     // Cafés, refrescos/bebidas y cervezas nunca son "platos" de una sección de comida -- ver
     // estructuras.js: en RG caen en el rango de ID 9000-11999, en US Open en 9001-11099 (mismo
@@ -100,6 +103,39 @@ window.APP_VERSIONS.menuEspecial = '1.9.2'; // MODIFICADO: la marca de corte de 
 
     function claveModoId(modo, id) { return modo + '|' + id; }
 
+    // Palabras "menores" que, en mitad de un nombre, se dejan en minúscula al formatear en Title
+    // Case (artículos/preposiciones/conjunciones cortas de ES+EN combinadas en una sola lista,
+    // ya que un mismo campo puede ser español o inglés) -- la primera y la última palabra del
+    // nombre SIEMPRE se capitalizan, aunque estén en esta lista (regla estándar de Title Case).
+    const PALABRAS_MENORES_TITLE_CASE = new Set([
+        'a', 'an', 'and', 'as', 'at', 'but', 'by', 'for', 'from', 'in', 'into', 'nor', 'of', 'on',
+        'onto', 'or', 'per', 'the', 'to', 'via', 'vs', 'with',
+        'al', 'ante', 'con', 'de', 'del', 'el', 'en', 'entre', 'la', 'las', 'lo', 'los', 'o', 'para',
+        'por', 'que', 'se', 'si', 'su', 'sus', 'tu', 'tus', 'un', 'una', 'unas', 'unos', 'y'
+    ]);
+
+    // Formatea un nombre de plato a "Title Case" inteligente -- mayúscula en cada palabra
+    // principal, minúscula en las palabras menores de PALABRAS_MENORES_TITLE_CASE salvo que sean
+    // la primera o la última palabra. Se aplica igual a ES y a EN (a petición del usuario, no solo
+    // al inglés). Preserva puntuación pegada a la palabra (comas, paréntesis...) y capitaliza cada
+    // parte de las palabras compuestas con guion (p.ej. "salsa-verde" -> "Salsa-Verde").
+    function formatearTituloInteligente(texto) {
+        const t = (texto || '').trim();
+        if (!t) return t;
+        const partes = t.split(/\s+/);
+        return partes.map((token, i) => {
+            const m = token.match(/^([^\p{L}\p{N}]*)([\p{L}\p{N}][\p{L}\p{N}'’-]*)?([^\p{L}\p{N}]*)$/u);
+            if (!m || !m[2]) return token;
+            const [, pre, nucleo, post] = m;
+            const esExtremo = (i === 0 || i === partes.length - 1);
+            const minusc = nucleo.toLowerCase();
+            const formateado = (!esExtremo && PALABRAS_MENORES_TITLE_CASE.has(minusc))
+                ? minusc
+                : minusc.split('-').map(seg => seg ? seg.charAt(0).toUpperCase() + seg.slice(1) : seg).join('-');
+            return pre + formateado + post;
+        }).join(' ');
+    }
+
     // =================================================================================
     // ESTILOS PROPIOS — inyectados una sola vez, igual que hace sugerencias-print.js con los
     // suyos (ver document.getElementById('sugerencias-print-styles') en ese archivo).
@@ -123,6 +159,13 @@ window.APP_VERSIONS.menuEspecial = '1.9.2'; // MODIFICADO: la marca de corte de 
             .me-tag-ambos { background:#ede9fe; color:#6d28d9; }
             .me-btn-quitar { background:#fdecea; color:#e74c3c; border:none; border-radius:6px; width:26px; height:26px; cursor:pointer; font-weight:700; flex-shrink:0; }
             .me-btn-quitar:hover { background:#f8d7d3; }
+            .me-plato-row-btns { display:flex; gap:6px; flex-shrink:0; }
+            .me-btn-editar { background:#e8f0fe; color:#1a56d6; border:none; border-radius:6px; width:26px; height:26px; cursor:pointer; font-size:0.8rem; flex-shrink:0; }
+            .me-btn-editar:hover { background:#d3e3fd; }
+            .me-plato-row-editando { flex-direction:column; align-items:stretch; gap:8px; background:#fff9e6; border-color:#f0d894; }
+            .me-plato-edit-campos { display:flex; gap:8px; flex-wrap:wrap; }
+            .me-plato-edit-campos input { flex:1; min-width:140px; margin-bottom:0; font-size:0.82rem; }
+            .me-plato-edit-btns { display:flex; gap:6px; justify-content:flex-end; }
             .me-layout { display:flex; gap:20px; align-items:flex-start; }
             .me-sidebar { width:270px; flex-shrink:0; }
             .me-menu-item { background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:9px 11px; margin-bottom:8px; font-size:0.8rem; }
@@ -522,6 +565,21 @@ window.APP_VERSIONS.menuEspecial = '1.9.2'; // MODIFICADO: la marca de corte de 
         if (!platos.length) return `<p style="font-size:0.8rem;color:#999;margin:0;">Ningún ${grupo === 'vino' ? 'vino' : 'plato'} añadido todavía.</p>`;
         const conEn = menuActual.idiomas.en;
         return platos.map((p, i) => {
+            // Fila en edición: en vez del nombre + tag, se muestran los inputs ES/EN precargados
+            // con el valor actual (ver iniciarEdicionPlato/guardarEdicionPlato/cancelarEdicionPlato).
+            if (grupo === editGrupo && key === editKey && i === editIndex) {
+                const prefijo = `me-edit-${grupo}-${key}-${i}`;
+                return `<div class="me-plato-row me-plato-row-editando">
+                    <div class="me-plato-edit-campos">
+                        <input type="text" id="${prefijo}-es" class="input-estandar" value="${escHtml(p.es)}" placeholder="Nombre en español">
+                        ${conEn ? `<input type="text" id="${prefijo}-en" class="input-estandar" value="${escHtml(p.en || '')}" placeholder="Nombre en inglés">` : ''}
+                    </div>
+                    <div class="me-plato-edit-btns">
+                        <button class="btn btn-success" style="font-size:0.72rem;padding:5px 9px;" onclick="MenuEspecial.guardarEdicionPlato('${grupo}', '${key}', ${i})">✓ Guardar</button>
+                        <button class="btn btn-secondary" style="font-size:0.72rem;padding:5px 9px;" onclick="MenuEspecial.cancelarEdicionPlato()">✕ Cancelar</button>
+                    </div>
+                </div>`;
+            }
             const tag = p.manual
                 ? `<span class="me-plato-tag me-tag-manual">Manual</span>`
                 : p.ambos
@@ -530,7 +588,10 @@ window.APP_VERSIONS.menuEspecial = '1.9.2'; // MODIFICADO: la marca de corte de 
             const nombre = (conEn && p.en) ? `${escHtml(p.es)} <span style="color:#999;">/ ${escHtml(p.en)}</span>` : escHtml(p.es);
             return `<div class="me-plato-row">
                 <span class="me-plato-nombre">${tag}${nombre}</span>
-                <button class="me-btn-quitar" onclick="MenuEspecial.quitarPlato('${grupo}', '${key}', ${i})" title="Quitar">✕</button>
+                <div class="me-plato-row-btns">
+                    <button class="me-btn-editar" onclick="MenuEspecial.iniciarEdicionPlato('${grupo}', '${key}', ${i})" title="Editar">✏️</button>
+                    <button class="me-btn-quitar" onclick="MenuEspecial.quitarPlato('${grupo}', '${key}', ${i})" title="Quitar">✕</button>
+                </div>
             </div>`;
         }).join('');
     }
@@ -725,7 +786,7 @@ window.APP_VERSIONS.menuEspecial = '1.9.2'; // MODIFICADO: la marca de corte de 
                 const modo = clave.substring(0, idxSep);
                 const id = parseInt(clave.substring(idxSep + 1), 10);
                 const p = poolOrigen.find(x => x.modo === modo && x.id === id);
-                if (p) destino.push({ manual: false, modo: p.modo, id: p.id, es: p.es, en: p.en, ambos: !!p.ambos });
+                if (p) destino.push({ manual: false, modo: p.modo, id: p.id, es: formatearTituloInteligente(p.es), en: formatearTituloInteligente(p.en), ambos: !!p.ambos });
             });
         }
         cerrarModalPlatos();
@@ -766,7 +827,11 @@ window.APP_VERSIONS.menuEspecial = '1.9.2'; // MODIFICADO: la marca de corte de 
         if (!valor) return;
         const destino = obtenerListaDestino(grupo, key);
         if (grupo === 'vino') destino.length = 0; // un solo vino/cava por slot, sustituye al que hubiera
-        destino.push({ manual: true, modo: null, id: null, es: valor, en: inputEn ? (inputEn.value || '').trim() : '' });
+        destino.push({
+            manual: true, modo: null, id: null,
+            es: formatearTituloInteligente(valor),
+            en: inputEn ? formatearTituloInteligente((inputEn.value || '').trim()) : ''
+        });
         inputEs.value = '';
         if (inputEn) inputEn.value = '';
         const listaEl = document.getElementById(idListaPara(grupo, key));
@@ -775,6 +840,46 @@ window.APP_VERSIONS.menuEspecial = '1.9.2'; // MODIFICADO: la marca de corte de 
 
     function quitarPlato(grupo, key, index) {
         obtenerListaDestino(grupo, key).splice(index, 1);
+        // Si se quita un plato de la misma lista que se estaba editando, los índices se desajustan
+        // -- se cancela cualquier edición en curso de esa lista para no dejar el editor apuntando
+        // al plato equivocado.
+        if (grupo === editGrupo && key === editKey) { editGrupo = null; editKey = null; editIndex = null; }
+        const listaEl = document.getElementById(idListaPara(grupo, key));
+        if (listaEl) listaEl.innerHTML = renderListaPlatosHtml(grupo, key);
+    }
+
+    // Abre la edición in situ de un plato/vino ya añadido (venga de la carta o manual) --
+    // renderListaPlatosHtml pinta inputs ES/EN en su lugar mientras editGrupo/editKey/editIndex
+    // apunten a esa fila concreta.
+    function iniciarEdicionPlato(grupo, key, index) {
+        editGrupo = grupo; editKey = key; editIndex = index;
+        const listaEl = document.getElementById(idListaPara(grupo, key));
+        if (listaEl) listaEl.innerHTML = renderListaPlatosHtml(grupo, key);
+    }
+
+    function cancelarEdicionPlato() {
+        const grupo = editGrupo, key = editKey;
+        editGrupo = null; editKey = null; editIndex = null;
+        if (!grupo || !key) return;
+        const listaEl = document.getElementById(idListaPara(grupo, key));
+        if (listaEl) listaEl.innerHTML = renderListaPlatosHtml(grupo, key);
+    }
+
+    // Guarda el texto corregido de un plato/vino en edición -- reformatea a Title Case
+    // inteligente igual que al añadir (misma regla para ES y EN), así el resultado es consistente
+    // tanto si se retoca un plato traído de la carta como si se corrige uno escrito a mano.
+    function guardarEdicionPlato(grupo, key, index) {
+        const prefijo = `me-edit-${grupo}-${key}-${index}`;
+        const inputEs = document.getElementById(prefijo + '-es');
+        const inputEn = document.getElementById(prefijo + '-en');
+        if (!inputEs) return;
+        const valorEs = (inputEs.value || '').trim();
+        if (!valorEs) { alert('El nombre en español no puede quedar vacío.'); return; }
+        const plato = obtenerListaDestino(grupo, key)[index];
+        if (!plato) return;
+        plato.es = formatearTituloInteligente(valorEs);
+        if (inputEn) plato.en = formatearTituloInteligente((inputEn.value || '').trim());
+        editGrupo = null; editKey = null; editIndex = null;
         const listaEl = document.getElementById(idListaPara(grupo, key));
         if (listaEl) listaEl.innerHTML = renderListaPlatosHtml(grupo, key);
     }
@@ -1181,6 +1286,9 @@ window.APP_VERSIONS.menuEspecial = '1.9.2'; // MODIFICADO: la marca de corte de 
         toggleVino: toggleVino,
         agregarPlatoManual: agregarPlatoManual,
         quitarPlato: quitarPlato,
+        iniciarEdicionPlato: iniciarEdicionPlato,
+        cancelarEdicionPlato: cancelarEdicionPlato,
+        guardarEdicionPlato: guardarEdicionPlato,
         abrirModalPlatos: abrirModalPlatos,
         cerrarModalPlatos: cerrarModalPlatos,
         filtrarModalLista: filtrarModalLista,
