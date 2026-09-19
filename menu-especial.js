@@ -14,7 +14,7 @@
 // ventana emergente (window.open + document.write), para no depender de @media print peleándose
 // con el resto de la interfaz del editor.
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.menuEspecial = '1.16.0'; // MODIFICADO: nuevos overrides de categoría POR NOMBRE (CATEGORIA_OVERRIDES_POR_NOMBRE, con prioridad sobre la carpeta) para platos de "Sugerencias" mal categorizados por su carpeta real -- Fideuá fuerza "Arroces", cualquier nombre que contenga "burgue" fuerza "Hamburguesas", Corvina/Salmón fuerzan "Carnes y Pescado".
+window.APP_VERSIONS.menuEspecial = '1.17.0'; // CORREGIDO: el override de Corvina/Salmón se llevaba a "Carnes y Pescado" incluso una "Ensalada de salmón" o un "Poke de salmón" -- categoriaDePlato() ahora comprueba PRIMERO si el plato es una ensalada/poke (por carpeta o porque el nombre lo dice) y esa comprobación gana siempre, antes de mirar ningún otro override.
 
 (function () {
     'use strict';
@@ -94,10 +94,19 @@ window.APP_VERSIONS.menuEspecial = '1.16.0'; // MODIFICADO: nuevos overrides de 
         { test: /corvina|salmon/, label: 'Carnes y Pescado' }
     ];
 
-    // Categoría final de un plato para el popup -- primero prueba los overrides por nombre
-    // (más fiables para Sugerencias), y solo si ninguno encaja cae en categoriaDeCarpeta().
+    // Categoría final de un plato para el popup. Orden de prioridad (19 sept, corregido tras ver
+    // que "Ensalada de salmón" y un "Poke de salmón" se iban a Carnes y Pescado por el override
+    // de pescado de abajo): 1) ser una ENSALADA O POKE pesa más que llevar pescado dentro -- se
+    // detecta por carpeta (ensaladas/pokes) o porque el propio nombre ya lo dice, y si es así gana
+    // siempre, sin pasar por los demás overrides; 2) si no, los overrides por nombre normales
+    // (Fideuá/hamburguesas/pescado, pensados sobre todo para Sugerencias); 3) si ninguno encaja,
+    // categoriaDeCarpeta() de toda la vida.
     function categoriaDePlato(p) {
         const nombreNorm = normalizarNombre(p.es);
+        const carpetaNorm = (p.carpeta || '').toLowerCase().trim();
+        if (carpetaNorm === 'ensaladas' || carpetaNorm === 'pokes' || /ensalada|poke/.test(nombreNorm)) {
+            return 'Ensaladas';
+        }
         const override = CATEGORIA_OVERRIDES_POR_NOMBRE.find(o => o.test.test(nombreNorm));
         return override ? override.label : categoriaDeCarpeta(p.carpeta);
     }
