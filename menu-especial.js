@@ -14,7 +14,7 @@
 // ventana emergente (window.open + document.write), para no depender de @media print peleándose
 // con el resto de la interfaz del editor.
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.menuEspecial = '1.11.0'; // MODIFICADO: al añadir un plato/vino manual (o al editar uno ya añadido) con el inglés activo, nuevo botón "🌐 Traducir" que traduce el nombre ES a EN con Gemini (mismo patrón de reintento por API Key que generarTraduccionEN() de app.js, pero en un solo paso -- sin el modal de 3 opciones, ya que aquí basta con un resultado directo y editable a mano después).
+window.APP_VERSIONS.menuEspecial = '1.13.0'; // MODIFICADO: (1) traducirAIngles() ahora reutiliza window.PROMPTS.opcionesEN() de prompts.js en vez de un prompt propio simplificado -- ya aplica la regla de explicación breve para términos de cocina no universales y la de fidelidad en carnes/pescados, igual que generarTraduccionEN() en app.js ("Ensaladilla Rusa" ya no sale como un "Russian Salad" seco); (2) el popup de selección de platos (comida, fuera de Postre) ahora agrupa por categoría (Entrantes/Ensaladas/Arroces/Carnes y Pescado/Otros, ver CATEGORIAS_POPUP_COMIDA); (3) los platos con guarnición marcada con "//" en la carta ya no la pierden al añadirse al menú especial -- se conserva entre paréntesis (ver nombreConGuarnicion).
 
 (function () {
     'use strict';
@@ -41,6 +41,28 @@ window.APP_VERSIONS.menuEspecial = '1.11.0'; // MODIFICADO: al añadir un plato/
     // fuera del rango de vinos reconocido (p.ej. el "Vino" de Sugerencias en US Open, ID 12991-
     // 12999, carpeta "vinos" pero FUERA del rango 13100-14499).
     const CARPETAS_EXCLUIDAS_DE_PLATOS = ['cafe', 'refrescos', 'cerveza', 'vinos'];
+
+    // Agrupación del popup de PLATOS (grupo 'comida', excepto la sección Postre -- ahí el pool ya
+    // es un único bloque homogéneo, ver renderModalLista) por la "carpeta" real del plato en la
+    // carta (item.carpeta, ver estructuras.js) -- NO cambia en nada qué platos puede llevar cada
+    // sección del menú especial (Entrantes/Primero/Principal siguen compartiendo el mismo pool),
+    // es solo para que el propio popup sea más fácil de recorrer con montones de platos. Primera
+    // pasada a petición del usuario (19 sept): Entrantes / Ensaladas / Arroces / Carnes y
+    // Pescado -- todo lo que no encaje en ninguna de estas cae en "Otros" (pasta, pizzas, ramen,
+    // pokes, tacos, hamburguesas, niños, guarniciones...) hasta que se termine de afinar la lista.
+    const CATEGORIAS_POPUP_COMIDA = [
+        { label: 'Entrantes', carpetas: ['entrantes'] },
+        { label: 'Ensaladas', carpetas: ['ensaladas'] },
+        { label: 'Arroces', carpetas: ['arroz'] },
+        { label: 'Carnes y Pescado', carpetas: ['carne', 'pescado'] }
+    ];
+    const CATEGORIA_OTROS_LABEL = 'Otros';
+
+    function categoriaDeCarpeta(carpeta) {
+        const c = (carpeta || '').toLowerCase().trim();
+        const encontrada = CATEGORIAS_POPUP_COMIDA.find(cat => cat.carpetas.indexOf(c) !== -1);
+        return encontrada ? encontrada.label : CATEGORIA_OTROS_LABEL;
+    }
 
     // "tituloEn" solo se usa al imprimir (etiquetaBilingue en construirHtmlMenuImpreso) -- el
     // formulario de edición sigue mostrando siempre "titulo" (en español), ver renderSeccionHtml.
@@ -177,6 +199,9 @@ window.APP_VERSIONS.menuEspecial = '1.11.0'; // MODIFICADO: al añadir un plato/
             .me-modal-plato-row { display:flex; align-items:center; gap:10px; padding:7px 6px; border-bottom:1px solid #f2f2f2; font-size:0.85rem; cursor:pointer; }
             .me-modal-plato-row:hover { background:#f8f9fa; }
             .me-modal-plato-row input { width:16px; height:16px; cursor:pointer; flex-shrink:0; margin:0; }
+            .me-modal-grupo-titulo { font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.03em; color:#666; background:#f3f4f6; padding:6px 8px; margin:10px 0 2px; border-radius:5px; }
+            .me-modal-grupo-titulo:first-child { margin-top:0; }
+            .me-modal-grupo-contador { font-weight:500; color:#999; text-transform:none; letter-spacing:0; }
             @media (max-width: 900px) { .me-layout { flex-direction: column; } .me-sidebar { width:100%; } }
         `;
         document.head.appendChild(style);
@@ -205,9 +230,25 @@ window.APP_VERSIONS.menuEspecial = '1.11.0'; // MODIFICADO: al añadir un plato/
         platosParaPopup = [];
         indiceVinos = [];
 
-        // Limpia el "//" (segunda línea de ingredientes/opciones) del nombre para que la
-        // plantilla de menú especial muestre solo el nombre principal del plato.
+        // Limpia el "//" (usado para las "opciones" del plato -- ver desglosarNombre/
+        // reconstruirNombreConOpciones en utils.js) dejando solo el nombre principal. Se sigue
+        // usando tal cual para VINOS, donde "//" indica la uva/denominación (detalle que no
+        // interesa en el menú especial).
         function limpiarNombre(txt) { return (txt || '').split('//')[0].trim(); }
+
+        // Para PLATOS (no vinos): a diferencia de limpiarNombre(), esta NO descarta lo que va
+        // tras el "//" -- en muchos platos esa parte es la guarnición (p.ej. "Solomillo de
+        // ternera //Patatas panaderas//"), y perderla al añadir el plato a un menú especial es
+        // justo lo que se pidió corregir (19 sept). Usa desglosarNombre() (utils.js, ya usada en
+        // el resto del proyecto) para no reinventar el parseo de "//", y añade la guarnición
+        // entre paréntesis pegada al nombre; si el plato no tiene guarnición, el resultado es
+        // idéntico a limpiarNombre().
+        function nombreConGuarnicion(txt) {
+            if (typeof desglosarNombre !== 'function') return limpiarNombre(txt);
+            const d = desglosarNombre(txt);
+            if (!d.nombre) return '';
+            return d.opciones.length ? `${d.nombre} (${d.opciones.join(', ')})` : d.nombre;
+        }
 
         // Dentro de cada tipo de vino, estructuras.js reserva el último tramo de IDs para
         // "Copas" (venta por copa, no por botella) -- ver ESTRUCTURA_RESTAURANTE001/002: Vinos
@@ -302,12 +343,12 @@ window.APP_VERSIONS.menuEspecial = '1.11.0'; // MODIFICADO: al añadir un plato/
                 const carpeta = (item.carpeta || '').toLowerCase().trim();
                 if (CARPETAS_EXCLUIDAS_DE_PLATOS.indexOf(carpeta) !== -1) return;
 
-                const nombreEs = limpiarNombre(item.es);
+                const nombreEs = nombreConGuarnicion(item.es);
                 if (!nombreEs) return;
                 // "tipo" separa Postre del resto (Entrantes/Primero/Principal comparten pool,
                 // pero Postre nunca se mezcla con ellos en ningún sentido -- ver poolParaModal).
                 const tipo = (carpeta === 'postres') ? 'postre' : 'principal';
-                platosParaPopup.push({ modo: modo, alias: alias, id: item.id, es: nombreEs, en: limpiarNombre(item.en), tipo: tipo });
+                platosParaPopup.push({ modo: modo, alias: alias, id: item.id, es: nombreEs, en: nombreConGuarnicion(item.en), tipo: tipo, carpeta: carpeta });
             });
         }
         procesar(datosRG, 'restaurante001', 'RG');
@@ -541,7 +582,7 @@ window.APP_VERSIONS.menuEspecial = '1.11.0'; // MODIFICADO: al añadir un plato/
                 <div class="me-fila" style="margin-bottom:10px;">
                     <input type="text" id="me-input-manual-comida-${info.key}" class="input-estandar" style="flex:2;min-width:200px;margin-bottom:0;" placeholder="¿No está en la carta? Escríbelo aquí...">
                     ${conEn ? `<input type="text" id="me-input-manual-comida-${info.key}-en" class="input-estandar" style="flex:1;min-width:160px;margin-bottom:0;" placeholder="Nombre en inglés">` : ''}
-                    ${conEn ? `<button class="btn btn-secondary" id="me-btn-traducir-comida-${info.key}" onclick="MenuEspecial.traducirAIngles('me-input-manual-comida-${info.key}', 'me-input-manual-comida-${info.key}-en', 'me-btn-traducir-comida-${info.key}')" title="Traducir el nombre en español al inglés con IA">🌐 Traducir</button>` : ''}
+                    ${conEn ? `<button class="btn btn-secondary" id="me-btn-traducir-comida-${info.key}" onclick="MenuEspecial.traducirAIngles('me-input-manual-comida-${info.key}', 'me-input-manual-comida-${info.key}-en', 'me-btn-traducir-comida-${info.key}', false)" title="Traducir el nombre en español al inglés con IA">🌐 Traducir</button>` : ''}
                     <button class="btn btn-secondary" onclick="MenuEspecial.agregarPlatoManual('comida', '${info.key}')">+ Añadir manual</button>
                 </div>
                 <div id="me-lista-${info.key}">${renderListaPlatosHtml('comida', info.key)}</div>
@@ -574,7 +615,7 @@ window.APP_VERSIONS.menuEspecial = '1.11.0'; // MODIFICADO: al añadir un plato/
                     <div class="me-plato-edit-campos">
                         <input type="text" id="${prefijo}-es" class="input-estandar" value="${escHtml(p.es)}" placeholder="Nombre en español">
                         ${conEn ? `<input type="text" id="${prefijo}-en" class="input-estandar" value="${escHtml(p.en || '')}" placeholder="Nombre en inglés">` : ''}
-                        ${conEn ? `<button class="btn btn-secondary" id="${prefijo}-btn-traducir" style="font-size:0.78rem;padding:6px 10px;flex-shrink:0;" onclick="MenuEspecial.traducirAIngles('${prefijo}-es', '${prefijo}-en', '${prefijo}-btn-traducir')" title="Traducir el nombre en español al inglés con IA">🌐</button>` : ''}
+                        ${conEn ? `<button class="btn btn-secondary" id="${prefijo}-btn-traducir" style="font-size:0.78rem;padding:6px 10px;flex-shrink:0;" onclick="MenuEspecial.traducirAIngles('${prefijo}-es', '${prefijo}-en', '${prefijo}-btn-traducir', ${grupo === 'vino'})" title="Traducir el nombre en español al inglés con IA">🌐</button>` : ''}
                     </div>
                     <div class="me-plato-edit-btns">
                         <button class="btn btn-success" style="font-size:0.72rem;padding:5px 9px;" onclick="MenuEspecial.guardarEdicionPlato('${grupo}', '${key}', ${i})">✓ Guardar</button>
@@ -614,7 +655,7 @@ window.APP_VERSIONS.menuEspecial = '1.11.0'; // MODIFICADO: al añadir un plato/
             <div class="me-fila" style="margin-bottom:4px;">
                 <input type="text" id="me-input-manual-vino-${w.key}" class="input-estandar" style="flex:1;min-width:140px;margin-bottom:0;font-size:0.8rem;" placeholder="¿No está en la carta? Escríbelo...">
                 ${conEn ? `<input type="text" id="me-input-manual-vino-${w.key}-en" class="input-estandar" style="flex:1;min-width:120px;margin-bottom:0;font-size:0.8rem;" placeholder="En inglés">` : ''}
-                ${conEn ? `<button class="btn btn-secondary" id="me-btn-traducir-vino-${w.key}" style="font-size:0.78rem;padding:6px 10px;" onclick="MenuEspecial.traducirAIngles('me-input-manual-vino-${w.key}', 'me-input-manual-vino-${w.key}-en', 'me-btn-traducir-vino-${w.key}')" title="Traducir el nombre en español al inglés con IA">🌐</button>` : ''}
+                ${conEn ? `<button class="btn btn-secondary" id="me-btn-traducir-vino-${w.key}" style="font-size:0.78rem;padding:6px 10px;" onclick="MenuEspecial.traducirAIngles('me-input-manual-vino-${w.key}', 'me-input-manual-vino-${w.key}-en', 'me-btn-traducir-vino-${w.key}', true)" title="Traducir el nombre en español al inglés con IA">🌐</button>` : ''}
                 <button class="btn btn-secondary" style="font-size:0.78rem;padding:6px 10px;" onclick="MenuEspecial.agregarPlatoManual('vino', '${w.key}')">${yaHayUno ? '🔄 Cambiar' : '+ Añadir'}</button>
             </div>
             <div style="font-size:0.68rem;color:#999;margin-bottom:8px;">Solo se puede elegir un ${w.tituloEs.toLowerCase()} -- elegir uno nuevo sustituye al anterior.</div>
@@ -738,18 +779,51 @@ window.APP_VERSIONS.menuEspecial = '1.11.0'; // MODIFICADO: al añadir un plato/
             return;
         }
 
-        cont.innerHTML = items.map(p => {
-            const clave = claveModoId(p.modo, p.id);
-            const marcado = !!seleccionEnModal[clave];
-            const tag = p.ambos
-                ? `<span class="me-plato-tag me-tag-ambos">RG + US Open</span>`
-                : (p.modo === 'restaurante002' ? `<span class="me-plato-tag me-tag-us">US Open</span>` : `<span class="me-plato-tag me-tag-rg">RG</span>`);
-            return `<label class="me-modal-plato-row">
-                <input type="checkbox" ${marcado ? 'checked' : ''} onchange="MenuEspecial.toggleSeleccionModal('${clave}', this.checked)">
-                <span>${tag}${escHtml(p.es)}</span>
-            </label>`;
-        }).join('');
+        // Agrupado por categoría SOLO para el popup de comida en Entrantes/Primero/Principal --
+        // Postre y los 4 popups de vino siguen como lista plana (ver comentario de
+        // CATEGORIAS_POPUP_COMIDA): en Postre el pool ya es un único bloque homogéneo, y en vino
+        // cada popup ya está acotado a un solo tipo (blanco/rosado/tinto/cava).
+        const agrupar = (modalGrupoActual === 'comida' && modalSeccionActual !== 'postre');
+        cont.innerHTML = agrupar ? renderModalListaAgrupada(items) : renderModalListaFilas(items);
         actualizarContadorModal();
+    }
+
+    function renderModalListaFilas(items) {
+        return items.map(renderModalFilaHtml).join('');
+    }
+
+    function renderModalFilaHtml(p) {
+        const clave = claveModoId(p.modo, p.id);
+        const marcado = !!seleccionEnModal[clave];
+        const tag = p.ambos
+            ? `<span class="me-plato-tag me-tag-ambos">RG + US Open</span>`
+            : (p.modo === 'restaurante002' ? `<span class="me-plato-tag me-tag-us">US Open</span>` : `<span class="me-plato-tag me-tag-rg">RG</span>`);
+        return `<label class="me-modal-plato-row">
+            <input type="checkbox" ${marcado ? 'checked' : ''} onchange="MenuEspecial.toggleSeleccionModal('${clave}', this.checked)">
+            <span>${tag}${escHtml(p.es)}</span>
+        </label>`;
+    }
+
+    // Agrupa los platos ya filtrados por su categoría (ver categoriaDeCarpeta) y pinta un
+    // encabezado por grupo -- el orden de los encabezados es SIEMPRE el de CATEGORIAS_POPUP_COMIDA
+    // (no alfabético ni el de aparición), con "Otros" al final; un grupo sin platos que coincidan
+    // no se pinta.
+    function renderModalListaAgrupada(items) {
+        const grupos = new Map();
+        items.forEach(p => {
+            const label = categoriaDeCarpeta(p.carpeta);
+            if (!grupos.has(label)) grupos.set(label, []);
+            grupos.get(label).push(p);
+        });
+        const ordenLabels = CATEGORIAS_POPUP_COMIDA.map(c => c.label).concat([CATEGORIA_OTROS_LABEL]);
+        let html = '';
+        ordenLabels.forEach(label => {
+            const lista = grupos.get(label);
+            if (!lista || !lista.length) return;
+            html += `<div class="me-modal-grupo-titulo">${escHtml(label)} <span class="me-modal-grupo-contador">(${lista.length})</span></div>`;
+            html += renderModalListaFilas(lista);
+        });
+        return html;
     }
 
     function toggleSeleccionModal(clave, marcado) {
@@ -887,11 +961,10 @@ window.APP_VERSIONS.menuEspecial = '1.11.0'; // MODIFICADO: al añadir un plato/
         if (listaEl) listaEl.innerHTML = renderListaPlatosHtml(grupo, key);
     }
 
-    // Construye el prompt de traducción -- un único resultado directo (no las 3 opciones de
-    // generarTraduccionEN() en app.js), pensado para un botón rápido junto a un campo manual:
-    // el resultado cae en el input de inglés tal cual, y el usuario lo revisa/corrige a mano si
-    // no le convence (el input sigue siendo editable normal).
-    function construirPromptTraduccion(textoEs) {
+    // Prompt de respaldo, SOLO por si window.PROMPTS (prompts.js) no estuviera cargado por algún
+    // motivo -- en condiciones normales nunca se usa (ver traducirAIngles), porque prompts.js se
+    // carga antes que menu-especial.js en index.html.
+    function construirPromptTraduccionSimple(textoEs) {
         return `Actúa como traductor profesional de menús de restaurantes de alta gama. Traduce al inglés el siguiente nombre de plato o bebida, tal como aparecería en la carta impresa de un restaurante (nombre corto y natural, sin explicaciones ni alternativas ni comillas): "${textoEs.replace(/"/g, "'")}"\n\nResponde ÚNICAMENTE con un JSON de una sola clave, sin explicaciones ni markdown: {"en":"la traducción aquí"}`;
     }
 
@@ -900,7 +973,15 @@ window.APP_VERSIONS.menuEspecial = '1.11.0'; // MODIFICADO: al añadir un plato/
     // utils.js), así que si hay Keys configuradas en el editor normal, funcionan aquí igual sin
     // configuración aparte. Se usa tanto al añadir un plato/vino manual como dentro del editor
     // in situ (✏️) de un plato ya añadido.
-    async function traducirAIngles(idInputEs, idInputEn, idBoton) {
+    // CORREGIDO (19 sept): la primera versión usaba un prompt propio simplificado que pedía una
+    // única traducción "seca" -- por eso "Ensaladilla Rusa" salía como "Russian Salad" sin más.
+    // Ahora reutiliza EXACTAMENTE window.PROMPTS.opcionesEN(), el mismo prompt que ya usa
+    // generarTraduccionEN() en app.js, que sí incluye REGLA_EXPLICACION_TERMINOS_NO_UNIVERSALES
+    // (añade una breve descripción en inglés cuando el término no es ya universalmente conocido)
+    // y REGLA_FIDELIDAD_CARNES -- solo que aquí, al ser un botón rápido de un solo resultado (no
+    // el modal de 3 opciones), se queda con "directa" (la que aplica esa regla de explicación) en
+    // vez de abrir un selector; el usuario sigue pudiendo retocar el resultado a mano después.
+    async function traducirAIngles(idInputEs, idInputEn, idBoton, esVino) {
         const inputEs = document.getElementById(idInputEs);
         const inputEn = document.getElementById(idInputEn);
         if (!inputEs || !inputEn) return;
@@ -917,7 +998,9 @@ window.APP_VERSIONS.menuEspecial = '1.11.0'; // MODIFICADO: al añadir un plato/
         mostrarCargando(true, '🌐 Traduciendo al inglés...');
 
         const endpoint = window.GEMINI_ENDPOINT_URL || 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent';
-        const instruccion = construirPromptTraduccion(textoEs);
+        const instruccion = (typeof window.PROMPTS !== 'undefined' && typeof window.PROMPTS.opcionesEN === 'function')
+            ? window.PROMPTS.opcionesEN(textoEs.replace(/"/g, "'"), !!esVino)
+            : construirPromptTraduccionSimple(textoEs);
 
         let exito = false, intentos = 0, ultimoError = '', traduccion = '';
         while (!exito && intentos < keys.length) {
@@ -940,8 +1023,12 @@ window.APP_VERSIONS.menuEspecial = '1.11.0'; // MODIFICADO: al añadir un plato/
                     : (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text);
                 if (txt) {
                     const obj = (typeof extraerJSON === 'function') ? extraerJSON(txt) : JSON.parse(txt);
-                    if (obj && obj.en) { traduccion = obj.en; exito = true; }
-                    else { throw new Error('El JSON no contiene la clave "en".'); }
+                    // "directa" es la opción que lleva la explicación breve para términos no
+                    // universales (ver REGLA_EXPLICACION_TERMINOS_NO_UNIVERSALES en prompts.js);
+                    // "gastronomica"/"corta"/"en" son de respaldo si por lo que sea faltara.
+                    const resultado = obj && (obj.directa || obj.gastronomica || obj.corta || obj.en);
+                    if (resultado) { traduccion = resultado; exito = true; }
+                    else { throw new Error('El JSON no contiene ninguna traducción esperada.'); }
                 }
             } catch (err) {
                 ultimoError = err.message;
