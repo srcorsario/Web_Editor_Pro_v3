@@ -14,7 +14,7 @@
 // ventana emergente (window.open + document.write), para no depender de @media print peleándose
 // con el resto de la interfaz del editor.
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.menuEspecial = '1.19.0'; // MODIFICADO: nuevo checkbox "📝 Imprimir nombre" (mostrarNombre, activado por defecto) para poder imprimir el menú sin el título; logo de impresión un poco más grande (max-height 4.4em->5.4em, max-width 13em->16em).
+window.APP_VERSIONS.menuEspecial = '1.20.0'; // CORREGIDO: text-wrap:balance del navegador a veces dejaba la 1ª línea de un nombre partido en 2 más CORTA que la 2ª -- sustituido por un reequilibrado manual (balancearLineasDobles(), dentro del script de la ventana de impresión) que mide con canvas.measureText() y elige, de entre todos los cortes por palabra que caben en el ancho disponible, el más equilibrado que además deje la línea 1 igual o más larga que la línea 2, nunca al revés. El nombre (ES) y su traducción (EN) pasan a ir cada uno en su propio <div class="me-print-plato-linea">, igual que ya las líneas de Bebida.
 
 (function () {
     'use strict';
@@ -1176,16 +1176,22 @@ window.APP_VERSIONS.menuEspecial = '1.19.0'; // MODIFICADO: nuevo checkbox "📝
         const mostrarEs = menu.idiomas.es;
         const mostrarEn = menu.idiomas.en;
 
+        // Cada "línea" (nombre en ES, y si aplica su traducción EN) va en su propio <div
+        // class="me-print-plato-linea"> -- además de mantenerlas independientes para el
+        // text-wrap:balance de CSS, es el gancho que usa balancearLineasDobles() en el script de
+        // la ventana de impresión (más abajo) para reequilibrar manualmente el corte de una
+        // línea que se parte en 2, dejando SIEMPRE la primera línea igual o más larga que la
+        // segunda (19 sept, corregido: text-wrap:balance del navegador a veces hacía justo lo
+        // contrario).
         function nombrePlato(p) {
             const es = escHtml(p.es);
             const en = escHtml(p.en);
-            // El EN va en su propio <div> anidado (antes era un <br>) para que el ES y el EN sean
-            // dos cajas de línea INDEPENDIENTES a efectos de text-wrap:balance (ver
-            // .me-print-plato/.me-print-plato-en más abajo) -- si compartieran una sola caja, el
-            // balanceo mezclaría las líneas del nombre con las de la traducción.
-            if (mostrarEs && mostrarEn) return en ? `${es}<div class="me-print-plato-en"><em>${en}</em></div>` : es;
-            if (mostrarEn && !mostrarEs) return en || es;
-            return es;
+            if (mostrarEs && mostrarEn) {
+                const esLinea = `<div class="me-print-plato-linea">${es}</div>`;
+                return en ? `${esLinea}<div class="me-print-plato-linea me-print-plato-en">${en}</div>` : esLinea;
+            }
+            if (mostrarEn && !mostrarEs) return `<div class="me-print-plato-linea">${en || es}</div>`;
+            return `<div class="me-print-plato-linea">${es}</div>`;
         }
 
         // Etiqueta de una categoría/título en el idioma o idiomas activos: "Vino Blanco / White
@@ -1236,7 +1242,7 @@ window.APP_VERSIONS.menuEspecial = '1.19.0'; // MODIFICADO: nuevo checkbox "📝
             }
         });
         const bebidaHtml = bebidaItems.length
-            ? `<div class="me-print-seccion"><div class="me-print-seccion-titulo">${etiquetaBilingue('Bebida', 'Drinks')}</div>${bebidaItems.map(t => `<div class="me-print-plato">${t}</div>`).join('')}</div>`
+            ? `<div class="me-print-seccion"><div class="me-print-seccion-titulo">${etiquetaBilingue('Bebida', 'Drinks')}</div>${bebidaItems.map(t => `<div class="me-print-plato"><div class="me-print-plato-linea">${t}</div></div>`).join('')}</div>`
             : '';
 
         const logoHtml = menu.logo ? `<img src="logo RG_REST.png" class="me-print-logo" alt="Logo RG">` : '';
@@ -1292,7 +1298,8 @@ window.APP_VERSIONS.menuEspecial = '1.19.0'; // MODIFICADO: nuevo checkbox "📝
             .me-print-titulo { font-size:1.65em; font-weight:800; letter-spacing:0.02em; margin-bottom:0.85em; }
             .me-print-seccion { width:100%; max-width:35em; margin:0 auto 0.5em auto; }
             .me-print-seccion-titulo { font-size:0.76em; font-weight:800; text-transform:uppercase; letter-spacing:0.03em; white-space:nowrap; color:#b8860b; border-bottom:1px solid #ddd; padding-bottom:0.15em; margin-bottom:0.3em; }
-            .me-print-plato { font-size:0.92em; line-height:1.25; margin-bottom:0.22em; text-wrap:balance; }
+            .me-print-plato { margin-bottom:0.22em; }
+            .me-print-plato-linea { font-size:0.92em; line-height:1.25; text-wrap:balance; }
             .me-print-plato-en { font-style:italic; color:#555; font-size:0.85em; line-height:1.25; text-wrap:balance; }
         `;
         const bodyHtml = `<div class="me-print-sheet">${menuHtml}<div class="me-print-cutline"></div>${menuHtml}</div>`;
@@ -1330,6 +1337,63 @@ window.APP_VERSIONS.menuEspecial = '1.19.0'; // MODIFICADO: nuevo checkbox "📝
                     if (styleEl) styleEl.textContent = '.me-print-inner{ font-size:' + (BASE_PX * f) + 'px !important; }';
                 }
 
+                // Reequilibra manualmente el corte de cada ".me-print-plato-linea" que se parte en
+                // 2 líneas -- CORREGIDO (19 sept): el text-wrap:balance nativo del navegador a
+                // veces dejaba la PRIMERA línea más corta que la segunda; aquí, de entre todos los
+                // cortes (por palabra) que caben en el ancho disponible, se elige siempre el más
+                // equilibrado que deje la línea 1 igual o más larga que la línea 2, nunca al
+                // revés. Solo actúa si el texto necesita EXACTAMENTE 2 líneas a este ancho/tamaño
+                // (si cupiera en 1 no toca nada; si necesitara 3 o más, no se ha encontrado ningún
+                // corte válido y se deja tal cual, a merced del ajuste normal del navegador). Se
+                // llama DESPUÉS de fijar el factor de letra definitivo (ajustarYimprimir), así que
+                // mide con el tamaño real ya asentado -- y como el texto ya envolvía a 2 líneas de
+                // forma natural, cambiar SOLO el punto de corte no cambia el alto total del bloque,
+                // por lo que no invalida el cálculo de "cabe()" ya hecho.
+                function balancearLineasDobles() {
+                    var MARGEN_SEGURIDAD_PX = 2; // colchón por si measureText no calca 100% el layout real
+                    var canvas = document.createElement('canvas');
+                    var ctx = canvas.getContext('2d');
+                    if (!ctx) return;
+
+                    function escaparHtml(t) {
+                        return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    }
+
+                    var elementos = document.querySelectorAll('.me-print-plato-linea');
+                    for (var idx = 0; idx < elementos.length; idx++) {
+                        var el = elementos[idx];
+                        var texto = (el.textContent || '').trim();
+                        var palabras = texto.split(/\s+/).filter(Boolean);
+                        if (palabras.length < 2) continue;
+
+                        var maxWidth = el.clientWidth;
+                        if (!maxWidth) continue;
+                        var maxWidthSeguro = maxWidth - MARGEN_SEGURIDAD_PX;
+
+                        ctx.font = window.getComputedStyle(el).font;
+                        var anchoCompleto = ctx.measureText(texto).width;
+                        if (anchoCompleto <= maxWidth) continue; // ya cabe en 1 línea, no tocar
+
+                        var candidatos = [];
+                        for (var i = 1; i < palabras.length; i++) {
+                            var linea1 = palabras.slice(0, i).join(' ');
+                            var linea2 = palabras.slice(i).join(' ');
+                            var w1 = ctx.measureText(linea1).width;
+                            var w2 = ctx.measureText(linea2).width;
+                            if (w1 > maxWidthSeguro || w2 > maxWidthSeguro) continue;
+                            candidatos.push({ linea1: linea1, linea2: linea2, w1: w1, w2: w2 });
+                        }
+                        if (!candidatos.length) continue; // necesitaría 3+ líneas: se deja tal cual
+
+                        var conLinea1Mayor = candidatos.filter(function (c) { return c.w1 >= c.w2; });
+                        var pool = conLinea1Mayor.length ? conLinea1Mayor : candidatos;
+                        pool.sort(function (a, b) { return Math.abs(a.w1 - a.w2) - Math.abs(b.w1 - b.w2); });
+                        var elegido = pool[0];
+
+                        el.innerHTML = escaparHtml(elegido.linea1) + '<br>' + escaparHtml(elegido.linea2);
+                    }
+                }
+
                 function ajustarYimprimir() {
                     var maxAlturaPx = alturaDisponiblePx();
                     // Se mide .me-print-inner (el bloque de contenido real, que crece/encoge con
@@ -1364,6 +1428,7 @@ window.APP_VERSIONS.menuEspecial = '1.19.0'; // MODIFICADO: nuevo checkbox "📝
                     }
 
                     if (cabe()) {
+                        balancearLineasDobles();
                         setTimeout(function () { window.print(); }, 150);
                     } else {
                         var aviso = document.createElement('div');
