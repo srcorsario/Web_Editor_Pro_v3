@@ -14,7 +14,7 @@
 // ventana emergente (window.open + document.write), para no depender de @media print peleándose
 // con el resto de la interfaz del editor.
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.menuEspecial = '1.14.0'; // MODIFICADO: procesar() descarta ahora las filas con id < 1001 (fila 14 de la hoja de datos) tanto en RG como en US Open -- no son platos reales, no deben aparecer en el índice de platos/popup del menú especial.
+window.APP_VERSIONS.menuEspecial = '1.15.0'; // MODIFICADO: nuevas categorías del popup de platos "Hamburguesas" y "Pastas y Pizzas" (carpetas pasta/pastas/pizzas); "pokes" pasa a agruparse dentro de "Ensaladas"; los platos de niño y las guarniciones (carpetas niños/guarnicion) ya no aparecen en absoluto en el índice de platos del menú especial (antes cayían sin más en "Otros").
 
 (function () {
     'use strict';
@@ -39,22 +39,28 @@ window.APP_VERSIONS.menuEspecial = '1.14.0'; // MODIFICADO: procesar() descarta 
     // por si algún plato antiguo no llevara ese rango de ID bien puesto, se descarta también por
     // "carpeta" (cafe/refrescos/cerveza) -- y 'vinos' por si acaso algún vino colgara de un ID
     // fuera del rango de vinos reconocido (p.ej. el "Vino" de Sugerencias en US Open, ID 12991-
-    // 12999, carpeta "vinos" pero FUERA del rango 13100-14499).
-    const CARPETAS_EXCLUIDAS_DE_PLATOS = ['cafe', 'refrescos', 'cerveza', 'vinos'];
+    // 12999, carpeta "vinos" pero FUERA del rango 13100-14499). 'niños' y 'guarnicion' (a petición
+    // del usuario, 19 sept): los platos de niño y las guarniciones sueltas/extra no tienen sentido
+    // como plato independiente de un menú especial de evento, así que se descartan del todo, no
+    // solo se agrupan en "Otros".
+    const CARPETAS_EXCLUIDAS_DE_PLATOS = ['cafe', 'refrescos', 'cerveza', 'vinos', 'niños', 'guarnicion'];
 
     // Agrupación del popup de PLATOS (grupo 'comida', excepto la sección Postre -- ahí el pool ya
     // es un único bloque homogéneo, ver renderModalLista) por la "carpeta" real del plato en la
     // carta (item.carpeta, ver estructuras.js) -- NO cambia en nada qué platos puede llevar cada
     // sección del menú especial (Entrantes/Primero/Principal siguen compartiendo el mismo pool),
-    // es solo para que el propio popup sea más fácil de recorrer con montones de platos. Primera
-    // pasada a petición del usuario (19 sept): Entrantes / Ensaladas / Arroces / Carnes y
-    // Pescado -- todo lo que no encaje en ninguna de estas cae en "Otros" (pasta, pizzas, ramen,
-    // pokes, tacos, hamburguesas, niños, guarniciones...) hasta que se termine de afinar la lista.
+    // es solo para que el propio popup sea más fácil de recorrer con montones de platos. Lista de
+    // categorías, afinada por el usuario en 2 rondas (19 sept): "pasta" es la carpeta que usa RG
+    // ("3- Arroz y Pasta"), "pastas" la que usa US Open ("5- Pastas") -- se incluyen las dos
+    // grafías en "Pastas y Pizzas" para no dejar fuera los platos de ninguno de los dos
+    // restaurantes. Ramen/tacos siguen sin categoría propia y caen en "Otros" hasta que se pida.
     const CATEGORIAS_POPUP_COMIDA = [
         { label: 'Entrantes', carpetas: ['entrantes'] },
-        { label: 'Ensaladas', carpetas: ['ensaladas'] },
+        { label: 'Ensaladas', carpetas: ['ensaladas', 'pokes'] },
         { label: 'Arroces', carpetas: ['arroz'] },
-        { label: 'Carnes y Pescado', carpetas: ['carne', 'pescado'] }
+        { label: 'Carnes y Pescado', carpetas: ['carne', 'pescado'] },
+        { label: 'Hamburguesas', carpetas: ['hamburguesas'] },
+        { label: 'Pastas y Pizzas', carpetas: ['pasta', 'pastas', 'pizzas'] }
     ];
     const CATEGORIA_OTROS_LABEL = 'Otros';
 
