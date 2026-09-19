@@ -14,7 +14,7 @@
 // ventana emergente (window.open + document.write), para no depender de @media print peleándose
 // con el resto de la interfaz del editor.
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.menuEspecial = '1.22.0'; // NUEVO: aviso de posible falta de ortografía al añadir un plato manualmente (agregarPlatoManual) o al editar el nombre de uno ya añadido (guardarEdicionPlato) -- mismo patrón "¿Quisiste decir...?" que ya usa el editor de carta normal (mostrarCorreccionOrtografiaEN, en app.js) y que se inspiró originalmente en la web de Cartelitos Buffet. Usa un prompt nuevo y más ligero (window.PROMPTS.revisionOrtografica, en prompts.js) que solo revisa ortografía sin pedir traducciones, para no gastar la llamada más cara cuando no hace falta traducir. Nunca se aplica a vinos (nombres propios/marca), y si falla por lo que sea (sin claves de Gemini, sin cuota, sin red) no bloquea el añadido/guardado -- se comporta igual que antes de tener este aviso. CORREGIDO (heredado de la 1.21.0): la 1.20.0 dejaba, en la impresión real, algunos nombres partidos a mitad de palabra con letras "desaparecidas" (p.ej. "Queso Parmesano" -> "Que o" / "Parme" + "ano") por dejar activo `text-wrap:balance` en CSS a la vez que balancearLineasDobles() forzaba su propio <br> -- ver detalle completo en el historial de versiones.
+window.APP_VERSIONS.menuEspecial = '1.23.0'; // CORREGIDO: la 1.22.0 añadió el aviso de posible falta de ortografía SOLO en el último paso (al pulsar "Añadir plato"/"Guardar", vía revisarOrtografiaManual()) -- pero al pulsar antes "🌐 Traducir" (traducirAIngles), que YA usa window.PROMPTS.opcionesEN() y esa función YA revisa la ortografía en la misma llamada, el resultado de esa revisión (obj.correccion) se estaba descartando sin más: el traductor entendía bien el plato pese a la falta (p.ej. "gaspaxo" se traducía correctamente) pero no avisaba hasta el paso final. Ahora traducirAIngles() también recoge obj.correccion y, si hay falta, muestra el mismo aviso "¿Quisiste decir...?" justo ahí, nada más traducir -- el aviso del paso de "Añadir/Guardar" se mantiene igual, por si el usuario no llega a pulsar "Traducir" (escribe el inglés a mano o lo deja para luego). NUEVO (1.22.0): aviso de posible falta de ortografía al añadir un plato manualmente (agregarPlatoManual) o al editar el nombre de uno ya añadido (guardarEdicionPlato) -- mismo patrón "¿Quisiste decir...?" que ya usa el editor de carta normal (mostrarCorreccionOrtografiaEN, en app.js) y que se inspiró originalmente en la web de Cartelitos Buffet. Usa un prompt nuevo y más ligero (window.PROMPTS.revisionOrtografica, en prompts.js) que solo revisa ortografía sin pedir traducciones. Nunca se aplica a vinos (nombres propios/marca), y si falla por lo que sea no bloquea el añadido/guardado.
 
 (function () {
     'use strict';
@@ -1134,7 +1134,7 @@ window.APP_VERSIONS.menuEspecial = '1.22.0'; // NUEVO: aviso de posible falta de
             ? window.PROMPTS.opcionesEN(textoEs.replace(/"/g, "'"), !!esVino)
             : construirPromptTraduccionSimple(textoEs);
 
-        let exito = false, intentos = 0, ultimoError = '', traduccion = '';
+        let exito = false, intentos = 0, ultimoError = '', traduccion = '', correccionDetectada = null;
         while (!exito && intentos < keys.length) {
             try {
                 const apiKey = keys[intentos];
@@ -1159,8 +1159,21 @@ window.APP_VERSIONS.menuEspecial = '1.22.0'; // NUEVO: aviso de posible falta de
                     // universales (ver REGLA_EXPLICACION_TERMINOS_NO_UNIVERSALES en prompts.js);
                     // "gastronomica"/"corta"/"en" son de respaldo si por lo que sea faltara.
                     const resultado = obj && (obj.directa || obj.gastronomica || obj.corta || obj.en);
-                    if (resultado) { traduccion = resultado; exito = true; }
-                    else { throw new Error('El JSON no contiene ninguna traducción esperada.'); }
+                    if (resultado) {
+                        traduccion = resultado;
+                        exito = true;
+                        // CORREGIDO (19 sept, 2ª ronda): window.PROMPTS.opcionesEN() YA revisa la
+                        // ortografía del español en la misma llamada (ver "correccion" en
+                        // prompts.js) -- entiende igual el plato aunque haya una falta y lo
+                        // traduce bien (por eso "gaspaxo" se traducía correctamente sin más), pero
+                        // antes este resultado se descartaba sin más y el aviso solo llegaba en el
+                        // último paso (al pulsar "Añadir plato"/"Guardar", vía
+                        // revisarOrtografiaManual()). Ahora también se recoge aquí, para avisar ya
+                        // en el propio paso de traducir, no solo al final.
+                        if (!esVino && obj.correccion && obj.correccion.hayError && obj.correccion.texto) {
+                            correccionDetectada = obj.correccion;
+                        }
+                    } else { throw new Error('El JSON no contiene ninguna traducción esperada.'); }
                 }
             } catch (err) {
                 ultimoError = err.message;
@@ -1172,6 +1185,10 @@ window.APP_VERSIONS.menuEspecial = '1.22.0'; // NUEVO: aviso de posible falta de
         if (btn) { btn.innerHTML = textoOriginalBtn; btn.disabled = false; }
 
         if (exito) {
+            if (correccionDetectada && typeof mostrarCorreccionOrtografiaEN === 'function') {
+                const corregido = await mostrarCorreccionOrtografiaEN(correccionDetectada.texto);
+                if (corregido) inputEs.value = corregido;
+            }
             inputEn.value = formatearTituloInteligente(traduccion);
         } else {
             alert('❌ Error al traducir al inglés.\nDetalles: ' + ultimoError);
