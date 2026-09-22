@@ -13,13 +13,15 @@ ROLAND GARROS (restaurante001)
   Archivo de referencia: Codigo_RG.gs
   URL /exec actual (WEB_APP_URL_RESTAURANTE001 en config.js,
   APP_SCRIPT_URL en script.js de la web pública "web"):
-  https://script.google.com/macros/s/AKfycbwe_6c4woiFXSp34fHgcky1uX-o_oCMQGRjYjmKeWgAbcgB-2sBmaNVgvS4wOI_aKSfYA/exec
+  https://script.google.com/macros/s/AKfycbyNgYSX6QyySV4JD2Uy2wx-n11fLhOhekHiZx--K1ORMEh0WgRPKn25ko51h0yl1xP7RA/exec
+  (ANTERIOR, sustituida el 22 sept: https://script.google.com/macros/s/AKfycbwe_6c4woiFXSp34fHgcky1uX-o_oCMQGRjYjmKeWgAbcgB-2sBmaNVgvS4wOI_aKSfYA/exec)
 
 US OPEN (restaurante002)
   Archivo de referencia: Codigo_USOpen.gs
   URL /exec actual (WEB_APP_URL_RESTAURANTE002 en config.js,
   APP_SCRIPT_URL en script.js de la web pública "usopen-main"):
-  https://script.google.com/macros/s/AKfycbwouqhWugYlrVuc1Pv0h4BVaI3PPRkL13snFNxsntR1CLR7AxsloFvJ2b3l0JDFT788/exec
+  https://script.google.com/macros/s/AKfycbweTq3o4NCOeBpZw-s65RgN9N311N5BLd1m9pA6_W9r6M_JdcxBsOrbyR8JLXAG9WbL/exec
+  (ANTERIOR, sustituida el 22 sept: https://script.google.com/macros/s/AKfycbwouqhWugYlrVuc1Pv0h4BVaI3PPRkL13snFNxsntR1CLR7AxsloFvJ2b3l0JDFT788/exec)
 
 MENÚ ESPECIAL (proyecto independiente, no pertenece a RG ni a US Open)
   Archivo de referencia: Codigo_MenusEspeciales.gs
@@ -72,4 +74,19 @@ esos datos con normalidad — no es urgente tocar los repos públicos por esto. 
 en algún momento se quiere dejar una única implementación activa (borrando la
 vieja), entonces sí habría que actualizar antes la URL en esos dos script.js.
 
-Última actualización de este archivo: 2026-09-19.
+22 septiembre — fix "se queda regenerando la Info al tocar solo el precio":
+Codigo_RG.gs / Codigo_USOpen.gs modificados para que guardarInfoPlato()
+("?accion=infoplato") guarde también INFO_HASH_FICHA (antes esa huella solo
+quedaba en memoria del navegador y nunca se persistía en la hoja, forzando
+una regeneración completa con IA en cualquier edición de un plato con ficha
+ya generada). El usuario volvió a crear implementaciones NUEVAS en los dos
+proyectos (no "Nueva versión" de las existentes), así que las 2 URLs /exec
+de arriba cambiaron respecto a las anteriores y ya están actualizadas aquí y
+en config.js del editor. Mismo caso que el 16 sept: este cambio tampoco toca
+doGet/servirCsvEnVivo/categorías, así que la implementación VIEJA (si sigue
+activa) debería seguir sirviendo con normalidad los datos a los repos
+públicos "web"/"usopen-main" — no es urgente tocar esos dos script.js por
+este cambio en concreto, aunque conviene sincronizarlos en algún momento
+para no acumular implementaciones viejas sueltas.
+
+Última actualización de este archivo: 2026-09-22.

@@ -572,7 +572,20 @@ function guardarInfoPlato(e) {
 
     var infoPorIdioma = datos.info || {};
     var idiomasRecibidos = Object.keys(infoPorIdioma);
-    if (idiomasRecibidos.length === 0) return ContentService.createTextOutput("OK: nada que guardar (objeto 'info' vacío).");
+
+    // NUEVO: huella (hash) de NOMBRE_ES + ALERGENOS_COD en el momento en que se generó/confirmó
+    // esta ficha — la calcula el frontend (ver generarInfoAutomaticaPlato() en app.js, misma
+    // fórmula que calcularHashContenido() de utils.js) y la manda aquí para poder guardarla
+    // junto a la Info. Antes esta función NUNCA escribía INFO_HASH_FICHA (solo quedaba en
+    // memoria del navegador, ver app.js) — así que tras recargar la página esa huella volvía a
+    // estar vacía y CUALQUIER edición de un plato (aunque solo fuera el precio, que ni siquiera
+    // forma parte de esta huella) disparaba una regeneración completa con IA solo porque no
+    // había huella guardada con la que comparar. También puede llegar SOLA, sin "info" (objeto
+    // vacío) — caso "bautizo": la ficha ya existía y solo hace falta guardar su huella, sin
+    // volver a generar ni guardar contenido nuevo (ver app.js).
+    var hashFichaValor = (datos.hashFicha !== undefined && datos.hashFicha !== null) ? String(datos.hashFicha) : "";
+
+    if (idiomasRecibidos.length === 0 && !hashFichaValor) return ContentService.createTextOutput("OK: nada que guardar (objeto 'info' vacío y sin huella).");
 
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var hoja = ss.getSheetByName("Hoja 1");
@@ -621,6 +634,28 @@ function guardarInfoPlato(e) {
       hoja.getRange(filaEncontrada, idxCol + 1).setValue(valorTexto);
     });
 
+    // NUEVO: escribir/actualizar INFO_HASH_FICHA (si se ha recibido) — mismo patrón de
+    // inserción que las columnas INFO_<idioma> de arriba (justo antes de Hash_Fila).
+    if (hashFichaValor) {
+      var nombreColumnaHash = "INFO_HASH_FICHA";
+      var idxColHash = cabeceras.findIndex(function(h) { return String(h).toUpperCase() === nombreColumnaHash; });
+      if (idxColHash === -1) {
+        var idxHashFilaActual = cabeceras.findIndex(function(h) { return String(h).toUpperCase() === "HASH_FILA"; });
+        var posicionInsercionHash; // 1-based
+        if (idxHashFilaActual !== -1) {
+          posicionInsercionHash = idxHashFilaActual + 1; // justo delante de Hash_Fila
+          hoja.insertColumnBefore(posicionInsercionHash);
+          cabeceras.splice(idxHashFilaActual, 0, nombreColumnaHash);
+        } else {
+          posicionInsercionHash = cabeceras.length + 1;
+          cabeceras.push(nombreColumnaHash);
+        }
+        hoja.getRange(1, posicionInsercionHash).setValue(nombreColumnaHash);
+        idxColHash = posicionInsercionHash - 1;
+      }
+      hoja.getRange(filaEncontrada, idxColHash + 1).setValue(hashFichaValor);
+    }
+
     // Recalcular Hash_Fila de ESTA fila (si la columna existe) para que la web pública detecte
     // el cambio — mismo cálculo que usa doPost() de "Hoja 1" (ver calcularHashFila arriba).
     var cabecerasTrasEscribir = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
@@ -631,7 +666,8 @@ function guardarInfoPlato(e) {
       hoja.getRange(filaEncontrada, idxHash + 1).setValue(calcularHashFila(contenidoParaHash));
     }
 
-    return ContentService.createTextOutput("OK: Info guardada para el plato ID " + idPlato + " (" + idiomasRecibidos.length + " idioma(s): " + idiomasRecibidos.join(', ') + ").");
+    var mensajeIdiomas = idiomasRecibidos.length > 0 ? (idiomasRecibidos.length + " idioma(s): " + idiomasRecibidos.join(', ')) : "0 idiomas (solo huella)";
+    return ContentService.createTextOutput("OK: Info guardada para el plato ID " + idPlato + " (" + mensajeIdiomas + ").");
   } catch (err) {
     return ContentService.createTextOutput("Error: " + err.message);
   } finally {

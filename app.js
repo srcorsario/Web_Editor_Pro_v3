@@ -1,7 +1,7 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '2.14.0'; // NUEVO: mostrarOverlayCarga()/ocultarOverlayCarga() -- generarTraduccionEN() ("🇬🇧 Generar opciones en Inglés") y ejecutarTraduccionAutomatica() ("✨ Auto-Traducir resto de idiomas") ahora muestran la misma rueda de carga a pantalla completa que ya se usaba solo para "Cargando datos..." al cambiar de pestaña, con texto propio, mientras esperan la respuesta de Gemini -- HAR real (18 sept) mostró hasta ~45s en un solo botón por reintentos ante 503 "modelo saturado" de Gemini, con el único aviso siendo el texto del botón (poco visible). No cambia nada del backend ni de los lotes automáticos de Fase 1/2/3.
+window.APP_VERSIONS.app = '2.15.0'; // NUEVO (22 sept): fix "se queda regenerando la Info al tocar solo el precio". Causa real: INFO_HASH_FICHA (la huella nombre+alérgenos que decide si hace falta regenerar la ficha con IA) se calculaba y guardaba SOLO en memoria del navegador -- nunca se persistía en la hoja (guardarInfoPlatoEnBackend()/Código.gs no la escribía) -- así que tras recargar la página volvía a estar vacía y CUALQUIER "Aplicar Cambios" de un plato ya con ficha disparaba una regeneración completa con IA solo por no encontrar huella con la que comparar (el precio nunca formó parte de esa huella). Ahora guardarInfoPlatoEnBackend() manda también la huella al backend (accion=infoplato) y Código.gs la guarda en INFO_HASH_FICHA; y si un plato ya tiene ficha completa pero le falta la huella, generarInfoAutomaticaPlato() ya no regenera nada: la "bautiza" (calcula y guarda la huella actual) sin gastar IA, igual que ya hacía "Revisar y Corregir Consistencia" con las filas nunca revisadas. Requiere el Código.gs actualizado (RG y US Open) para que la huella se guarde de verdad.
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
@@ -1493,15 +1493,25 @@ async function llamarGeminiConReintentos(instruccion, keys) {
 // para uno o varios idiomas a la vez. "no-cors" (igual que el resto de guardados del editor)
 // significa que no se puede leer la respuesta real — se asume éxito de forma optimista, igual
 // que ya hace enviarAlExcel()/toggleCategoriaPestana().
-async function guardarInfoPlatoEnBackend(id, infoPorIdioma) {
+// NUEVO: parámetro opcional hashFicha — la huella (NOMBRE_ES+ALERGENOS_COD) usada para generar
+// esta ficha, para que Código.gs la guarde en INFO_HASH_FICHA (ver generarInfoAutomaticaPlato()
+// más abajo). Antes esta huella solo quedaba en memoria del navegador (p.infoHashFicha) y nunca
+// se guardaba de verdad en la hoja, así que tras recargar la página se perdía siempre y
+// CUALQUIER edición de un plato ya con ficha (aunque solo cambiara el precio, que ni forma
+// parte de la huella) disparaba una regeneración completa con IA solo por no encontrar huella
+// con la que comparar. infoPorIdioma puede ir vacío ({}) cuando lo único que hay que guardar es
+// la huella (caso "bautizo", ver más abajo).
+async function guardarInfoPlatoEnBackend(id, infoPorIdioma, hashFicha) {
     try {
         const url = getWebAppUrlSafe();
         if (!url) return;
+        const body = { id: id, info: infoPorIdioma || {} };
+        if (hashFicha) body.hashFicha = hashFicha;
         await fetch(url + '?accion=infoplato', {
             method: 'POST',
             mode: 'no-cors',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: id, info: infoPorIdioma })
+            body: JSON.stringify(body)
         });
     } catch (err) {
         console.warn('[Editor] Error al guardar Info automática en el backend:', err);
@@ -1577,13 +1587,6 @@ async function generarInfoAutomaticaPlato(p) {
         const carpetaValor = (p.carpeta || "").trim().toLowerCase();
         if (CARPETAS_SIN_IA_INFO.includes(carpetaValor)) return;
 
-        let keys = [];
-        if (typeof getKeys === 'function') keys = getKeys();
-        if (keys.length === 0) {
-            logInfoAutomatica(`No hay ninguna API Key de Gemini configurada — no se puede generar la Info de "${p['es'] || ('ID ' + p.id)}" automáticamente. Añade al menos una en "Ajustes Expertos".`, p.id, true);
-            return;
-        }
-
         const esVino = (p.id >= 13000);
         const nombreEs = p['es'] || "";
         if (!nombreEs) return;
@@ -1593,9 +1596,39 @@ async function generarInfoAutomaticaPlato(p) {
         const nuevoHashFicha = (typeof calcularHashContenido === 'function') ? calcularHashContenido(`${nombreEs}|${alergenosValor}`) : "";
 
         p.info = p.info || {};
-        const yaCompleto = p.info.es && p.info.en && p.infoHashFicha && p.infoHashFicha === nuevoHashFicha;
-        if (yaCompleto) {
+        const infoCompleta = !!(p.info.es && p.info.en);
+
+        if (infoCompleta && p.infoHashFicha && p.infoHashFicha === nuevoHashFicha) {
             logInfoAutomatica(`"${nombreEs}" (ID ${p.id}) ya tenía su ficha generada y ni el nombre ni los alérgenos han cambiado: no se regenera.`, p.id);
+            return;
+        }
+
+        // NUEVO (fix "se queda regenerando al tocar el precio"): la ficha ya existe pero nunca
+        // se llegó a guardar su huella en la hoja (platos con Info generada antes de que
+        // existiera este control, o cuyo guardado de huella se perdió por lo que sea — ver
+        // guardarInfoPlatoEnBackend()/Código.gs). Antes esto se trataba igual que "la ficha está
+        // desactualizada" y disparaba una regeneración completa con IA en CUALQUIER "Aplicar
+        // Cambios" del plato (precio incluido, que ni siquiera forma parte de esta huella).
+        // Igual que ya hace "Revisar y Corregir Consistencia" (ui-batch-revision.js) con las
+        // filas "nunca revisadas": se asume que la ficha actual sigue siendo válida y solo se
+        // "bautiza" (se calcula y se guarda la huella ahora), sin tocar el contenido ni llamar a
+        // Gemini. Si el nombre/alérgenos SÍ han cambiado de verdad, esto no aplica (infoCompleta
+        // sería true pero también lo sería más abajo con hash distinto solo si ya había huella
+        // guardada — aquí, sin huella guardada, no hay forma de saber si cambiaron, así que se
+        // prioriza no gastar IA de más; "Revisar y Corregir Consistencia" sigue disponible para
+        // una auditoría explícita si se sospecha de un desajuste real).
+        if (infoCompleta && !p.infoHashFicha) {
+            p.infoHashFicha = nuevoHashFicha;
+            window.hayCambiosSinGuardar = true;
+            logInfoAutomatica(`"${nombreEs}" (ID ${p.id}) ya tenía su ficha generada pero le faltaba la huella de control: guardada ahora sin regenerar nada.`, p.id);
+            guardarInfoPlatoEnBackend(p.id, {}, nuevoHashFicha);
+            return;
+        }
+
+        let keys = [];
+        if (typeof getKeys === 'function') keys = getKeys();
+        if (keys.length === 0) {
+            logInfoAutomatica(`No hay ninguna API Key de Gemini configurada — no se puede generar la Info de "${p['es'] || ('ID ' + p.id)}" automáticamente. Añade al menos una en "Ajustes Expertos".`, p.id, true);
             return;
         }
 
@@ -1619,7 +1652,7 @@ async function generarInfoAutomaticaPlato(p) {
         p.infoHashFicha = nuevoHashFicha;
         window.hayCambiosSinGuardar = true;
 
-        await guardarInfoPlatoEnBackend(p.id, { es: resultadoEsEn.es, en: resultadoEsEn.en });
+        await guardarInfoPlatoEnBackend(p.id, { es: resultadoEsEn.es, en: resultadoEsEn.en }, nuevoHashFicha);
         logInfoAutomatica(`Ficha ES/EN guardada para "${nombreEs}" (ID ${p.id}). Traduciendo al resto de idiomas...`, p.id);
 
         // --- Paso B: encadenado, resto de idiomas (mismo prompt que "Generar Info Platos Otros
