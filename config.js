@@ -43,7 +43,7 @@ function getModoAlias(modoInterno) {
 
 // CONFIGURACION ROLAND GARROS (restaurante001)
 const CSV_URL_RESTAURANTE001 = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT9rPlxpax2lE0rN97c6Hoy_OxUwREqRb48juEBr9C91ZFY2UvaKgC8JdiRcwDrtBErXFVmFRh0Zr5e/pub?gid=0&single=true&output=csv';
-const WEB_APP_URL_RESTAURANTE001 = 'https://script.google.com/macros/s/AKfycbzIh7Ov8VKRbwEFwI06Gv3qg_APllRP0qx_6TtJ9CcRpCxRY8qcV93NUv0wT5xHNwozLQ/exec';
+const WEB_APP_URL_RESTAURANTE001 = 'https://script.google.com/macros/s/AKfycbz6mX3oj9_-Kd-BiREXq318PPx3MeI8rdg4d8bFWuE6W7QhTih3rcgYOqExcFGgpD3YaA/exec';
 
 // CONFIGURACION US OPEN (restaurante002)
 const CSV_URL_RESTAURANTE002 = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSOWewZgqWZEFYiIMh8DTUX5tr6EEXBwvUJGr7hrpkCG91UhE5xU8fDJ12qcRVrT69xfZ5NGGGyhNCE/pub?output=csv';
@@ -145,7 +145,7 @@ const TRADUCCION_CONCURRENCIA = null;     // Paso 2 (nombres) — null = usar el
 // especial en su propia Google Sheet — ver Codigo_MenusEspeciales.gs (repo aparte). Común a los
 // dos restaurantes: un menú especial puede mezclar platos de ambas cartas, así que no tiene
 // sentido que "pertenezca" a WEB_APP_URL_RESTAURANTE001 ni a WEB_APP_URL_RESTAURANTE002.
-const WEBAPP_URL_MENUS_ESPECIALES = 'https://script.google.com/macros/s/AKfycbxm8GKuFpkwJgyZP5W5sz-_0fs536rbbL5ANYwCjQqslqQeWAoMjX9Xi_aXAmRnb47krA/exec';
+const WEBAPP_URL_MENUS_ESPECIALES = 'https://script.google.com/macros/s/AKfycbyKzR0gviSkJlOeMrhIk1EdSW36nA3JKwl7NHaJtQcguJEJRQtGl419XicnKxacug1I/exec';
 window.WEBAPP_URL_MENUS_ESPECIALES = WEBAPP_URL_MENUS_ESPECIALES;
 
 // NUEVO: Exposición explícita en window para que ui.js (script type="module", con su propio

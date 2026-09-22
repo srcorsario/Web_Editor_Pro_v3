@@ -13,7 +13,7 @@ ROLAND GARROS (restaurante001)
   Archivo de referencia: Codigo_RG.gs
   URL /exec actual (WEB_APP_URL_RESTAURANTE001 en config.js,
   APP_SCRIPT_URL en script.js de la web pública "web"):
-  https://script.google.com/macros/s/AKfycbzIh7Ov8VKRbwEFwI06Gv3qg_APllRP0qx_6TtJ9CcRpCxRY8qcV93NUv0wT5xHNwozLQ/exec
+  https://script.google.com/macros/s/AKfycbz6mX3oj9_-Kd-BiREXq318PPx3MeI8rdg4d8bFWuE6W7QhTih3rcgYOqExcFGgpD3YaA/exec
   (ANTERIORES, sustituidas el 22 sept:
    https://script.google.com/macros/s/AKfycbyNgYSX6QyySV4JD2Uy2wx-n11fLhOhekHiZx--K1ORMEh0WgRPKn25ko51h0yl1xP7RA/exec
    -- esta implementación "aceptaba" las peticiones (el editor mostraba "Petición
@@ -23,7 +23,13 @@ ROLAND GARROS (restaurante001)
    navegador (con no-cors, el editor no puede detectar ese bloqueo -- ver alert
    optimista en enviarAlExcel()/app.js). Verificar SIEMPRE ese ajuste al crear una
    implementación nueva, no solo al editar la existente.
-   https://script.google.com/macros/s/AKfycbwe_6c4woiFXSp34fHgcky1uX-o_oCMQGRjYjmKeWgAbcgB-2sBmaNVgvS4wOI_aKSfYA/exec)
+   https://script.google.com/macros/s/AKfycbwe_6c4woiFXSp34fHgcky1uX-o_oCMQGRjYjmKeWgAbcgB-2sBmaNVgvS4wOI_aKSfYA/exec
+   https://script.google.com/macros/s/AKfycbzIh7Ov8VKRbwEFwI06Gv3qg_APllRP0qx_6TtJ9CcRpCxRY8qcV93NUv0wT5xHNwozLQ/exec
+   -- esta última devolvía JSON de "menus"/Menús Especiales en vez del CSV de la carta:
+   Código.gs y Codigo_MenusEspeciales.gs compartían el mismo proyecto de Apps Script, y al
+   tener los dos una función doGet(e), la de Menús Especiales pisaba a la de la carta (mismo
+   ámbito global entre archivos .gs de un proyecto -- gana la que se procesa en último lugar).
+   Solucionado separando Codigo_MenusEspeciales.gs a su propio proyecto, ver más abajo.)
 
 US OPEN (restaurante002)
   Archivo de referencia: Codigo_USOpen.gs
@@ -35,7 +41,12 @@ US OPEN (restaurante002)
 MENÚ ESPECIAL (proyecto independiente, no pertenece a RG ni a US Open)
   Archivo de referencia: Codigo_MenusEspeciales.gs
   URL /exec actual (WEBAPP_URL_MENUS_ESPECIALES en config.js):
-  https://script.google.com/macros/s/AKfycbwTkbN5AJkY8xww5yRON78TZ69hetMQdCiByDrAf2SREmXJWbjmR7tRNU2rCe_yGEICCA/exec
+  https://script.google.com/macros/s/AKfycbyKzR0gviSkJlOeMrhIk1EdSW36nA3JKwl7NHaJtQcguJEJRQtGl419XicnKxacug1I/exec
+  (ANTERIOR: https://script.google.com/macros/s/AKfycbwTkbN5AJkY8xww5yRON78TZ69hetMQdCiByDrAf2SREmXJWbjmR7tRNU2rCe_yGEICCA/exec
+   -- esa implementación vivía dentro del MISMO proyecto de Apps Script que Código.gs de RG
+   ("script carta"), pese a que este documento ya la describía como "independiente". El 22
+   sept se separó de verdad a su propio proyecto -- ver nota de más abajo. Esta URL NO se ha
+   verificado desde la separación; confirmarla con el usuario antes de darla por buena.)
   Guarda las plantillas de evento en una hoja de cálculo propia (pestaña
   "MenusEspeciales" dentro de esa hoja), con cabecera fija en la fila 1
   (ID, Nombre, Config_JSON, Fecha_Creacion, Fecha_Modificacion) y los
@@ -109,5 +120,20 @@ implementaciones que "Quién tiene acceso" de la implementación activa dice
 "Cualquier usuario" (no "Solo yo" ni ninguna otra opción) -- si no, seguirá
 fallando en silencio aunque la URL sea la correcta. US Open no se ha tocado
 en esta ronda (sigue con la URL de la sección de arriba).
+
+22 septiembre (cont. 2) — se descubre que Código.gs y Codigo_MenusEspeciales.gs llevaban
+TODO ESTE TIEMPO en el mismo proyecto de Apps Script ("script carta"), pese a que este
+documento los trataba como proyectos separados desde el principio. Al tener los dos archivos
+una función doGet(e) en el mismo ámbito global del proyecto, la de Menús Especiales
+(listarMenus) pisaba silenciosamente a la de la carta (servirCsvEnVivo/categorías) -- por eso
+CUALQUIER despliegue nuevo de ese proyecto devolvía JSON de "menus" en vez del CSV, por mucho
+que Código.gs estuviera actualizado y bien. Arreglo: se copió el contenido de
+Codigo_MenusEspeciales.gs a un proyecto de Apps Script nuevo y separado, se desplegó ahí (URL
+nueva arriba, en la sección MENÚ ESPECIAL), y se borró ese archivo del proyecto "script carta"
+antes de crear la implementación de RG de arriba. A partir de ahora "script carta" SOLO
+contiene Código.gs -- no volver a añadir ahí ningún otro archivo con su propia función doGet.
+config.js del editor y script.js de la web pública "web" ya están sincronizados con la URL
+nueva de RG; la URL nueva de Menús Especiales está en config.js pero pendiente de verificar
+(ver nota en su sección).
 
 Última actualización de este archivo: 2026-09-22.
