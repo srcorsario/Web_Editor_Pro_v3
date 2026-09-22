@@ -1,7 +1,7 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '2.15.0'; // NUEVO (22 sept): fix "se queda regenerando la Info al tocar solo el precio". Causa real: INFO_HASH_FICHA (la huella nombre+alérgenos que decide si hace falta regenerar la ficha con IA) se calculaba y guardaba SOLO en memoria del navegador -- nunca se persistía en la hoja (guardarInfoPlatoEnBackend()/Código.gs no la escribía) -- así que tras recargar la página volvía a estar vacía y CUALQUIER "Aplicar Cambios" de un plato ya con ficha disparaba una regeneración completa con IA solo por no encontrar huella con la que comparar (el precio nunca formó parte de esa huella). Ahora guardarInfoPlatoEnBackend() manda también la huella al backend (accion=infoplato) y Código.gs la guarda en INFO_HASH_FICHA; y si un plato ya tiene ficha completa pero le falta la huella, generarInfoAutomaticaPlato() ya no regenera nada: la "bautiza" (calcula y guarda la huella actual) sin gastar IA, igual que ya hacía "Revisar y Corregir Consistencia" con las filas nunca revisadas. Requiere el Código.gs actualizado (RG y US Open) para que la huella se guarde de verdad.
+window.APP_VERSIONS.app = '2.16.0'; // NUEVO (22 sept, parte 2): fix "se queda regenerando la Info al tocar solo el precio", causa nº2. La v2.15.0 ya arregló que INFO_HASH_FICHA se guardara de verdad en la hoja (ver esa entrada de versión más abajo en el historial), pero seguía fallando en pruebas reales: fetchYParsearDatos() (la función que carga los platos al abrir/recargar el editor) leía SIEMPRE getCsvUrl(modo) -- la copia "publicar en la web" que Google cachea varios minutos -- así que justo después de guardar, recargar el editor devolvía una foto vieja de la hoja sin la huella (ni a veces sin la Info) recién guardada, y cualquier "Aplicar Cambios" volvía a disparar una regeneración completa con IA creyendo que nunca se había generado nada. Ahora fetchYParsearDatos() usa PRIMERO el endpoint EN VIVO de Código.gs (?accion=csv, sin caché de Google de por medio, misma vía que ya usaba servirCsvEnVivo() para "Sincronizar"), cayendo de vuelta al CSV publicado solo si esa petición fallara.
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
@@ -168,15 +168,39 @@ async function cargarEstadoCategorias(modo) {
 // Devuelve null (en vez de lanzar) si el modo no tiene URL de CSV configurada, igual que
 // hacía antes cargar() en ese caso.
 async function fetchYParsearDatos(modo) {
-    const url = (typeof window.getCsvUrl === 'function') ? window.getCsvUrl(modo) : '';
-    if (!url) return null;
+    // CAMBIADO (22 sept): antes se leía SIEMPRE getCsvUrl(modo) -- la copia "publicar en la
+    // web" que Google cachea varios minutos. Eso hacía que, justo después de guardar algo
+    // (precio, Info automática...), recargar el editor pudiera devolver datos desactualizados
+    // durante ese rato: p.ej. la fila seguía sin INFO_HASH_FICHA en la copia cacheada aunque ya
+    // estuviera bien guardada en la hoja real, así que cualquier "Aplicar Cambios" volvía a
+    // disparar una regeneración completa con IA solo por leer una foto vieja de la hoja (ver
+    // generarInfoAutomaticaPlato()). Ahora se usa PRIMERO el endpoint EN VIVO de Código.gs
+    // (?accion=csv sin idiomas -- sirve TODAS las columnas, mismo comportamiento que ya usaba
+    // "Sincronizar" en la documentación de servirCsvEnVivo), que lee la hoja directamente con
+    // SpreadsheetApp sin caché de Google de por medio. Si esa petición fallara (arranque en
+    // frío de Apps Script, problema de red puntual...), se cae de vuelta al CSV publicado de
+    // siempre para no dejar el editor sin datos.
+    const urlBase = (typeof window.getWebAppUrl === 'function') ? window.getWebAppUrl(modo) : '';
+    const urlCacheada = (typeof window.getCsvUrl === 'function') ? window.getCsvUrl(modo) : '';
+    if (!urlBase && !urlCacheada) return null;
 
     // OJO: no añadir cabeceras manuales aquí (Cache-Control/Pragma): fuerzan un preflight
     // CORS (OPTIONS) que el CSV publicado de Google Sheets/Apps Script no responde bien,
     // y el navegador bloquea la petición real. "no-store" ya evita la caché del navegador.
-    const resp = await fetch(url + '&zx=' + Date.now(), {
-        cache: "no-store"
-    });
+    let resp;
+    if (urlBase) {
+        try {
+            resp = await fetch(`${urlBase}?accion=csv&zx=${Date.now()}`, { cache: "no-store" });
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        } catch (err) {
+            console.warn(`[Editor] Endpoint en vivo de CSV falló para ${modo}, usando el CSV publicado como respaldo:`, err.message);
+            resp = null;
+        }
+    }
+    if (!resp) {
+        if (!urlCacheada) return null;
+        resp = await fetch(urlCacheada + '&zx=' + Date.now(), { cache: "no-store" });
+    }
     const text = await resp.text();
 
     const filas = text.split(/\r?\n/).filter(f => f.trim() !== "");
