@@ -13,8 +13,17 @@ ROLAND GARROS (restaurante001)
   Archivo de referencia: Codigo_RG.gs
   URL /exec actual (WEB_APP_URL_RESTAURANTE001 en config.js,
   APP_SCRIPT_URL en script.js de la web pública "web"):
-  https://script.google.com/macros/s/AKfycbyNgYSX6QyySV4JD2Uy2wx-n11fLhOhekHiZx--K1ORMEh0WgRPKn25ko51h0yl1xP7RA/exec
-  (ANTERIOR, sustituida el 22 sept: https://script.google.com/macros/s/AKfycbwe_6c4woiFXSp34fHgcky1uX-o_oCMQGRjYjmKeWgAbcgB-2sBmaNVgvS4wOI_aKSfYA/exec)
+  https://script.google.com/macros/s/AKfycbzIh7Ov8VKRbwEFwI06Gv3qg_APllRP0qx_6TtJ9CcRpCxRY8qcV93NUv0wT5xHNwozLQ/exec
+  (ANTERIORES, sustituidas el 22 sept:
+   https://script.google.com/macros/s/AKfycbyNgYSX6QyySV4JD2Uy2wx-n11fLhOhekHiZx--K1ORMEh0WgRPKn25ko51h0yl1xP7RA/exec
+   -- esta implementación "aceptaba" las peticiones (el editor mostraba "Petición
+   enviada") pero GUARDAR CAMBIOS EN WEB nunca llegaba a escribir en la hoja;
+   sospecha: "Quién tiene acceso" de esa implementación no estaba en "Cualquier
+   usuario", así que Google bloqueaba en silencio las peticiones anónimas del
+   navegador (con no-cors, el editor no puede detectar ese bloqueo -- ver alert
+   optimista en enviarAlExcel()/app.js). Verificar SIEMPRE ese ajuste al crear una
+   implementación nueva, no solo al editar la existente.
+   https://script.google.com/macros/s/AKfycbwe_6c4woiFXSp34fHgcky1uX-o_oCMQGRjYjmKeWgAbcgB-2sBmaNVgvS4wOI_aKSfYA/exec)
 
 US OPEN (restaurante002)
   Archivo de referencia: Codigo_USOpen.gs
@@ -88,5 +97,17 @@ activa) debería seguir sirviendo con normalidad los datos a los repos
 públicos "web"/"usopen-main" — no es urgente tocar esos dos script.js por
 este cambio en concreto, aunque conviene sincronizarlos en algún momento
 para no acumular implementaciones viejas sueltas.
+
+22 septiembre (cont.) — RG con tercera URL /exec del día: la implementación
+anterior (AKfycbyNg...) daba "Petición enviada" en el editor pero la hoja de
+RG nunca se actualizaba al pulsar "GUARDAR CAMBIOS EN WEB" (precio confirmado
+sin cambiar en la hoja real). Sospecha fundada: acceso mal configurado en esa
+implementación (ver arriba). El usuario creó OTRA implementación nueva para
+RG -- URL actualizada arriba y en config.js. IMPORTANTE antes de dar por
+bueno este cambio: confirmar en Apps Script > Implementar > Gestionar
+implementaciones que "Quién tiene acceso" de la implementación activa dice
+"Cualquier usuario" (no "Solo yo" ni ninguna otra opción) -- si no, seguirá
+fallando en silencio aunque la URL sea la correcta. US Open no se ha tocado
+en esta ronda (sigue con la URL de la sección de arriba).
 
 Última actualización de este archivo: 2026-09-22.

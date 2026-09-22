@@ -1,7 +1,7 @@
 // --- config.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.config = '2.6.0'; // ACTUALIZADO (22 sept): WEB_APP_URL_RESTAURANTE001/002 apuntan a las nuevas implementaciones de Codigo_RG.gs/Codigo_USOpen.gs (fix "se queda regenerando la Info al tocar solo el precio", ver app.js) -- el usuario creó implementaciones NUEVAS (no "nueva versión" de las existentes), así que las URLs /exec cambiaron para los dos restaurantes.
+window.APP_VERSIONS.config = '2.7.0'; // ACTUALIZADO (22 sept): WEB_APP_URL_RESTAURANTE001 vuelve a apuntar a OTRA implementación nueva de Codigo_RG.gs -- la anterior (AKfycbyNg...) enviaba "GUARDAR CAMBIOS EN WEB" sin error visible (alert de "Petición enviada") pero la hoja NUNCA se actualizaba (sospecha: "Quién tiene acceso" de esa implementación no estaba en "Cualquier usuario", así que Google bloqueaba en silencio las peticiones anónimas -- con no-cors el navegador no puede detectarlo). WEB_APP_URL_RESTAURANTE002 (US Open) no cambia en este commit.
 
 // =====================================================================
 // NUEVO: SISTEMA DE ENABLE/DISABLE DE RESTAURANTES (Desacoplamiento Visual)
@@ -43,7 +43,7 @@ function getModoAlias(modoInterno) {
 
 // CONFIGURACION ROLAND GARROS (restaurante001)
 const CSV_URL_RESTAURANTE001 = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT9rPlxpax2lE0rN97c6Hoy_OxUwREqRb48juEBr9C91ZFY2UvaKgC8JdiRcwDrtBErXFVmFRh0Zr5e/pub?gid=0&single=true&output=csv';
-const WEB_APP_URL_RESTAURANTE001 = 'https://script.google.com/macros/s/AKfycbyNgYSX6QyySV4JD2Uy2wx-n11fLhOhekHiZx--K1ORMEh0WgRPKn25ko51h0yl1xP7RA/exec';
+const WEB_APP_URL_RESTAURANTE001 = 'https://script.google.com/macros/s/AKfycbzIh7Ov8VKRbwEFwI06Gv3qg_APllRP0qx_6TtJ9CcRpCxRY8qcV93NUv0wT5xHNwozLQ/exec';
 
 // CONFIGURACION US OPEN (restaurante002)
 const CSV_URL_RESTAURANTE002 = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSOWewZgqWZEFYiIMh8DTUX5tr6EEXBwvUJGr7hrpkCG91UhE5xU8fDJ12qcRVrT69xfZ5NGGGyhNCE/pub?output=csv';
