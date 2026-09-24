@@ -464,6 +464,23 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
     // ultimoErrorLista y se muestra arriba de la lista de menús (ver renderSidebarLista).
     let ultimoErrorLista = '';
 
+    // Una sola lectura de la lista (sin reintentos). Lanza Error con el motivo si falla.
+    async function leerListaUnaVez(url) {
+        const resp = await fetch(url + '?accion=listarMenus&zx=' + Date.now(), { cache: 'no-store' });
+        let data;
+        try { data = await resp.json(); }
+        catch (e) { throw new Error('La URL no devolvió datos JSON (revisa que la implementación tenga acceso "Cualquier usuario" y que la URL /exec sea la vigente).'); }
+        if (!data || !data.ok || !Array.isArray(data.menus)) {
+            throw new Error((data && data.error) || 'Respuesta inesperada del servidor de menús.');
+        }
+        return data.menus;
+    }
+
+    // 24 sept: hasta 3 intentos (pausas de 1 s y 2 s). Apps Script, tras un rato sin usarse,
+    // tarda en "despertar" y la PRIMERA petición puede devolver una página de Google en vez del
+    // JSON (síntoma: el aviso rojo salía al abrir la pestaña y desaparecía al pulsar "Refrescar
+    // lista", que ya era el segundo intento). Reintentando solos, el aviso solo sale si de
+    // verdad falla las 3 veces.
     async function listarMenus() {
         const url = urlBackend();
         if (!url) {
@@ -471,21 +488,22 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
             console.warn('[MenuEspecial] ' + ultimoErrorLista);
             return [];
         }
-        try {
-            const resp = await fetch(url + '?accion=listarMenus&zx=' + Date.now(), { cache: 'no-store' });
-            let data;
-            try { data = await resp.json(); }
-            catch (e) { throw new Error('La URL no devolvió datos JSON (revisa que la implementación tenga acceso "Cualquier usuario" y que la URL /exec sea la vigente).'); }
-            if (!data || !data.ok || !Array.isArray(data.menus)) {
-                throw new Error((data && data.error) || 'Respuesta inesperada del servidor de menús.');
+        const PAUSAS_MS = [1000, 2000];
+        let ultimoError = null;
+        for (let intento = 0; intento <= PAUSAS_MS.length; intento++) {
+            try {
+                const menus = await leerListaUnaVez(url);
+                ultimoErrorLista = '';
+                return menus;
+            } catch (e) {
+                ultimoError = e;
+                console.warn('[MenuEspecial] Intento ' + (intento + 1) + ' de listar menús falló:', e);
+                if (intento < PAUSAS_MS.length) await new Promise(r => setTimeout(r, PAUSAS_MS[intento]));
             }
-            ultimoErrorLista = '';
-            return data.menus;
-        } catch (e) {
-            console.error('[MenuEspecial] Error al listar menús guardados:', e);
-            ultimoErrorLista = (e && e.message) ? e.message : 'No se pudo conectar con el servidor de menús.';
-            return [];
         }
+        console.error('[MenuEspecial] Error al listar menús guardados:', ultimoError);
+        ultimoErrorLista = (ultimoError && ultimoError.message) ? ultimoError.message : 'No se pudo conectar con el servidor de menús.';
+        return [];
     }
 
     // POST con Content-Type "text/plain": es una petición "simple" para CORS (sin preflight, que
@@ -1621,8 +1639,14 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
             (function () {
                 var ALTO_DISPONIBLE_MM = 198;
                 var BASE_PX = 13;
-                var FACTOR_MIN = 0.62;
-                var FACTOR_MAX = 1.6;
+                // LÍMITES DE TAMAÑO (24 sept): el texto NUNCA baja de FACTOR_MIN ni sube de FACTOR_MAX
+                // (x13px: 0.80 = 10.4px, 1.25 = 16.3px). La cabecera con los logos tiene sus
+                // PROPIOS límites (CAB_MIN/CAB_MAX): sigue al texto pero acotada, para que ni se
+                // haga diminuta en un menú largo ni enorme en uno corto.
+                var FACTOR_MIN = 0.80;
+                var FACTOR_MAX = 1.25;
+                var CAB_MIN = 0.90;
+                var CAB_MAX = 1.15;
                 var PASO = 0.035;
                 var MAX_INTENTOS = 24;
 
@@ -1637,7 +1661,8 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
 
                 function aplicarFactor(f) {
                     var styleEl = document.getElementById('me-ajuste-dinamico');
-                    if (styleEl) styleEl.textContent = '.me-print-inner{ font-size:' + (BASE_PX * f) + 'px !important; }';
+                    var fc = Math.max(CAB_MIN, Math.min(CAB_MAX, f));
+                    if (styleEl) styleEl.textContent = '.me-print-inner{ font-size:' + (BASE_PX * f) + 'px !important; } .me-print-cabecera{ font-size:' + (BASE_PX * fc) + 'px !important; }';
                 }
 
                 // Reequilibra manualmente el corte de cada ".me-print-plato-linea" que se parte en
