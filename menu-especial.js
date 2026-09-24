@@ -457,57 +457,94 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
         return (typeof window.WEBAPP_URL_MENUS_ESPECIALES !== 'undefined') ? window.WEBAPP_URL_MENUS_ESPECIALES : '';
     }
 
+    // 24 sept: la lista ya NO se traga los errores en silencio. Antes, si el backend no respondía
+    // JSON (URL /exec mal copiada, implementación sin acceso "Cualquier usuario", etc.) se
+    // devolvía [] y la pantalla decía "Todavía no hay ningún menú guardado" -- justo el síntoma
+    // de "dice que guarda pero no los carga". Ahora el motivo real se guarda en
+    // ultimoErrorLista y se muestra arriba de la lista de menús (ver renderSidebarLista).
+    let ultimoErrorLista = '';
+
     async function listarMenus() {
         const url = urlBackend();
-        if (!url) { console.warn('[MenuEspecial] Falta configurar WEBAPP_URL_MENUS_ESPECIALES en config.js'); return []; }
-        try {
-            const resp = await fetch(url + '?accion=listarMenus&zx=' + Date.now(), { cache: 'no-store' });
-            const data = await resp.json();
-            return (data && data.ok && Array.isArray(data.menus)) ? data.menus : [];
-        } catch (e) {
-            console.error('[MenuEspecial] Error al listar menús guardados:', e);
+        if (!url) {
+            ultimoErrorLista = 'Falta configurar WEBAPP_URL_MENUS_ESPECIALES en config.js.';
+            console.warn('[MenuEspecial] ' + ultimoErrorLista);
             return [];
         }
+        try {
+            const resp = await fetch(url + '?accion=listarMenus&zx=' + Date.now(), { cache: 'no-store' });
+            let data;
+            try { data = await resp.json(); }
+            catch (e) { throw new Error('La URL no devolvió datos JSON (revisa que la implementación tenga acceso "Cualquier usuario" y que la URL /exec sea la vigente).'); }
+            if (!data || !data.ok || !Array.isArray(data.menus)) {
+                throw new Error((data && data.error) || 'Respuesta inesperada del servidor de menús.');
+            }
+            ultimoErrorLista = '';
+            return data.menus;
+        } catch (e) {
+            console.error('[MenuEspecial] Error al listar menús guardados:', e);
+            ultimoErrorLista = (e && e.message) ? e.message : 'No se pudo conectar con el servidor de menús.';
+            return [];
+        }
+    }
+
+    // POST con Content-Type "text/plain": es una petición "simple" para CORS (sin preflight, que
+    // Apps Script no sabe responder) y, a diferencia de "no-cors", SÍ permite leer la respuesta
+    // JSON del backend ({ok, id, error}). El .gs no mira el Content-Type, lee e.postData.contents
+    // tal cual, así que no hace falta tocar ni redesplegar el Apps Script.
+    async function postBackend(url, payload) {
+        const resp = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify(payload)
+        });
+        let data;
+        try { data = await resp.json(); }
+        catch (e) { throw new Error('El servidor no devolvió una respuesta válida (¿la implementación tiene acceso "Cualquier usuario"?).'); }
+        if (!data || !data.ok) throw new Error((data && data.error) || 'El servidor rechazó la petición.');
+        return data;
     }
 
     async function guardarMenuEnServidor(menu) {
         const url = urlBackend();
         if (!url) throw new Error('Falta configurar WEBAPP_URL_MENUS_ESPECIALES en config.js');
 
-        // Defensa en profundidad: guardarMenuActual() ya impide llegar aquí sin nombre, pero
-        // como el guardado es no-cors/fire-and-forget (no se puede leer si el servidor lo
-        // rechazó), esta función NUNCA debe enviar un nombre vacío al backend -- si algún día
-        // se llama a guardarMenuEnServidor() desde otro sitio sin pasar por esa validación, es
-        // mejor que falle aquí (con un error que el catch de quien la llame pueda mostrar) que
-        // crear en el Sheet una fila fantasma sin nombre pero con datos.
         const nombreLimpio = (menu.nombre || '').trim();
         if (!nombreLimpio) throw new Error('No se puede guardar un menú sin nombre.');
 
-        const eraNuevo = !menu.id;
-        await fetch(url, {
-            method: 'POST',
-            mode: 'no-cors',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: menu.id || '', nombre: nombreLimpio, config: menu })
-        });
+        const inicio = Date.now();
+        let idDevuelto = menu.id || '';
+        try {
+            const data = await postBackend(url, { id: menu.id || '', nombre: nombreLimpio, config: menu });
+            if (data.id) idDevuelto = data.id;
+        } catch (e) {
+            // Solo si el fallo es de RED/CORS (TypeError de fetch) se comprueba si el servidor lo
+            // llegó a guardar igualmente (releyendo la lista) en vez de reenviar el POST, para no
+            // duplicar un menú nuevo. Cualquier otro error (el servidor respondió ok:false, etc.)
+            // se propaga tal cual con su mensaje real.
+            if (!(e instanceof TypeError)) throw e;
+            const lista = await listarMenus();
+            const enviado = lista.find(m => (menu.id && String(m.id) === String(menu.id)) ||
+                (!menu.id && nombreVisible(m) === nombreLimpio && new Date(m.fechaModificacion).getTime() >= inicio - 5000));
+            if (!enviado) throw new Error('No se pudo contactar con el servidor de menús y el menú no aparece guardado.');
+            idDevuelto = enviado.id;
+        }
 
-        // Refresca la lista para tener la versión real del servidor (fechas, y el id nuevo si
-        // era un menú recién creado). El backend ya devuelve la lista ordenada por
-        // Fecha_Modificacion descendente, así que el menú recién guardado es siempre el [0].
+        // Relee la lista y VERIFICA que el menú está realmente ahí: así nunca se anuncia "guardado"
+        // si el servidor no lo escribió (o si lee de una hoja distinta a la que escribe).
         menusGuardados = await listarMenus();
-        if (eraNuevo && menusGuardados[0]) menu.id = menusGuardados[0].id;
+        const guardado = menusGuardados.find(m => String(m.id) === String(idDevuelto));
+        if (!guardado) {
+            throw new Error('El servidor respondió, pero el menú no aparece al releer la lista' + (ultimoErrorLista ? ' (' + ultimoErrorLista + ')' : '') + '.');
+        }
+        menu.id = guardado.id;
         return menu.id;
     }
 
     async function eliminarMenuEnServidor(id) {
         const url = urlBackend();
         if (!url) throw new Error('Falta configurar WEBAPP_URL_MENUS_ESPECIALES en config.js');
-        await fetch(url + '?accion=eliminarMenu', {
-            method: 'POST',
-            mode: 'no-cors',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: id })
-        });
+        await postBackend(url + '?accion=eliminarMenu', { id: id });
         menusGuardados = await listarMenus();
     }
 
@@ -658,11 +695,14 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
     function renderSidebarLista() {
         const cont = document.getElementById('me-sidebar-lista');
         if (!cont) return;
+        const avisoError = ultimoErrorLista
+            ? `<p style="font-size:0.78rem;color:#b91c1c;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:6px 8px;margin:0 0 8px 0;">⚠️ No se han podido cargar los menús: ${escHtml(ultimoErrorLista)}</p>`
+            : '';
         if (!menusGuardados.length) {
-            cont.innerHTML = `<p style="font-size:0.78rem;color:#999;margin:0;">Todavía no hay ningún menú guardado.</p>`;
+            cont.innerHTML = avisoError + (ultimoErrorLista ? '' : `<p style="font-size:0.78rem;color:#999;margin:0;">Todavía no hay ningún menú guardado.</p>`);
             return;
         }
-        cont.innerHTML = menusGuardados.map(m => {
+        cont.innerHTML = avisoError + menusGuardados.map(m => {
             const activo = menuActual && String(menuActual.id) === String(m.id);
             return `<div class="me-menu-item" style="${activo ? 'border-color:var(--primario);box-shadow:0 0 0 1px var(--primario);' : ''}">
                 <span class="me-menu-item-nombre">${escHtml(nombreVisible(m))}</span>
@@ -687,7 +727,7 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
                     <label class="label-seccion">Nombre del menú <span style="font-weight:500;text-transform:none;color:#999;">(aparecerá impreso como título del menú)</span></label>
                     <input type="text" id="me-nombre" class="input-estandar" style="margin-bottom:0;" placeholder="Ej: Boda García — 20 septiembre" value="${escHtml(menuActual.nombre)}" oninput="MenuEspecial.actualizarNombre(this.value)">
                 </div>
-                <label class="me-check-label"><input type="checkbox" ${menuActual.logo ? 'checked' : ''} onchange="MenuEspecial.toggleLogo(this.checked)"> 🎾 Logo RG</label>
+                <label class="me-check-label"><input type="checkbox" ${menuActual.logo ? 'checked' : ''} onchange="MenuEspecial.toggleLogo(this.checked)"> 🎾 Logos cabecera (Rafa Nadal + RG)</label>
                 <label class="me-check-label"><input type="checkbox" ${menuActual.mostrarNombre ? 'checked' : ''} onchange="MenuEspecial.toggleMostrarNombre(this.checked)"> 📝 Imprimir nombre</label>
                 <label class="me-check-label"><input type="checkbox" ${menuActual.idiomas.es ? 'checked' : ''} onchange="MenuEspecial.toggleIdioma('es', this.checked)"> 🇪🇸 Español</label>
                 <label class="me-check-label"><input type="checkbox" ${menuActual.idiomas.en ? 'checked' : ''} onchange="MenuEspecial.toggleIdioma('en', this.checked)"> 🇬🇧 Inglés</label>
@@ -1355,7 +1395,7 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
             alert('✅ Menú guardado correctamente.');
         } catch (e) {
             console.error('[MenuEspecial] Error al guardar el menú:', e);
-            alert('❌ No se ha podido guardar el menú. Revisa la conexión e inténtalo de nuevo.');
+            alert('❌ No se ha podido guardar el menú: ' + ((e && e.message) || 'error desconocido') + '\n\nRevisa la conexión e inténtalo de nuevo.');
         } finally {
             mostrarCargando(false);
         }
@@ -1372,7 +1412,7 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
             renderSidebarLista();
         } catch (e) {
             console.error('[MenuEspecial] Error al borrar el menú:', e);
-            alert('❌ No se ha podido borrar el menú. Revisa la conexión e inténtalo de nuevo.');
+            alert('❌ No se ha podido borrar el menú: ' + ((e && e.message) || 'error desconocido'));
         } finally {
             mostrarCargando(false);
         }
@@ -1467,17 +1507,24 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
             ? `<div class="me-print-seccion"><div class="me-print-seccion-titulo">${etiquetaBilingue('Bebida', 'Drinks')}</div>${bebidaItems.map(t => `<div class="me-print-plato"><div class="me-print-plato-linea">${t}</div></div>`).join('')}</div>`
             : '';
 
-        const logoHtml = menu.logo ? `<img src="logo RG_REST.png" class="me-print-logo" alt="Logo RG">` : '';
-        // NUEVO (19 sept): imprimir el nombre es opcional (checkbox "📝 Imprimir nombre",
-        // activado por defecto -- ver mostrarNombre en nuevoMenuVacio()); si se desactiva, el
-        // título no se pinta en absoluto, aunque el menú tenga nombre guardado.
+        // 24 sept: cabecera a imitación del menú real de la Rafa Nadal Academy -- a la IZQUIERDA el
+        // bull (imagen) con el texto "RAFA NADAL / ACADEMY" debajo, a la DERECHA el logo Roland
+        // Garros Restaurant. El checkbox "logo" activa/desactiva la cabecera entera.
+        const logoHtml = menu.logo ? `<div class="me-print-cabecera">
+                <div class="me-print-cab-izq"><img src="logo_bull_RN.png" class="me-print-bull" alt="Rafa Nadal"><div class="me-print-rn-texto">RAFA NADAL</div><div class="me-print-rn-sub">ACADEMY</div></div>
+                <div class="me-print-cab-der"><img src="logo_RG_REST_recorte.png" class="me-print-logo" alt="Roland Garros Restaurant"></div>
+            </div>` : '';
+        // El nombre del menú (imprimir es opcional, checkbox "📝 Imprimir nombre") va abajo a la
+        // izquierda del marco, en naranja y grande, como la fecha "25.09" del menú de referencia.
         const tituloHtml = menu.mostrarNombre ? `<div class="me-print-titulo">${escHtml(menu.nombre || 'Menú')}</div>` : '';
 
         return `<div class="me-print-menu"><div class="me-print-inner">
             ${logoHtml}
-            ${tituloHtml}
-            ${SECCIONES_INFO.map(seccionHtml).join('')}
-            ${bebidaHtml}
+            <div class="me-print-marco"><div class="me-print-marco-fondo"></div><div class="me-print-marco-int">
+                ${SECCIONES_INFO.map(seccionHtml).join('')}
+                ${bebidaHtml}
+                ${tituloHtml}
+            </div></div>
         </div></div>`;
     }
 
@@ -1516,10 +1563,21 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
             .me-print-cutline::before, .me-print-cutline::after { content:''; position:absolute; left:50%; transform:translateX(-50%); width:1.5px; height:4mm; background:#999; }
             .me-print-cutline::before { top:0; }
             .me-print-cutline::after { bottom:0; }
-            .me-print-logo { max-height:5.4em; max-width:16em; object-fit:contain; margin-bottom:0.5em; }
-            .me-print-titulo { font-size:1.65em; font-weight:800; letter-spacing:0.02em; margin-bottom:0.85em; }
-            .me-print-seccion { width:100%; max-width:35em; margin:0 auto 0.5em auto; }
-            .me-print-seccion-titulo { font-size:0.76em; font-weight:800; text-transform:uppercase; letter-spacing:0.03em; white-space:nowrap; color:#b8860b; border-bottom:1px solid #ddd; padding-bottom:0.15em; margin-bottom:0.3em; }
+            .me-print-cabecera { width:100%; display:flex; justify-content:space-between; align-items:center; margin-bottom:1.1em; padding:0 0.6em; }
+            .me-print-cab-izq { display:flex; flex-direction:column; align-items:center; }
+            .me-print-bull { height:2.6em; width:auto; object-fit:contain; }
+            .me-print-rn-texto { font-size:1.35em; font-weight:600; letter-spacing:0.03em; line-height:1.05; margin-top:0.15em; color:#222; }
+            .me-print-rn-sub { font-size:0.95em; font-weight:400; letter-spacing:0.08em; line-height:1.1; color:#555; }
+            .me-print-cab-der { display:flex; align-items:center; }
+            .me-print-logo { height:5.4em; width:auto; object-fit:contain; }
+            /* Marco: tarjeta blanca con borde naranja fino y, detrás, una losa naranja ligeramente
+               girada y desplazada arriba-izquierda (como el menú de referencia). */
+            .me-print-marco { position:relative; width:calc(100% - 1em); margin:0.6em 0.5em 0.4em 0.5em; }
+            .me-print-marco-fondo { position:absolute; top:-0.55em; left:-0.5em; right:0.45em; bottom:0.5em; background:#d2491a; transform:rotate(-1.1deg); border-radius:0.25em; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+            .me-print-marco-int { position:relative; background:#fff; border:0.12em solid #d2491a; border-radius:0.3em; padding:1em 1.2em 0.9em 1.2em; text-align:left; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+            .me-print-titulo { font-size:1.55em; font-weight:800; letter-spacing:0.01em; color:#d2491a; margin-top:0.5em; text-align:left; }
+            .me-print-seccion { width:100%; margin:0 0 0.75em 0; }
+            .me-print-seccion-titulo { font-size:1em; font-weight:800; white-space:nowrap; color:#1c1c1c; margin-bottom:0.25em; }
             .me-print-plato { margin-bottom:0.22em; }
             .me-print-plato-linea { font-size:0.92em; line-height:1.25; }
             .me-print-plato-en { font-style:italic; color:#555; font-size:0.85em; line-height:1.25; }
