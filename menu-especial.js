@@ -602,6 +602,25 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
         }
     }
 
+    // Diagnóstico: muestra tal cual qué responde el backend (estado HTTP y primeros caracteres),
+    // para distinguir "URL equivocada / sin acceso público" (responde HTML de Google) de "el
+    // .gs responde bien pero la hoja está vacía / mal cabeceada".
+    async function diagnosticarConexion() {
+        const url = urlBackend();
+        if (!url) { alert('Falta WEBAPP_URL_MENUS_ESPECIALES en config.js'); return; }
+        let msg = 'URL: ' + url + '\n\n';
+        try {
+            const resp = await fetch(url + '?accion=listarMenus&zx=' + Date.now(), { cache: 'no-store' });
+            const txt = await resp.text();
+            msg += 'GET -> HTTP ' + resp.status + '\n' + txt.slice(0, 300).replace(/\s+/g, ' ');
+            try { const d = JSON.parse(txt); msg += '\n\nJSON válido. Menús devueltos: ' + (d.menus ? d.menus.length : 'ninguno') + (d.error ? '\nError: ' + d.error : ''); }
+            catch (e) { msg += '\n\n⚠️ La respuesta NO es JSON: la URL no es la del script de Menús Especiales o la implementación no tiene acceso "Cualquier usuario".'; }
+        } catch (e) {
+            msg += 'GET falló: ' + e.message + '\n(bloqueo de red/CORS: implementación sin acceso público o URL incorrecta)';
+        }
+        alert(msg);
+    }
+
     function buscarMenuPorId(id) { return menusGuardados.find(m => String(m.id) === String(id)); }
 
     // El "Nombre" de la fila en Google Sheets puede corromperse si Sheets detecta que el texto
@@ -664,6 +683,7 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
                         <label class="label-seccion">📋 Menús guardados</label>
                         <button class="btn btn-primary" style="width:100%;margin-bottom:8px;" onclick="MenuEspecial.nuevoMenu()">+ Nuevo menú</button>
                         <button class="btn btn-secondary" style="width:100%;margin-bottom:10px;" onclick="MenuEspecial.refrescarLista()">🔄 Refrescar lista</button>
+                        <button class="btn btn-secondary" style="width:100%;margin-bottom:10px;" onclick="MenuEspecial.diagnosticarConexion()">🔌 Probar conexión</button>
                         <div id="me-sidebar-lista"></div>
                     </div>
                 </div>
@@ -1520,7 +1540,7 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
 
         return `<div class="me-print-menu"><div class="me-print-inner">
             ${logoHtml}
-            <div class="me-print-marco"><div class="me-print-marco-fondo"></div><div class="me-print-marco-int">
+            <div class="me-print-marco"><div class="me-print-marco-fondo"></div><div class="me-print-marco-borde"></div><div class="me-print-marco-int">
                 ${SECCIONES_INFO.map(seccionHtml).join('')}
                 ${bebidaHtml}
                 ${tituloHtml}
@@ -1570,14 +1590,17 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
             .me-print-rn-sub { font-size:0.95em; font-weight:400; letter-spacing:0.08em; line-height:1.1; color:#555; }
             .me-print-cab-der { display:flex; align-items:center; }
             .me-print-logo { height:5.4em; width:auto; object-fit:contain; }
-            /* Marco: tarjeta blanca con borde naranja fino y, detrás, una losa naranja ligeramente
-               girada y desplazada arriba-izquierda (como el menú de referencia). */
-            .me-print-marco { position:relative; width:calc(100% - 1em); margin:0.6em 0.5em 0.4em 0.5em; }
-            .me-print-marco-fondo { position:absolute; top:-0.55em; left:-0.5em; right:0.45em; bottom:0.5em; background:#d2491a; transform:rotate(-1.1deg); border-radius:0.25em; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-            .me-print-marco-int { position:relative; background:#fff; border:0.12em solid #d2491a; border-radius:0.3em; padding:1em 1.2em 0.9em 1.2em; text-align:left; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-            .me-print-titulo { font-size:1.55em; font-weight:800; letter-spacing:0.01em; color:#d2491a; margin-top:0.5em; text-align:left; }
-            .me-print-seccion { width:100%; margin:0 0 0.75em 0; }
-            .me-print-seccion-titulo { font-size:1em; font-weight:800; white-space:nowrap; color:#1c1c1c; margin-bottom:0.25em; }
+            /* Marco a imitación del menú de referencia: SOLO las líneas van inclinadas (losa naranja
+               detrás + rectángulo de borde naranja fino, cada uno con su propio giro, y pueden
+               sobresalir de la hoja sin problema); el texto va recto encima, con el formato de
+               siempre (centrado, títulos dorados en mayúsculas con línea fina). */
+            .me-print-marco { position:relative; width:calc(100% - 1.6em); margin:1.1em 0.8em 0.8em 0.8em; }
+            .me-print-marco-fondo { position:absolute; top:-0.8em; left:-0.9em; right:0.7em; bottom:0.9em; background:#d2491a; transform:rotate(-2.2deg); transform-origin:50% 50%; border-radius:0.25em; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+            .me-print-marco-borde { position:absolute; top:0; left:0; right:0; bottom:0; background:#fff; border:0.12em solid #d2491a; border-radius:0.3em; transform:rotate(-1.2deg); transform-origin:50% 50%; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+            .me-print-marco-int { position:relative; padding:1.1em 1.4em 1em 1.4em; display:flex; flex-direction:column; align-items:center; text-align:center; }
+            .me-print-titulo { font-size:1.55em; font-weight:800; letter-spacing:0.01em; color:#d2491a; margin-top:0.4em; align-self:flex-start; text-align:left; }
+            .me-print-seccion { width:100%; max-width:35em; margin:0 auto 0.5em auto; }
+            .me-print-seccion-titulo { font-size:0.76em; font-weight:800; text-transform:uppercase; letter-spacing:0.03em; white-space:nowrap; color:#b8860b; border-bottom:1px solid #ddd; padding-bottom:0.15em; margin-bottom:0.3em; }
             .me-print-plato { margin-bottom:0.22em; }
             .me-print-plato-linea { font-size:0.92em; line-height:1.25; }
             .me-print-plato-en { font-style:italic; color:#555; font-size:0.85em; line-height:1.25; }
@@ -1864,6 +1887,7 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
         precargarEnSegundoPlano: precargarEnSegundoPlano,
         nuevoMenu: nuevoMenu,
         refrescarLista: refrescarLista,
+        diagnosticarConexion: diagnosticarConexion,
         cargarMenu: cargarMenu,
         duplicarMenu: duplicarMenu,
         guardarMenuActual: guardarMenuActual,
