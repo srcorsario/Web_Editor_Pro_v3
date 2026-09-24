@@ -1565,8 +1565,8 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
             html, body { margin:0; }
             body { font-family: 'Montserrat', Georgia, serif; -webkit-print-color-adjust: exact; }
             @page { size: A4 landscape; margin: 6mm 3mm; }
-            .me-print-sheet { display:flex; width:100%; height:198mm; }
-            .me-print-menu { flex:1 1 50%; padding: 0 1mm; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; }
+            .me-print-sheet { display:flex; width:291mm; max-width:100%; height:198mm; margin:0 auto; }
+            .me-print-menu { flex:1 1 50%; padding: 3mm 1mm 0 1mm; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; }
             .me-print-inner { width:100%; display:flex; flex-direction:column; align-items:center; text-align:center; font-size:13px; }
             /* Marcas de corte (antes: línea de puntos vertical de arriba a abajo + emoji de
                tijeras ✂ rotado en cada punta): ahora, SOLO dos trazos finos sueltos, uno arriba y
@@ -1583,7 +1583,7 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
             .me-print-cutline::before, .me-print-cutline::after { content:''; position:absolute; left:50%; transform:translateX(-50%); width:1.5px; height:4mm; background:#999; }
             .me-print-cutline::before { top:0; }
             .me-print-cutline::after { bottom:0; }
-            .me-print-cabecera { width:100%; display:flex; justify-content:space-between; align-items:center; margin-bottom:1.1em; padding:0; }
+            .me-print-cabecera { width:100%; display:flex; justify-content:space-between; align-items:center; margin-bottom:1.1em; padding:0 2.6em; }
             .me-print-cab-izq { display:flex; flex-direction:column; align-items:center; }
             .me-print-bull { height:2.6em; width:auto; object-fit:contain; }
             .me-print-rn-texto { font-size:1.35em; font-weight:600; letter-spacing:0.03em; line-height:1.05; margin-top:0.15em; color:#222; }
@@ -1594,7 +1594,7 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
                detrás + rectángulo de borde naranja fino, cada uno con su propio giro, y pueden
                sobresalir de la hoja sin problema); el texto va recto encima, con el formato de
                siempre (centrado, títulos dorados en mayúsculas con línea fina). */
-            .me-print-marco { position:relative; width:calc(100% - 5em); margin:1.3em 2.5em 1em 2.5em; }
+            .me-print-marco { position:relative; width:calc(100% - 7em); margin:1.3em 3.5em 1em 3.5em; }
             .me-print-marco-fondo { position:absolute; top:-0.8em; left:-0.9em; right:0.7em; bottom:0.9em; background:#d2491a; transform:rotate(-3.6deg); transform-origin:50% 50%; border-radius:0.25em; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
             .me-print-marco-borde { position:absolute; top:0; left:0; right:0; bottom:0; background:#fff; border:0.12em solid #d2491a; border-radius:0.3em; transform:rotate(-2.2deg); transform-origin:50% 50%; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
             .me-print-marco-int { position:relative; padding:1.1em 1.4em 1em 1.4em; display:flex; flex-direction:column; align-items:center; text-align:center; }
