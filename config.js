@@ -145,7 +145,7 @@ const TRADUCCION_CONCURRENCIA = null;     // Paso 2 (nombres) — null = usar el
 // especial en su propia Google Sheet — ver Codigo_MenusEspeciales.gs (repo aparte). Común a los
 // dos restaurantes: un menú especial puede mezclar platos de ambas cartas, así que no tiene
 // sentido que "pertenezca" a WEB_APP_URL_RESTAURANTE001 ni a WEB_APP_URL_RESTAURANTE002.
-const WEBAPP_URL_MENUS_ESPECIALES = 'https://script.google.com/macros/s/AKfycbyKzR0gviSkJlOeMrhIk1EdSW36nA3JKwl7NHaJtQcguJEJRQtGl419XicnKxacug1I/exec';
+const WEBAPP_URL_MENUS_ESPECIALES = 'https://script.google.com/macros/s/AKfycby8566r5531M-iAvqYs7QRjmW5VVnBPbbQqbzRbsRHenRIOzsaVbDjj7GuVfnSGh7n1/exec';
 window.WEBAPP_URL_MENUS_ESPECIALES = WEBAPP_URL_MENUS_ESPECIALES;
 
 // NUEVO: Exposición explícita en window para que ui.js (script type="module", con su propio
