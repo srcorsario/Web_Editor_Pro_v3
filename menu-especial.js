@@ -471,7 +471,7 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
         // podía quedarse colgado 15-35s (visto en un HAR real del usuario) antes de fallar,
         // haciendo que los 3 reintentos de listarMenus() sumaran hasta minuto y medio.
         const fetcher = (typeof window.fetchConTimeout === 'function') ? window.fetchConTimeout : fetch;
-        const resp = await fetcher(url + '?accion=listarMenus&zx=' + Date.now(), { cache: 'no-store' }, 8000);
+        const resp = await fetcher(url + '?accion=listarMenus&zx=' + Date.now(), { cache: 'no-store' }, 10000);
         let data;
         try { data = await resp.json(); }
         catch (e) { throw new Error('La URL no devolvió datos JSON (revisa que la implementación tenga acceso "Cualquier usuario" y que la URL /exec sea la vigente).'); }
@@ -527,7 +527,11 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
         }
         console.error('[MenuEspecial] Error al listar menús guardados:', ultimoError);
         ultimoErrorLista = (ultimoError && ultimoError.message) ? ultimoError.message : 'No se pudo conectar con el servidor de menús.';
-        return [];
+        // 25 sept: null (no []) para distinguir "no se pudo leer nada" de "se leyó bien y no hay
+        // menús guardados" -- así los que llaman a esto (refrescarLista, init, precarga...)
+        // pueden saber que esto fue un FALLO y no una lista vacía de verdad, y no reemplazan
+        // la última lista buena que tuvieran en pantalla por una vacía.
+        return null;
     }
 
     // POST con Content-Type "text/plain": es una petición "simple" para CORS (sin preflight, que
@@ -572,8 +576,8 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
             // Bypasa la deduplicación a propósito: necesitamos una lectura NUEVA de verdad para
             // comprobar si el servidor guardó pese al error de red, no una que ya estuviera en
             // marcha desde antes de este POST (podría no incluir todavía el menú recién enviado).
-            const lista = await listarMenusSinDeduplicar();
-            const enviado = lista.find(m => (menu.id && String(m.id) === String(menu.id)) ||
+            const lista = await listarMenusSinDeduplicar(); // null si esta lectura también falla
+            const enviado = (lista || []).find(m => (menu.id && String(m.id) === String(menu.id)) ||
                 (!menu.id && nombreVisible(m) === nombreLimpio && new Date(m.fechaModificacion).getTime() >= inicio - 5000));
             if (!enviado) throw new Error('No se pudo contactar con el servidor de menús y el menú no aparece guardado.');
             idDevuelto = enviado.id;
@@ -583,10 +587,18 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
         // si el servidor no lo escribió (o si lee de una hoja distinta a la que escribe). Igual
         // que arriba, sin deduplicar -- tiene que ser una lectura posterior al POST, no una que
         // ya estuviera en marcha antes de guardar.
-        menusGuardados = await listarMenusSinDeduplicar();
-        const guardado = menusGuardados.find(m => String(m.id) === String(idDevuelto));
+        // 25 sept: si esta relectura falla (null), NO se pisa menusGuardados con nada -- se deja
+        // la lista anterior tal cual (renderSidebarLista se encarga de mostrarla + el aviso rojo,
+        // ver init/refrescarLista) y se informa de que no se pudo VERIFICAR el guardado, sin decir
+        // que falló el guardado en sí (el POST ya respondió ok:true en este punto).
+        const listaFresca = await listarMenusSinDeduplicar();
+        if (listaFresca !== null) menusGuardados = listaFresca;
+        const guardado = (listaFresca || []).find(m => String(m.id) === String(idDevuelto));
         if (!guardado) {
-            throw new Error('El servidor respondió, pero el menú no aparece al releer la lista' + (ultimoErrorLista ? ' (' + ultimoErrorLista + ')' : '') + '.');
+            const motivo = (listaFresca === null)
+                ? (ultimoErrorLista || 'no se pudo releer la lista para comprobarlo')
+                : 'no aparece al releer la lista';
+            throw new Error('El servidor respondió que guardó el menú, pero no se ha podido confirmar (' + motivo + '). Pulsa "🔄 Refrescar lista" en unos segundos para comprobarlo.');
         }
         menu.id = guardado.id;
         return menu.id;
@@ -598,7 +610,15 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
         await postBackend(url + '?accion=eliminarMenu', { id: id });
         // Sin deduplicar, por el mismo motivo que en guardarMenuEnServidor: tiene que reflejar
         // el borrado que se acaba de hacer, no un listarMenus() que ya estuviera en marcha antes.
-        menusGuardados = await listarMenusSinDeduplicar();
+        const listaFresca = await listarMenusSinDeduplicar();
+        if (listaFresca !== null) {
+            menusGuardados = listaFresca;
+        } else {
+            // 25 sept: si esta relectura falla, el borrado en el servidor YA se hizo (el POST de
+            // arriba respondió ok:true) -- se quita el menú de la lista local a mano para que no
+            // se quede viéndose como si siguiera ahí, en vez de pisar menusGuardados con [].
+            menusGuardados = menusGuardados.filter(m => String(m.id) !== String(id));
+        }
     }
 
     // NUEVO (19 sept): "Mis Platos" -- biblioteca de platos añadidos a mano, MISMO backend
@@ -609,7 +629,7 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
         if (!url) return [];
         try {
             const fetcher = (typeof window.fetchConTimeout === 'function') ? window.fetchConTimeout : fetch;
-            const resp = await fetcher(url + '?accion=listarPlatosManuales&zx=' + Date.now(), { cache: 'no-store' }, 8000);
+            const resp = await fetcher(url + '?accion=listarPlatosManuales&zx=' + Date.now(), { cache: 'no-store' }, 10000);
             const data = await resp.json();
             return (data && data.ok && Array.isArray(data.platos)) ? data.platos : [];
         } catch (e) {
@@ -1435,7 +1455,16 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
 
     async function refrescarLista() {
         mostrarCargando(true, '🔄 Actualizando lista de menús...');
-        try { menusGuardados = await listarMenus(); } finally { mostrarCargando(false); }
+        try {
+            // 25 sept: si falla, NO se pisa menusGuardados -- se deja la última lista buena tal
+            // cual (el aviso rojo de arriba ya avisa de que el refresco falló); antes se
+            // sobrescribía siempre, así que un refresco fallido dejaba la pantalla en blanco
+            // aunque un momento antes se hubiera visto la lista completa.
+            const resultado = await listarMenus();
+            if (resultado !== null) menusGuardados = resultado;
+        } finally {
+            mostrarCargando(false);
+        }
         renderSidebarLista();
     }
 
@@ -1914,7 +1943,7 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
             // en la pestaña, de forma secuencial DESPUÉS de esperar las cartas -- ver init() más
             // abajo). Guarda la promesa en menusGuardadosPromesa para que init() la reutilice en
             // vez de repetir la petición si esto ya la lanzó.
-            menusGuardadosPromesa = listarMenus().then(m => { menusGuardados = m; return m; });
+            menusGuardadosPromesa = listarMenus().then(m => { if (m !== null) menusGuardados = m; return m; });
             await Promise.all([asegurarIndicesCargados(), menusGuardadosPromesa]);
         } catch (e) {
             // Una precarga fallida no es un error visible para el usuario: si de verdad entra
@@ -1945,7 +1974,7 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
             // (Promise.all) en vez de esperar a que las cartas terminen para empezar -- antes
             // era secuencial, así que la carga de la pestaña sumaba el tiempo de las cartas MÁS
             // el de listarMenus (que puede tardar varios segundos, ver fetchConTimeout).
-            const promesaMenus = menusGuardadosPromesa || listarMenus().then(m => { menusGuardados = m; return m; });
+            const promesaMenus = menusGuardadosPromesa || listarMenus().then(m => { if (m !== null) menusGuardados = m; return m; });
             await Promise.all([asegurarIndicesCargados(), promesaMenus]);
         } finally {
             menusGuardadosPromesa = null;
