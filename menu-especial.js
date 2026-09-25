@@ -481,12 +481,31 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
         return data.menus;
     }
 
-    // 24 sept: hasta 3 intentos (pausas de 1 s y 2 s). Apps Script, tras un rato sin usarse,
-    // tarda en "despertar" y la PRIMERA petición puede devolver una página de Google en vez del
-    // JSON (síntoma: el aviso rojo salía al abrir la pestaña y desaparecía al pulsar "Refrescar
-    // lista", que ya era el segundo intento). Reintentando solos, el aviso solo sale si de
-    // verdad falla las 3 veces.
+    // 24 sept: hasta 3 intentos (pausas de 0,8 s y 1,5 s), cada uno con su propio límite de
+    // tiempo (fetchConTimeout, ver utils.js) para no quedarse colgado si Apps Script tarda.
+    //
+    // 25 sept -- DEDUPLICACIÓN (mismo patrón que cargarYCachearModo en app.js): varios sitios
+    // llaman a listarMenus() por su cuenta (la precarga al arrancar, init() al abrir la
+    // pestaña, "🔄 Refrescar lista", guardar/borrar un menú...) -- sin esto, pulsar "Refrescar
+    // lista" mientras la precarga inicial TODAVÍA está en marcha lanzaba una SEGUNDA petición en
+    // paralelo a la MISMA implementación de Apps Script, y ambas competían por la misma cola de
+    // ejecuciones del proyecto, alargando el tiempo de las dos en vez de ir cada una a su ritmo.
+    // Ahora, si ya hay una lectura en curso, cualquier llamada nueva se engancha a ESA MISMA
+    // petición en lugar de lanzar otra.
+    let listarMenusEnCurso = null;
+
     async function listarMenus() {
+        if (listarMenusEnCurso) return listarMenusEnCurso;
+        const promesa = listarMenusSinDeduplicar();
+        listarMenusEnCurso = promesa;
+        try {
+            return await promesa;
+        } finally {
+            listarMenusEnCurso = null;
+        }
+    }
+
+    async function listarMenusSinDeduplicar() {
         const url = urlBackend();
         if (!url) {
             ultimoErrorLista = 'Falta configurar WEBAPP_URL_MENUS_ESPECIALES en config.js.';
@@ -550,7 +569,10 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
             // duplicar un menú nuevo. Cualquier otro error (el servidor respondió ok:false, etc.)
             // se propaga tal cual con su mensaje real.
             if (!(e instanceof TypeError)) throw e;
-            const lista = await listarMenus();
+            // Bypasa la deduplicación a propósito: necesitamos una lectura NUEVA de verdad para
+            // comprobar si el servidor guardó pese al error de red, no una que ya estuviera en
+            // marcha desde antes de este POST (podría no incluir todavía el menú recién enviado).
+            const lista = await listarMenusSinDeduplicar();
             const enviado = lista.find(m => (menu.id && String(m.id) === String(menu.id)) ||
                 (!menu.id && nombreVisible(m) === nombreLimpio && new Date(m.fechaModificacion).getTime() >= inicio - 5000));
             if (!enviado) throw new Error('No se pudo contactar con el servidor de menús y el menú no aparece guardado.');
@@ -558,8 +580,10 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
         }
 
         // Relee la lista y VERIFICA que el menú está realmente ahí: así nunca se anuncia "guardado"
-        // si el servidor no lo escribió (o si lee de una hoja distinta a la que escribe).
-        menusGuardados = await listarMenus();
+        // si el servidor no lo escribió (o si lee de una hoja distinta a la que escribe). Igual
+        // que arriba, sin deduplicar -- tiene que ser una lectura posterior al POST, no una que
+        // ya estuviera en marcha antes de guardar.
+        menusGuardados = await listarMenusSinDeduplicar();
         const guardado = menusGuardados.find(m => String(m.id) === String(idDevuelto));
         if (!guardado) {
             throw new Error('El servidor respondió, pero el menú no aparece al releer la lista' + (ultimoErrorLista ? ' (' + ultimoErrorLista + ')' : '') + '.');
@@ -572,7 +596,9 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
         const url = urlBackend();
         if (!url) throw new Error('Falta configurar WEBAPP_URL_MENUS_ESPECIALES en config.js');
         await postBackend(url + '?accion=eliminarMenu', { id: id });
-        menusGuardados = await listarMenus();
+        // Sin deduplicar, por el mismo motivo que en guardarMenuEnServidor: tiene que reflejar
+        // el borrado que se acaba de hacer, no un listarMenus() que ya estuviera en marcha antes.
+        menusGuardados = await listarMenusSinDeduplicar();
     }
 
     // NUEVO (19 sept): "Mis Platos" -- biblioteca de platos añadidos a mano, MISMO backend
