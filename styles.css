@@ -1083,50 +1083,47 @@ input:checked + .slider-switch:before { transform: translateX(18px); }
 .loading-tenis {
     position: relative;
     width: 180px;
-    height: 60px;
+    height: 84px;
     margin: 0 auto;
 }
 
+/* 25 sept -- v3: v2 (aro CSS ovalado + cordaje dibujado) todavía se leía poco a poco como una
+   raqueta real. El usuario pasó una silueta de raqueta de verdad (recortada de una foto), le
+   quitamos las letras "RG" que traía superpuestas y la recoloreamos al verde de la marca
+   (--verde); ahora se usa esa imagen (raqueta_tenis.png) como fondo en vez de dibujar el aro a
+   mano. Estructura en dos capas por raqueta: ".raqueta" solo posiciona la caja (izq/der),
+   ".raqueta-img" pinta la imagen y es quien anima el "golpe" -- así el volteo horizontal
+   (scaleX(-1), para que la raqueta izquierda mire hacia el centro igual que la derecha, ya que
+   la foto original solo mira hacia un lado) y la rotación del golpe conviven en el mismo
+   elemento sin pisarse (los keyframes de la izquierda llevan el scaleX(-1) incluido en cada
+   paso). transform-origin apunta aproximadamps al centro del aro dentro de la imagen (no al
+   centro de la caja, que incluye el mango) para que el golpe pivote como una muñeca real. */
 .loading-tenis .raqueta {
     position: absolute;
     top: 50%;
-    width: 30px;
-    height: 30px;
-    margin-top: -15px;
-    border: 4px solid #2f6b3a;
-    border-radius: 50%;
-    background: rgba(47, 107, 58, 0.08);
+    width: 58px;
+    height: 53px;
+    margin-top: -17px; /* no es -mitad: sube la caja para que el CENTRO DEL ARO (no de la caja) quede a la altura de la pelota */
 }
 
-/* Mango de la raqueta -- un pequeño rectángulo pegado al aro, orientado hacia fuera de la pista */
-.loading-tenis .raqueta::after {
-    content: '';
+.loading-tenis .raqueta-izq { left: -6px; }
+.loading-tenis .raqueta-der { right: -6px; }
+
+.loading-tenis .raqueta-img {
     position: absolute;
-    width: 5px;
-    height: 18px;
-    background: #2f6b3a;
-    border-radius: 2px;
-    bottom: -15px;
+    inset: 0;
+    background-image: url('raqueta_tenis.png');
+    background-repeat: no-repeat;
+    background-size: contain;
+    background-position: center;
+    transform-origin: 30% 33%;
 }
 
-.loading-tenis .raqueta-izq {
-    left: 0;
-    transform-origin: 75% 50%;
+.loading-tenis .raqueta-izq .raqueta-img {
     animation: tenisGolpeIzq 1.8s ease-in-out infinite;
 }
-.loading-tenis .raqueta-izq::after {
-    right: -3px;
-    transform: rotate(35deg);
-}
-
-.loading-tenis .raqueta-der {
-    right: 0;
-    transform-origin: 25% 50%;
+.loading-tenis .raqueta-der .raqueta-img {
     animation: tenisGolpeDer 1.8s ease-in-out infinite;
-}
-.loading-tenis .raqueta-der::after {
-    left: -3px;
-    transform: rotate(-35deg);
 }
 
 .loading-tenis .pelota-tenis {
@@ -1154,21 +1151,24 @@ input:checked + .slider-switch:before { transform: translateX(18px); }
 
 /* La raqueta izquierda golpea (gira hacia dentro) justo en el 0%/100% de tenisPelota -- cuando
    la pelota está a punto de salir de su lado -- y se queda quieta mientras la pelota va y vuelve
-   por el lado contrario. */
+   por el lado contrario. La foto original solo mira hacia un lado, así que la izquierda lleva
+   scaleX(-1) en TODOS los pasos (para mirar hacia el centro, como su espejo) y el golpe es solo
+   el rotate() que se añade encima en cada paso. */
 @keyframes tenisGolpeIzq {
-    0%   { transform: rotate(0deg); }
-    4%   { transform: rotate(-25deg); }
-    10%  { transform: rotate(0deg); }
-    90%  { transform: rotate(0deg); }
-    96%  { transform: rotate(-25deg); }
-    100% { transform: rotate(0deg); }
+    0%   { transform: scaleX(-1) rotate(0deg); }
+    4%   { transform: scaleX(-1) rotate(22deg); }
+    10%  { transform: scaleX(-1) rotate(0deg); }
+    90%  { transform: scaleX(-1) rotate(0deg); }
+    96%  { transform: scaleX(-1) rotate(22deg); }
+    100% { transform: scaleX(-1) rotate(0deg); }
 }
 
-/* La raqueta derecha golpea justo en el 50% de tenisPelota, cuando la pelota le llega. */
+/* La raqueta derecha golpea justo en el 50% de tenisPelota, cuando la pelota le llega -- esta
+   usa la foto tal cual (ya mira hacia el centro/izquierda de forma natural), sin scaleX. */
 @keyframes tenisGolpeDer {
     0%   { transform: rotate(0deg); }
     44%  { transform: rotate(0deg); }
-    50%  { transform: rotate(25deg); }
+    50%  { transform: rotate(-22deg); }
     56%  { transform: rotate(0deg); }
     100% { transform: rotate(0deg); }
 }
