@@ -471,7 +471,7 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
         // podía quedarse colgado 15-35s (visto en un HAR real del usuario) antes de fallar,
         // haciendo que los 3 reintentos de listarMenus() sumaran hasta minuto y medio.
         const fetcher = (typeof window.fetchConTimeout === 'function') ? window.fetchConTimeout : fetch;
-        const resp = await fetcher(url + '?accion=listarMenus&zx=' + Date.now(), { cache: 'no-store' }, 10000);
+        const resp = await fetcher(url + '?accion=listarMenus&zx=' + Date.now(), { cache: 'no-store' }, 15000);
         let data;
         try { data = await resp.json(); }
         catch (e) { throw new Error('La URL no devolvió datos JSON (revisa que la implementación tenga acceso "Cualquier usuario" y que la URL /exec sea la vigente).'); }
@@ -629,7 +629,7 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
         if (!url) return [];
         try {
             const fetcher = (typeof window.fetchConTimeout === 'function') ? window.fetchConTimeout : fetch;
-            const resp = await fetcher(url + '?accion=listarPlatosManuales&zx=' + Date.now(), { cache: 'no-store' }, 10000);
+            const resp = await fetcher(url + '?accion=listarPlatosManuales&zx=' + Date.now(), { cache: 'no-store' }, 15000);
             const data = await resp.json();
             return (data && data.ok && Array.isArray(data.platos)) ? data.platos : [];
         } catch (e) {

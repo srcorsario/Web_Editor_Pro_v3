@@ -18,7 +18,7 @@
         // todo el JS/CSS de golpe en cada visita.
         // OJO: esto NO afecta a los datos del menu (platos/precios) — esos se piden
         // siempre en fresco con cache:"no-store" en app.js, y eso no cambia.
-        window.__CACHE_BUST__ = '2026.09.25.4';
+        window.__CACHE_BUST__ = '2026.09.25.5';
     </script>
     <script>document.write('<link rel="stylesheet" href="styles.css?v=' + window.__CACHE_BUST__ + '">');</script>
 </head>
@@ -513,10 +513,17 @@
     </script>
 
     <div id="loading-overlay" class="loading-overlay">
-        <div class="spinner"></div>
+        <!-- 25 sept: animación "partido de tenis" en vez de la rueda giratoria -- una sola
+             pelota (.pelota-tenis) que va de una raqueta a la otra y cada raqueta gira al
+             golpearla (ver @keyframes tenisPelota/tenisGolpeIzq/tenisGolpeDer en styles.css). -->
+        <div class="loading-tenis">
+            <div class="raqueta raqueta-izq"></div>
+            <div class="pelota-tenis"></div>
+            <div class="raqueta raqueta-der"></div>
+        </div>
         <!-- NUEVO (18 sept): id añadido para poder cambiar el texto desde JS (ver
              mostrarOverlayCarga()/ocultarOverlayCarga() en app.js) -- se reutiliza este mismo
-             overlay/rueda para las llamadas de traducción con IA (que a veces tardan bastante,
+             overlay/animación para las llamadas de traducción con IA (que a veces tardan bastante,
              sobre todo si Gemini responde 503 "modelo saturado" y hay que reintentar con varias
              claves), no solo para "Cargando datos..." al cambiar de pestaña. -->
         <div id="loading-text" class="loading-text">Cargando datos...</div>

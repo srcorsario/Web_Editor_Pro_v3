@@ -1070,6 +1070,109 @@ input:checked + .slider-switch:before { transform: translateX(18px); }
     100% { transform: rotate(360deg); }
 }
 
+/* 25 sept -- ANIMACIÓN "PARTIDO DE TENIS": sustituye a la rueda giratoria (.spinner) en el
+   overlay de carga (ver loading-overlay en index.html). Una única pelota (.pelota-tenis) viaja
+   de una raqueta a la otra y vuelve, y cada raqueta gira un poco justo cuando la "golpea" --
+   todo con CSS puro (keyframes), sin imágenes ni JS: los % de cada keyframe están sincronizados
+   entre .pelota-tenis y .raqueta-izq/.raqueta-der para que el golpe de raqueta coincida con el
+   instante en que la pelota llega a ese lado. Pensada para durar más que una carga rápida (dar
+   la sensación de "partido en curso") sin ser irritante si la carga es larga -- por eso el ciclo
+   completo (ida y vuelta) dura 1.8s y se repite sin parar mientras el overlay esté visible.
+   Reutiliza --primario (naranja de la marca) para la pelota y un verde de pista para las
+   raquetas, coherente con los colores de Roland Garros que ya usa el resto de la web. */
+.loading-tenis {
+    position: relative;
+    width: 180px;
+    height: 60px;
+    margin: 0 auto;
+}
+
+.loading-tenis .raqueta {
+    position: absolute;
+    top: 50%;
+    width: 30px;
+    height: 30px;
+    margin-top: -15px;
+    border: 4px solid #2f6b3a;
+    border-radius: 50%;
+    background: rgba(47, 107, 58, 0.08);
+}
+
+/* Mango de la raqueta -- un pequeño rectángulo pegado al aro, orientado hacia fuera de la pista */
+.loading-tenis .raqueta::after {
+    content: '';
+    position: absolute;
+    width: 5px;
+    height: 18px;
+    background: #2f6b3a;
+    border-radius: 2px;
+    bottom: -15px;
+}
+
+.loading-tenis .raqueta-izq {
+    left: 0;
+    transform-origin: 75% 50%;
+    animation: tenisGolpeIzq 1.8s ease-in-out infinite;
+}
+.loading-tenis .raqueta-izq::after {
+    right: -3px;
+    transform: rotate(35deg);
+}
+
+.loading-tenis .raqueta-der {
+    right: 0;
+    transform-origin: 25% 50%;
+    animation: tenisGolpeDer 1.8s ease-in-out infinite;
+}
+.loading-tenis .raqueta-der::after {
+    left: -3px;
+    transform: rotate(-35deg);
+}
+
+.loading-tenis .pelota-tenis {
+    position: absolute;
+    top: 50%;
+    left: 22px;
+    width: 15px;
+    height: 15px;
+    margin-top: -7.5px;
+    background: var(--primario);
+    border-radius: 50%;
+    box-shadow: inset -2px -2px 3px rgba(0, 0, 0, 0.3);
+    animation: tenisPelota 1.8s ease-in-out infinite;
+}
+
+/* La pelota recorre el hueco entre las dos raquetas y sube un poco a mitad de camino (arco),
+   como un golpe real -- 0%/50%/100% son los instantes exactos en los que toca cada raqueta. */
+@keyframes tenisPelota {
+    0%   { left: 22px; top: 50%; }
+    22%  { left: 50%; top: 12%; }
+    50%  { left: calc(100% - 37px); top: 50%; }
+    78%  { left: 50%; top: 12%; }
+    100% { left: 22px; top: 50%; }
+}
+
+/* La raqueta izquierda golpea (gira hacia dentro) justo en el 0%/100% de tenisPelota -- cuando
+   la pelota está a punto de salir de su lado -- y se queda quieta mientras la pelota va y vuelve
+   por el lado contrario. */
+@keyframes tenisGolpeIzq {
+    0%   { transform: rotate(0deg); }
+    4%   { transform: rotate(-25deg); }
+    10%  { transform: rotate(0deg); }
+    90%  { transform: rotate(0deg); }
+    96%  { transform: rotate(-25deg); }
+    100% { transform: rotate(0deg); }
+}
+
+/* La raqueta derecha golpea justo en el 50% de tenisPelota, cuando la pelota le llega. */
+@keyframes tenisGolpeDer {
+    0%   { transform: rotate(0deg); }
+    44%  { transform: rotate(0deg); }
+    50%  { transform: rotate(25deg); }
+    56%  { transform: rotate(0deg); }
+    100% { transform: rotate(0deg); }
+}
+
 @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
