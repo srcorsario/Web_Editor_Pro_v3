@@ -26,6 +26,7 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
     let indiceVinos = [];                     // [{modo,id,es,en,tipo}] -- SOLO vinos y cavas (id 13100-14499); tipo: 'blanco'|'rosado'|'tinto'|'cava'
     let platosManuales = [];                  // [{id,es,en,tipo}] -- biblioteca "Mis Platos" (Codigo_MenusEspeciales.gs, hoja PlatosManuales): platos escritos a mano y guardados para reutilizar en futuros menús. Se funden dentro de platosParaPopup con modo:'manual' (ver cargarIndiceDePlatos/refrescarPlatosManualesEnPool); esta lista es solo la "fuente" tal cual viene del servidor.
     let menusGuardados = [];                  // última lista conocida (GET listarMenus), más recientes primero
+    let menusGuardadosPromesa = null;         // 25 sept: ver precargarEnSegundoPlano/init()
     let menuActual = null;                    // el menú que se está editando ahora mismo en pantalla
     let modalGrupoActual = null;              // 'comida' | 'vino' -- a qué pool pertenece el popup abierto ahora mismo
     let modalSeccionActual = null;            // clave de sección ('entrantes'/'primero'/.../'postre') o de vino ('vinoBlanco'/'vinoRosado'/'vinoTinto'/'cava') a la que añade el popup abierto
@@ -466,7 +467,11 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
 
     // Una sola lectura de la lista (sin reintentos). Lanza Error con el motivo si falla.
     async function leerListaUnaVez(url) {
-        const resp = await fetch(url + '?accion=listarMenus&zx=' + Date.now(), { cache: 'no-store' });
+        // 25 sept: límite de tiempo (ver fetchConTimeout en utils.js) -- sin él, cada intento
+        // podía quedarse colgado 15-35s (visto en un HAR real del usuario) antes de fallar,
+        // haciendo que los 3 reintentos de listarMenus() sumaran hasta minuto y medio.
+        const fetcher = (typeof window.fetchConTimeout === 'function') ? window.fetchConTimeout : fetch;
+        const resp = await fetcher(url + '?accion=listarMenus&zx=' + Date.now(), { cache: 'no-store' }, 8000);
         let data;
         try { data = await resp.json(); }
         catch (e) { throw new Error('La URL no devolvió datos JSON (revisa que la implementación tenga acceso "Cualquier usuario" y que la URL /exec sea la vigente).'); }
@@ -488,7 +493,7 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
             console.warn('[MenuEspecial] ' + ultimoErrorLista);
             return [];
         }
-        const PAUSAS_MS = [1000, 2000];
+        const PAUSAS_MS = [800, 1500];
         let ultimoError = null;
         for (let intento = 0; intento <= PAUSAS_MS.length; intento++) {
             try {
@@ -511,11 +516,15 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
     // JSON del backend ({ok, id, error}). El .gs no mira el Content-Type, lee e.postData.contents
     // tal cual, así que no hace falta tocar ni redesplegar el Apps Script.
     async function postBackend(url, payload) {
-        const resp = await fetch(url, {
+        // 25 sept: límite de tiempo más largo que las lecturas (35s) -- guardarMenu/
+        // eliminarMenu en el .gs usan LockService.waitLock(30000), así que una espera legítima
+        // (otra escritura en curso) puede llegar casi a 30s; esto solo corta un cuelgue real.
+        const fetcher = (typeof window.fetchConTimeout === 'function') ? window.fetchConTimeout : fetch;
+        const resp = await fetcher(url, {
             method: 'POST',
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: JSON.stringify(payload)
-        });
+        }, 35000);
         let data;
         try { data = await resp.json(); }
         catch (e) { throw new Error('El servidor no devolvió una respuesta válida (¿la implementación tiene acceso "Cualquier usuario"?).'); }
@@ -573,7 +582,8 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
         const url = urlBackend();
         if (!url) return [];
         try {
-            const resp = await fetch(url + '?accion=listarPlatosManuales&zx=' + Date.now(), { cache: 'no-store' });
+            const fetcher = (typeof window.fetchConTimeout === 'function') ? window.fetchConTimeout : fetch;
+            const resp = await fetcher(url + '?accion=listarPlatosManuales&zx=' + Date.now(), { cache: 'no-store' }, 8000);
             const data = await resp.json();
             return (data && data.ok && Array.isArray(data.platos)) ? data.platos : [];
         } catch (e) {
@@ -1873,7 +1883,13 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
             if (typeof localStorage !== 'undefined' && localStorage.getItem('precargaSegundoPlanoDesactivada') === '1') return;
         } catch (e) { /* si localStorage no está disponible, seguimos con la precarga activada */ }
         try {
-            await asegurarIndicesCargados();
+            // 25 sept: listarMenus() se lanza EN PARALELO con los índices de platos (antes solo
+            // se precargaban las cartas; la lista de menús guardados se pedía siempre al entrar
+            // en la pestaña, de forma secuencial DESPUÉS de esperar las cartas -- ver init() más
+            // abajo). Guarda la promesa en menusGuardadosPromesa para que init() la reutilice en
+            // vez de repetir la petición si esto ya la lanzó.
+            menusGuardadosPromesa = listarMenus().then(m => { menusGuardados = m; return m; });
+            await Promise.all([asegurarIndicesCargados(), menusGuardadosPromesa]);
         } catch (e) {
             // Una precarga fallida no es un error visible para el usuario: si de verdad entra
             // en la pestaña, init() simplemente hará la carga normal en ese momento.
@@ -1897,9 +1913,16 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
         const yaEstabanListos = indicesListos;
         if (!yaEstabanListos) mostrarCargando(true, '🍽️ Cargando cartas de RG y US Open...');
         try {
-            await asegurarIndicesCargados();
-            menusGuardados = await listarMenus();
+            // 25 sept: si precargarEnSegundoPlano() ya lanzó listarMenus() al arrancar la web,
+            // se reutiliza esa MISMA petición en curso (menusGuardadosPromesa) en vez de pedirla
+            // otra vez; y aunque no se hubiera lanzado antes, aquí va EN PARALELO con las cartas
+            // (Promise.all) en vez de esperar a que las cartas terminen para empezar -- antes
+            // era secuencial, así que la carga de la pestaña sumaba el tiempo de las cartas MÁS
+            // el de listarMenus (que puede tardar varios segundos, ver fetchConTimeout).
+            const promesaMenus = menusGuardadosPromesa || listarMenus().then(m => { menusGuardados = m; return m; });
+            await Promise.all([asegurarIndicesCargados(), promesaMenus]);
         } finally {
+            menusGuardadosPromesa = null;
             if (!yaEstabanListos) mostrarCargando(false);
         }
 

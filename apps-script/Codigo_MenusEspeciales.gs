@@ -38,6 +38,40 @@
 // =============================================================================================
 
 var NOMBRE_HOJA_MENUS = "MenusEspeciales";
+
+// -----------------------------------------------------------------------------------------
+// 24 sept -- FIX "TypeError: Cannot read properties of null (reading 'getSheetByName')":
+// getActiveSpreadsheet() SOLO funciona si el script está VINCULADO a una hoja (creado desde
+// Extensiones > Apps Script dentro de ella). Este proyecto se creó suelto en script.google.com,
+// así que devolvía null y NADA se guardaba ni se leía. Ahora obtenerSS() usa, por orden:
+//   1) la hoja vinculada, si la hay;
+//   2) la hoja cuyo ID pongas en ID_HOJA (abajo) -- lo normal: pega aquí el ID de tu hoja
+//      "Menús Especiales" (la parte larga de su URL: docs.google.com/spreadsheets/d/<ID>/edit);
+//   3) si ID_HOJA está vacío, crea UNA VEZ una hoja nueva "Menús Especiales" en tu Drive y
+//      recuerda su ID (PropertiesService), para que las siguientes llamadas usen siempre la misma.
+// -----------------------------------------------------------------------------------------
+var ID_HOJA = ""; // <- pega aquí el ID de tu hoja de Menús Especiales (opcional, ver arriba)
+
+function obtenerSS() {
+  var activa = SpreadsheetApp.getActiveSpreadsheet();
+  if (activa) return activa;
+  if (ID_HOJA) return SpreadsheetApp.openById(ID_HOJA);
+  var props = PropertiesService.getScriptProperties();
+  var guardado = props.getProperty("ID_HOJA_MENUS");
+  if (guardado) return SpreadsheetApp.openById(guardado);
+  var nueva = SpreadsheetApp.create("Menús Especiales");
+  props.setProperty("ID_HOJA_MENUS", nueva.getId());
+  return nueva;
+}
+
+// Ejecútala UNA VEZ a mano desde el editor (botón "Ejecutar") tras pegar el código: fuerza la
+// petición de permisos de Hojas de cálculo y te muestra en el Registro de ejecución qué hoja se usa.
+function probarHoja() {
+  var ss = obtenerSS();
+  obtenerHojaMenus(ss);
+  Logger.log("Hoja en uso: " + ss.getName() + " -> " + ss.getUrl());
+}
+
 // NUEVO (19 sept): "Mis Platos" — biblioteca propia de platos añadidos a mano en algún menú
 // especial (no forman parte de la carta real de RG/US Open), guardados para poder reutilizarlos
 // en menús futuros sin tener que volver a escribirlos ni a traducirlos. Hoja/backend
@@ -94,7 +128,7 @@ function doGet(e) {
 }
 
 function listarMenus() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = obtenerSS();
   var hoja = obtenerHojaMenus(ss);
   var ultimaFila = hoja.getLastRow();
 
@@ -160,7 +194,7 @@ function guardarMenu(e) {
     // su estructura interna (ver nota de diseño al principio del archivo).
     var configTexto = JSON.stringify(datos.config || {});
 
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var ss = obtenerSS();
     var hoja = obtenerHojaMenus(ss);
     var ahora = new Date().toISOString();
 
@@ -214,7 +248,7 @@ function eliminarMenu(e) {
     var id = String(datos.id || "").trim();
     if (!id) return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "Falta el id del menú a eliminar." })).setMimeType(ContentService.MimeType.JSON);
 
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var ss = obtenerSS();
     var hoja = obtenerHojaMenus(ss);
     var ultimaFila = hoja.getLastRow();
 
@@ -243,7 +277,7 @@ function eliminarMenu(e) {
 
 // GET ?accion=listarPlatosManuales — devuelve TODOS los platos guardados en "Mis Platos", en JSON.
 function listarPlatosManuales() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = obtenerSS();
   var hoja = obtenerHojaPlatosManuales(ss);
   var ultimaFila = hoja.getLastRow();
 
@@ -287,7 +321,7 @@ function guardarPlatoManual(e) {
     var en = String(datos.en || "").trim();
     var tipo = (String(datos.tipo || "") === "postre") ? "postre" : "principal";
 
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var ss = obtenerSS();
     var hoja = obtenerHojaPlatosManuales(ss);
     var ultimaFila = hoja.getLastRow();
     var esNormalizado = normalizarNombrePlatoManual(es);
@@ -334,7 +368,7 @@ function eliminarPlatoManual(e) {
     var id = Number(datos.id);
     if (!id) return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "Falta el id del plato a eliminar." })).setMimeType(ContentService.MimeType.JSON);
 
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var ss = obtenerSS();
     var hoja = obtenerHojaPlatosManuales(ss);
     var ultimaFila = hoja.getLastRow();
 

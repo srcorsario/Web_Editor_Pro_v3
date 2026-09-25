@@ -144,7 +144,11 @@ async function cargarEstadoCategorias(modo) {
     try {
         const url = (typeof window.getWebAppUrl === 'function') ? window.getWebAppUrl(modo) : '';
         if (!url) return;
-        const resp = await fetch(url + '?accion=categorias&zx=' + Date.now(), { cache: "no-store" });
+        // 25 sept: mismo límite de tiempo que fetchYParsearDatos (ver fetchConTimeout en
+        // utils.js) -- esta petición no tiene CSV publicado de respaldo, pero al menos no deja
+        // la carga colgada: si no responde a tiempo, se deja el Set tal cual (catch de abajo).
+        const fetcher = (typeof window.fetchConTimeout === 'function') ? window.fetchConTimeout : fetch;
+        const resp = await fetcher(url + '?accion=categorias&zx=' + Date.now(), { cache: "no-store" }, 8000);
         const text = await resp.text();
         const filas = text.split(/\r?\n/).filter(f => f.trim() !== "");
         const deshabilitadas = new Set();
@@ -190,7 +194,12 @@ async function fetchYParsearDatos(modo) {
     let resp;
     if (urlBase) {
         try {
-            resp = await fetch(`${urlBase}?accion=csv&zx=${Date.now()}`, { cache: "no-store" });
+            // 25 sept: con límite de tiempo (ver fetchConTimeout en utils.js) -- el endpoint en
+            // vivo de Apps Script puede quedarse colgado 15-35s antes de responder (o de
+            // fallar); con este límite, si no contesta en 8s se cae al CSV publicado en vez de
+            // esperar lo que Apps Script tarde.
+            const fetcher = (typeof window.fetchConTimeout === 'function') ? window.fetchConTimeout : fetch;
+            resp = await fetcher(`${urlBase}?accion=csv&zx=${Date.now()}`, { cache: "no-store" }, 8000);
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         } catch (err) {
             console.warn(`[Editor] Endpoint en vivo de CSV falló para ${modo}, usando el CSV publicado como respaldo:`, err.message);

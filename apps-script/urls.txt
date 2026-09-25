@@ -41,7 +41,10 @@ US OPEN (restaurante002)
 MENÚ ESPECIAL (proyecto independiente, no pertenece a RG ni a US Open)
   Archivo de referencia: Codigo_MenusEspeciales.gs
   URL /exec actual (WEBAPP_URL_MENUS_ESPECIALES en config.js):
-  https://script.google.com/macros/s/AKfycbyKzR0gviSkJlOeMrhIk1EdSW36nA3JKwl7NHaJtQcguJEJRQtGl419XicnKxacug1I/exec
+  https://script.google.com/macros/s/AKfycby8566r5531M-iAvqYs7QRjmW5VVnBPbbQqbzRbsRHenRIOzsaVbDjj7GuVfnSGh7n1/exec
+  (24 sept: nueva implementación tras corregir el .gs -- el proyecto estaba suelto (sin hoja
+   vinculada) y getActiveSpreadsheet() devolvía null; ahora usa obtenerSS()/ID_HOJA.
+   ANTERIOR: https://script.google.com/macros/s/AKfycbyKzR0gviSkJlOeMrhIk1EdSW36nA3JKwl7NHaJtQcguJEJRQtGl419XicnKxacug1I/exec)
   (ANTERIOR: https://script.google.com/macros/s/AKfycbwTkbN5AJkY8xww5yRON78TZ69hetMQdCiByDrAf2SREmXJWbjmR7tRNU2rCe_yGEICCA/exec
    -- esa implementación vivía dentro del MISMO proyecto de Apps Script que Código.gs de RG
    ("script carta"), pese a que este documento ya la describía como "independiente". El 22
