@@ -14,7 +14,7 @@
 // ventana emergente (window.open + document.write), para no depender de @media print peleándose
 // con el resto de la interfaz del editor.
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los platos de comida (no vino) que se añaden escribiéndolos a mano (agregarPlatoManual) se guardan automáticamente en una biblioteca propia y permanente en el backend (Codigo_MenusEspeciales.gs, hoja "PlatosManuales", acciones listarPlatosManuales/guardarPlatoManual/eliminarPlatoManual -- deduplica por nombre normalizado, sin acentos ni mayúsculas). Esos platos guardados aparecen mezclados en el mismo buscador "🔍 Elegir platos de la carta" (popup), como una categoría más llamada "Mis Platos" (la primera de la lista), con su propia etiqueta verde y un botón 🗑️ para quitarlos de la biblioteca sin afectar a menús ya guardados que los usen. El guardado en la biblioteca es en segundo plano (no bloquea el añadido del plato al menú) y solo aplica a platos de comida, nunca a vinos. (1.23.0) CORREGIDO: la 1.22.0 añadió el aviso de posible falta de ortografía SOLO en el último paso (al pulsar "Añadir plato"/"Guardar", vía revisarOrtografiaManual()) -- pero al pulsar antes "🌐 Traducir" (traducirAIngles), que YA usa window.PROMPTS.opcionesEN() y esa función YA revisa la ortografía en la misma llamada, el resultado de esa revisión (obj.correccion) se estaba descartando sin más: el traductor entendía bien el plato pese a la falta (p.ej. "gaspaxo" se traducía correctamente) pero no avisaba hasta el paso final. Ahora traducirAIngles() también recoge obj.correccion y, si hay falta, muestra el mismo aviso "¿Quisiste decir...?" justo ahí, nada más traducir -- el aviso del paso de "Añadir/Guardar" se mantiene igual, por si el usuario no llega a pulsar "Traducir" (escribe el inglés a mano o lo deja para luego). (1.22.0) NUEVO: aviso de posible falta de ortografía al añadir un plato manualmente (agregarPlatoManual) o al editar el nombre de uno ya añadido (guardarEdicionPlato) -- mismo patrón "¿Quisiste decir...?" que ya usa el editor de carta normal (mostrarCorreccionOrtografiaEN, en app.js) y que se inspiró originalmente en la web de Cartelitos Buffet. Usa un prompt nuevo y más ligero (window.PROMPTS.revisionOrtografica, en prompts.js) que solo revisa ortografía sin pedir traducciones. Nunca se aplica a vinos (nombres propios/marca), y si falla por lo que sea no bloquea el añadido/guardado.
+window.APP_VERSIONS.menuEspecial = '1.25.0'; // NUEVO (27 sept): la impresión ya NO agranda la letra para "llenar" un menú corto -- ahora, si sobra hueco en la página, se reparte como espacio en blanco entre las secciones (Entrantes/Principales/Postre/Bebida), estirando el marco naranja a lo largo de toda la hoja con justify-content:space-evenly, en vez de dejarlas apelotonadas arriba con un hueco vacío abajo. La letra solo se sigue reduciendo (nunca agrandando) cuando un menú largo no cabe de otra forma. Ver repartirEspacioSobrante() en imprimir(). (1.24.0) "Mis Platos" -- los platos de comida (no vino) que se añaden escribiéndolos a mano (agregarPlatoManual) se guardan automáticamente en una biblioteca propia y permanente en el backend (Codigo_MenusEspeciales.gs, hoja "PlatosManuales", acciones listarPlatosManuales/guardarPlatoManual/eliminarPlatoManual -- deduplica por nombre normalizado, sin acentos ni mayúsculas). Esos platos guardados aparecen mezclados en el mismo buscador "🔍 Elegir platos de la carta" (popup), como una categoría más llamada "Mis Platos" (la primera de la lista), con su propia etiqueta verde y un botón 🗑️ para quitarlos de la biblioteca sin afectar a menús ya guardados que los usen. El guardado en la biblioteca es en segundo plano (no bloquea el añadido del plato al menú) y solo aplica a platos de comida, nunca a vinos. (1.23.0) CORREGIDO: la 1.22.0 añadió el aviso de posible falta de ortografía SOLO en el último paso (al pulsar "Añadir plato"/"Guardar", vía revisarOrtografiaManual()) -- pero al pulsar antes "🌐 Traducir" (traducirAIngles), que YA usa window.PROMPTS.opcionesEN() y esa función YA revisa la ortografía en la misma llamada, el resultado de esa revisión (obj.correccion) se estaba descartando sin más: el traductor entendía bien el plato pese a la falta (p.ej. "gaspaxo" se traducía correctamente) pero no avisaba hasta el paso final. Ahora traducirAIngles() también recoge obj.correccion y, si hay falta, muestra el mismo aviso "¿Quisiste decir...?" justo ahí, nada más traducir -- el aviso del paso de "Añadir/Guardar" se mantiene igual, por si el usuario no llega a pulsar "Traducir" (escribe el inglés a mano o lo deja para luego). (1.22.0) NUEVO: aviso de posible falta de ortografía al añadir un plato manualmente (agregarPlatoManual) o al editar el nombre de uno ya añadido (guardarEdicionPlato) -- mismo patrón "¿Quisiste decir...?" que ya usa el editor de carta normal (mostrarCorreccionOrtografiaEN, en app.js) y que se inspiró originalmente en la web de Cartelitos Buffet. Usa un prompt nuevo y más ligero (window.PROMPTS.revisionOrtografica, en prompts.js) que solo revisa ortografía sin pedir traducciones. Nunca se aplica a vinos (nombres propios/marca), y si falla por lo que sea no bloquea el añadido/guardado.
 
 (function () {
     'use strict';
@@ -1704,14 +1704,19 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
             (function () {
                 var ALTO_DISPONIBLE_MM = 198;
                 var BASE_PX = 13;
-                // LÍMITES DE TAMAÑO (24 sept): el texto NUNCA baja de FACTOR_MIN ni sube de FACTOR_MAX
-                // (x13px: 0.80 = 10.4px, 1.25 = 16.3px). La cabecera con los logos tiene sus
-                // PROPIOS límites (CAB_MIN/CAB_MAX): sigue al texto pero acotada, para que ni se
-                // haga diminuta en un menú largo ni enorme en uno corto.
+                // LÍMITE DE TAMAÑO (27 sept, reemplaza el esquema anterior): el texto NUNCA baja
+                // de FACTOR_MIN (para que un menú largo siga siendo legible) pero YA NO SUBE por
+                // encima de 1 -- antes, un menú corto hacía crecer la letra hasta FACTOR_MAX
+                // (1.25) para "aprovechar" el hueco, y el usuario pidió explícitamente lo
+                // contrario: un menú con poco texto no debe verse con letras gigantes, debe
+                // verse con la letra de siempre pero repartiendo las SECCIONES (Entrantes/
+                // Principales/Postre/Bebida) a lo largo de toda la hoja en vez de apelotonadas
+                // arriba -- ver repartirEspacioSobrante() más abajo, que es quien ahora se encarga
+                // de aprovechar el hueco sobrante. La cabecera con los logos sigue el mismo
+                // factor que el texto (para achicarse junto con él si un menú largo lo necesita)
+                // pero acotada por su cuenta con CAB_MIN para no volverse diminuta.
                 var FACTOR_MIN = 0.80;
-                var FACTOR_MAX = 1.25;
                 var CAB_MIN = 0.90;
-                var CAB_MAX = 1.15;
                 var PASO = 0.035;
                 var MAX_INTENTOS = 24;
 
@@ -1726,7 +1731,7 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
 
                 function aplicarFactor(f) {
                     var styleEl = document.getElementById('me-ajuste-dinamico');
-                    var fc = Math.max(CAB_MIN, Math.min(CAB_MAX, f));
+                    var fc = Math.max(CAB_MIN, f);
                     if (styleEl) styleEl.textContent = '.me-print-inner{ font-size:' + (BASE_PX * f) + 'px !important; } .me-print-cabecera{ font-size:' + (BASE_PX * fc) + 'px !important; }';
                 }
 
@@ -1822,6 +1827,30 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
                     document.body.removeChild(sonda);
                 }
 
+                // 27 sept -- reparte el hueco que sobra bajo un menú corto como espacio EN
+                // BLANCO entre sus bloques (título/Entrantes/Principales/Postre/Bebida), en vez
+                // de agrandar la letra (ver comentario de FACTOR_MIN más arriba). Estira
+                // ".me-print-marco-int" (el marco naranja que ya envuelve todo el contenido) a
+                // una altura mayor que la que necesita de forma natural, y le pone
+                // justify-content:space-evenly -- como es un flex en columna, el navegador
+                // reparte solo el espacio de más EN PARTES IGUALES antes del primer bloque, entre
+                // cada bloque y después del último (con un solo bloque, eso lo centra
+                // verticalmente sin más). El resto de estilos del marco (fondo, borde, padding)
+                // no se tocan: al ser ".me-print-marco" position:relative sin altura propia, y
+                // ".me-print-marco-fondo"/".me-print-marco-borde" absolutos con inset relativo a
+                // él, crecen solos junto con ".me-print-marco-int" para seguir enmarcando todo el
+                // bloque ya repartido.
+                function repartirEspacioSobrante(maxAlturaPx, menuEl) {
+                    var marcoInt = document.querySelector('.me-print-marco-int');
+                    var styleEl = document.getElementById('me-ajuste-dinamico');
+                    if (!marcoInt || !styleEl) return;
+                    void menuEl.offsetHeight;
+                    var sobrante = maxAlturaPx - menuEl.getBoundingClientRect().height;
+                    if (sobrante <= 4) return; // ya llena la página (o casi), no hace falta repartir nada
+                    var alturaMarcoActual = marcoInt.getBoundingClientRect().height;
+                    styleEl.textContent += ' .me-print-marco-int{ height:' + (alturaMarcoActual + sobrante) + 'px !important; justify-content:space-evenly !important; }';
+                }
+
                 function ajustarYimprimir() {
                     var maxAlturaPx = alturaDisponiblePx();
                     // Se mide .me-print-inner (el bloque de contenido real, que crece/encoge con
@@ -1837,25 +1866,17 @@ window.APP_VERSIONS.menuEspecial = '1.24.0'; // NUEVO: "Mis Platos" -- los plato
                     var factor = 1, intentos = 0;
                     aplicarFactor(factor);
 
-                    if (cabe()) {
-                        // Sobra espacio a tamaño normal -- en vez de dejarlo en blanco, se sube
-                        // el factor (letra y espaciados crecen juntos, todo va en "em") hasta
-                        // llenar mejor la hoja, sin pasarse de FACTOR_MAX.
-                        while (cabe() && intentos < MAX_INTENTOS && (factor + PASO) <= FACTOR_MAX) {
-                            factor += PASO;
-                            aplicarFactor(factor);
-                            intentos++;
-                        }
-                        if (!cabe()) { factor -= PASO; aplicarFactor(factor); }
-                    } else {
-                        while (!cabe() && intentos < MAX_INTENTOS && (factor - PASO) >= FACTOR_MIN) {
-                            factor -= PASO;
-                            aplicarFactor(factor);
-                            intentos++;
-                        }
+                    // Ya NO se agranda la letra si sobra espacio a tamaño normal (ver comentario
+                    // de FACTOR_MIN arriba) -- solo se reduce si un menú largo no cabe, igual que
+                    // siempre, hasta el mínimo legible.
+                    while (!cabe() && intentos < MAX_INTENTOS && (factor - PASO) >= FACTOR_MIN) {
+                        factor -= PASO;
+                        aplicarFactor(factor);
+                        intentos++;
                     }
 
                     if (cabe()) {
+                        repartirEspacioSobrante(maxAlturaPx, menuEl);
                         balancearLineasDobles();
                         setTimeout(function () { window.print(); }, 150);
                     } else {
