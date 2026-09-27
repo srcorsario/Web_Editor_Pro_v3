@@ -18,7 +18,7 @@
         // todo el JS/CSS de golpe en cada visita.
         // OJO: esto NO afecta a los datos del menu (platos/precios) — esos se piden
         // siempre en fresco con cache:"no-store" en app.js, y eso no cambia.
-        window.__CACHE_BUST__ = '2026.09.25.6';
+        window.__CACHE_BUST__ = '2026.09.27.1';
     </script>
     <script>document.write('<link rel="stylesheet" href="styles.css?v=' + window.__CACHE_BUST__ + '">');</script>
 </head>
@@ -515,8 +515,16 @@
     <div id="loading-overlay" class="loading-overlay">
         <!-- 25 sept: animación "partido de tenis" en vez de la rueda giratoria -- una sola
              pelota (.pelota-tenis) que va de una raqueta a la otra y cada raqueta gira al
-             golpearla (ver @keyframes tenisPelota/tenisGolpeIzq/tenisGolpeDer en styles.css). -->
+             golpearla (ver @keyframes tenisPelota/tenisGolpeIzq/tenisGolpeDer en styles.css).
+             27 sept: raquetas separadas a cada lado de la pantalla (el contenedor .loading-tenis
+             ahora ocupa casi todo el ancho), red de tenis (.tenis-red) de separación sobre una
+             línea de suelo (.tenis-suelo), y sombra proyectada (.pelota-sombra) que refuerza la
+             sensación de altura -- la pelota ya bota en el suelo antes de llegar a cada raqueta
+             (ver el desglose completo en el comentario de @keyframes tenisPelota). -->
         <div class="loading-tenis">
+            <div class="tenis-suelo"></div>
+            <div class="tenis-red"></div>
+            <div class="pelota-sombra"></div>
             <div class="raqueta raqueta-izq"><div class="raqueta-img"></div></div>
             <div class="pelota-tenis"></div>
             <div class="raqueta raqueta-der"><div class="raqueta-img"></div></div>

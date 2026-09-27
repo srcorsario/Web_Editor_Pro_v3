@@ -1075,16 +1075,66 @@ input:checked + .slider-switch:before { transform: translateX(18px); }
    de una raqueta a la otra y vuelve, y cada raqueta gira un poco justo cuando la "golpea" --
    todo con CSS puro (keyframes), sin imágenes ni JS: los % de cada keyframe están sincronizados
    entre .pelota-tenis y .raqueta-izq/.raqueta-der para que el golpe de raqueta coincida con el
-   instante en que la pelota llega a ese lado. Pensada para durar más que una carga rápida (dar
-   la sensación de "partido en curso") sin ser irritante si la carga es larga -- por eso el ciclo
-   completo (ida y vuelta) dura 1.8s y se repite sin parar mientras el overlay esté visible.
+   instante en que la pelota llega a ese lado.
    Reutiliza --primario (naranja de la marca) para la pelota y un verde de pista para las
-   raquetas, coherente con los colores de Roland Garros que ya usa el resto de la web. */
+   raquetas/red, coherente con los colores de Roland Garros que ya usa el resto de la web.
+
+   27 sept -- v4 "PISTA COMPLETA": a petición del usuario, las raquetas se separan a cada lado
+   de la pantalla (el contenedor pasa de 180px fijos a casi el ancho completo del overlay,
+   min(94vw, 760px) -- las raquetas ya estaban pegadas a los bordes del contenedor con
+   left/right:-6px, así que con solo ensanchar el contenedor quedan en los extremos de la
+   pantalla sin tocar su geometría interna (tamaño/transform-origin/keyframes de giro, ya
+   afinados y que siguen funcionando igual). Se añade una red de tenis (.tenis-red) centrada
+   sobre una línea de suelo (.tenis-suelo), y la pelota ya NO hace un único arco liso de lado a
+   lado: ahora bota en el suelo antes de llegar a la raqueta contraria, con DOS parábolas por
+   trayecto (una alta que cruza por encima de la red, y otra más baja tras el bote, como un
+   golpe real que pierde altura al tocar el suelo) -- ver el desglose de puntos en el comentario
+   de @keyframes tenisPelota. Cada tramo ascendente/descendente lleva su propio
+   animation-timing-function (ease-out al alejarse de un punto de contacto = frena hacia el
+   pico; ease-in al acercarse a uno = acelera como por gravedad) para que el movimiento se lea
+   como una parábola real y no como un vaivén mecánico. El instante del bote añade además un
+   "aplastamiento" (scale) de la pelota y una sombra proyectada (.pelota-sombra) que crece/se
+   oscurece cuando la pelota está a ras de suelo y se encoge/aclara en lo alto de cada arco, para
+   reforzar la sensación de altura. El ciclo completo (ida y vuelta) se alarga de 1.8s a 3.2s --
+   con el recorrido más largo y el bote intermedio, 1.8s se veía demasiado atropellado. Los
+   keyframes de giro de las raquetas (tenisGolpeIzq/tenisGolpeDer) NO cambian: siguen golpeando
+   exactamente en 0%/100% (izquierda) y 50% (derecha), que es justo cuando la pelota llega a
+   cada lado en el nuevo recorrido -- solo se actualiza su duración a los mismos 3.2s. */
 .loading-tenis {
     position: relative;
-    width: 180px;
-    height: 84px;
+    width: min(94vw, 760px);
+    height: 150px;
     margin: 0 auto;
+}
+
+/* Línea de suelo/pista, apenas visible, para que el bote de la pelota tenga una referencia
+   visual clara de "hasta dónde baja". */
+.loading-tenis .tenis-suelo {
+    position: absolute;
+    left: 4%;
+    right: 4%;
+    bottom: 20px;
+    height: 2px;
+    background: linear-gradient(to right, transparent, rgba(0, 0, 0, 0.18) 10%, rgba(0, 0, 0, 0.18) 90%, transparent);
+}
+
+/* Red de tenis centrada entre las dos raquetas, apoyada en la línea de suelo: cinta blanca
+   arriba, postes en verde de marca y un cordaje en rombos dibujado con dos gradientes
+   diagonales repetidos (no hay imagen de red, es más simple y se ve nítido a cualquier tamaño). */
+.loading-tenis .tenis-red {
+    position: absolute;
+    left: 50%;
+    bottom: 20px;
+    transform: translateX(-50%);
+    width: 34px;
+    height: 40px;
+    background-color: rgba(20, 20, 20, 0.1);
+    background-image:
+        repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.65) 0 1px, transparent 1px 7px),
+        repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.65) 0 1px, transparent 1px 7px);
+    border-top: 3px solid #fff;
+    border-left: 2px solid var(--verde);
+    border-right: 2px solid var(--verde);
 }
 
 /* 25 sept -- v3: v2 (aro CSS ovalado + cordaje dibujado) todavía se leía poco a poco como una
@@ -1100,10 +1150,9 @@ input:checked + .slider-switch:before { transform: translateX(18px); }
    centro de la caja, que incluye el mango) para que el golpe pivote como una muñeca real. */
 .loading-tenis .raqueta {
     position: absolute;
-    top: 50%;
+    top: 42.5px; /* antes era top:50%+margin-top:-17px sobre un contenedor de 84px; con el contenedor ahora a 150px se fija en px directo para que el CENTRO DEL ARO quede a la misma altura de golpeo que usa la pelota (60px, ver tenisPelota) */
     width: 58px;
     height: 53px;
-    margin-top: -17px; /* no es -mitad: sube la caja para que el CENTRO DEL ARO (no de la caja) quede a la altura de la pelota */
 }
 
 .loading-tenis .raqueta-izq { left: -6px; }
@@ -1120,15 +1169,15 @@ input:checked + .slider-switch:before { transform: translateX(18px); }
 }
 
 .loading-tenis .raqueta-izq .raqueta-img {
-    animation: tenisGolpeIzq 1.8s ease-in-out infinite;
+    animation: tenisGolpeIzq 3.2s ease-in-out infinite;
 }
 .loading-tenis .raqueta-der .raqueta-img {
-    animation: tenisGolpeDer 1.8s ease-in-out infinite;
+    animation: tenisGolpeDer 3.2s ease-in-out infinite;
 }
 
 .loading-tenis .pelota-tenis {
     position: absolute;
-    top: 50%;
+    top: 60px;
     left: 22px;
     width: 15px;
     height: 15px;
@@ -1136,17 +1185,68 @@ input:checked + .slider-switch:before { transform: translateX(18px); }
     background: var(--primario);
     border-radius: 50%;
     box-shadow: inset -2px -2px 3px rgba(0, 0, 0, 0.3);
-    animation: tenisPelota 1.8s ease-in-out infinite;
+    animation: tenisPelota 3.2s infinite;
+    z-index: 2;
 }
 
-/* La pelota recorre el hueco entre las dos raquetas y sube un poco a mitad de camino (arco),
-   como un golpe real -- 0%/50%/100% son los instantes exactos en los que toca cada raqueta. */
+/* Sombra proyectada de la pelota sobre el suelo: sigue la misma posición horizontal que la
+   pelota (los % coinciden con los puntos "principales" de tenisPelota, sin los micro-pasos del
+   aplastamiento) y usa opacidad/escala para sugerir la altura -- grande y oscura cuando la
+   pelota está a ras de suelo, pequeña y tenue en lo alto de cada arco. */
+.loading-tenis .pelota-sombra {
+    position: absolute;
+    bottom: 18px;
+    left: 22px;
+    width: 20px;
+    height: 6px;
+    margin-left: -10px;
+    background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.35) 0%, rgba(0, 0, 0, 0) 72%);
+    border-radius: 50%;
+    animation: tenisSombra 3.2s ease-in-out infinite;
+    z-index: 0;
+}
+
+/* La pelota ya no hace un único arco liso: cada trayecto (ida y vuelta) tiene DOS parábolas --
+   una alta que sale de la raqueta y cruza por encima de la red (pico en 14%/64%, muy por encima
+   de la red para que se vea claramente el salto), y tras tocar el suelo (bote en 27-29%/77-79%,
+   con un breve aplastamiento) una segunda parábola más baja (pico en 38%/88%, ya sin la red de
+   por medio) que la lleva hasta la raqueta contraria -- así la pelota SIEMPRE bota una vez antes
+   de llegar a cada raqueta, como se pidió. 0%/50%/100% son los instantes exactos en los que la
+   pelota toca cada raqueta (deben coincidir con el golpe de tenisGolpeIzq/tenisGolpeDer). Cada
+   keyframe fija su propio animation-timing-function: ease-out al iniciar un ascenso (frena hacia
+   el pico, como al soltar un golpe hacia arriba) y ease-in al iniciar un descenso (acelera como
+   por gravedad hasta el impacto) -- así el tramo entre dos keyframes se lee como una parábola de
+   verdad y no como un vaivén a velocidad constante. */
 @keyframes tenisPelota {
-    0%   { left: 22px; top: 50%; }
-    22%  { left: 50%; top: 12%; }
-    50%  { left: calc(100% - 37px); top: 50%; }
-    78%  { left: 50%; top: 12%; }
-    100% { left: 22px; top: 50%; }
+    0%   { left: 22px;                 top: 60px;  transform: scale(1);            animation-timing-function: ease-out; }
+    14%  { left: 34%;                 top: 10px;  transform: scale(1);            animation-timing-function: ease-in; }
+    27%  { left: 60%;                 top: 118px; transform: scale(1);            animation-timing-function: ease-out; }
+    28%  { left: 60%;                 top: 121px; transform: scale(1.5, 0.55); }
+    29%  { left: 60%;                 top: 118px; transform: scale(1);            animation-timing-function: ease-in; }
+    38%  { left: 76%;                 top: 40px;  transform: scale(1);            animation-timing-function: ease-in; }
+    50%  { left: calc(100% - 37px);   top: 60px;  transform: scale(1);            animation-timing-function: ease-out; }
+    64%  { left: 66%;                 top: 10px;  transform: scale(1);            animation-timing-function: ease-in; }
+    77%  { left: 40%;                 top: 118px; transform: scale(1);            animation-timing-function: ease-out; }
+    78%  { left: 40%;                 top: 121px; transform: scale(1.5, 0.55); }
+    79%  { left: 40%;                 top: 118px; transform: scale(1);            animation-timing-function: ease-in; }
+    88%  { left: 24%;                 top: 40px;  transform: scale(1);            animation-timing-function: ease-in; }
+    100% { left: 22px;                top: 60px;  transform: scale(1);            animation-timing-function: ease-out; }
+}
+
+/* Misma línea de tiempo que tenisPelota pero solo con los puntos "principales" (sin el
+   aplastamiento del bote, no hace falta para una sombra): opacidad y escala más altas cuando la
+   pelota está a ras de suelo (bote, 28%/78%), más bajas en lo alto de cada arco (14%/64% el arco
+   alto sobre la red, 38%/88% el arco bajo tras el bote). */
+@keyframes tenisSombra {
+    0%   { left: 22px;               opacity: 0.55; transform: scale(0.7); }
+    14%  { left: 34%;                opacity: 0.15; transform: scale(0.35); }
+    28%  { left: 60%;                opacity: 0.65; transform: scale(1.1); }
+    38%  { left: 76%;                opacity: 0.3;  transform: scale(0.55); }
+    50%  { left: calc(100% - 37px);  opacity: 0.55; transform: scale(0.7); }
+    64%  { left: 66%;                opacity: 0.15; transform: scale(0.35); }
+    78%  { left: 40%;                opacity: 0.65; transform: scale(1.1); }
+    88%  { left: 24%;                opacity: 0.3;  transform: scale(0.55); }
+    100% { left: 22px;               opacity: 0.55; transform: scale(0.7); }
 }
 
 /* La raqueta izquierda golpea (gira hacia dentro) justo en el 0%/100% de tenisPelota -- cuando
