@@ -134,6 +134,8 @@
             .sugerencias-qr-toggle input:checked + span { font-weight: bold; }
             .sugerencias-qr-img { transition: opacity 0.3s; }
             .sugerencias-vino-imagen-wrapper { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center !important; padding: 20px 0 8px 0 !important; column-gap: 10px !important; }
+            .sugerencias-vino-imagenes-grupo { justify-self: center !important; display: flex !important; align-items: flex-end !important; flex-wrap: nowrap !important; gap: 40px !important; }
+            .sugerencias-descripcion-aperitivo { font-size: 0.75em !important; color: #555 !important; font-style: italic !important; font-weight: 400 !important; }
             .sugerencias-vino-imagen { justify-self: center !important; height: 140px; width: auto; max-width: 300px; object-fit: contain !important; transition: height 0.15s ease !important; }
             .sugerencias-vino-imagen-wrapper .sugerencias-qr-img { justify-self: end !important; }
             .vino-imagen-selector-wrapper { font-size: 0.75rem !important; color: #64748b !important; }
@@ -226,8 +228,7 @@
         if (!config) return;
         const wrapper = document.getElementById(config.vinoImagenWrapperId);
         if (!wrapper) return;
-        const img = wrapper.querySelector('.sugerencias-vino-imagen');
-        if (img) img.style.display = (tipo === 'con') ? '' : 'none';
+        wrapper.querySelectorAll('.sugerencias-vino-imagen').forEach(img => { img.style.display = (tipo === 'con') ? '' : 'none'; });
         reajustarVistaPrevia(modo);
     };
 
@@ -243,10 +244,8 @@
         if (!config) return;
         const wrapper = document.getElementById(config.vinoImagenWrapperId);
         if (!wrapper) return;
-        const img = wrapper.querySelector('.sugerencias-vino-imagen');
-        if (img) {
-            img.style.height = (VINO_IMAGEN_BASE_MAX_HEIGHT * escala) + 'px';
-        }
+        // MODIFICADO: escala todas las imágenes (vino + aperitivo) a la misma altura
+        wrapper.querySelectorAll('.sugerencias-vino-imagen').forEach(img => { img.style.height = (VINO_IMAGEN_BASE_MAX_HEIGHT * escala) + 'px'; });
         const qrImg = wrapper.querySelector('.sugerencias-qr-img');
         if (qrImg) {
             const qrTamano = (QR_IMAGEN_BASE_SIZE * escala) + 'px';
@@ -431,11 +430,9 @@
         var alturaFooter = footer ? footer.getBoundingClientRect().height : 0;
 
         var alturaBodega = 0;
-        panel.querySelectorAll('.sugerencias-seccion-titulo').forEach(function(titulo) {
-            if (titulo.textContent.indexOf('BODEGA') !== -1 && titulo.parentElement) {
-                alturaBodega = titulo.parentElement.getBoundingClientRect().height;
-            }
-        });
+        // MODIFICADO: se detecta por clase (antes por el texto 'BODEGA' del título, que ya no existe)
+        var secBodega = panel.querySelector('.sugerencias-seccion-bodega');
+        if (secBodega) alturaBodega = secBodega.getBoundingClientRect().height;
 
         return { alturaHeader: alturaHeader, alturaFooter: alturaFooter, alturaBodega: alturaBodega, alturaFija: alturaHeader + alturaFooter + alturaBodega };
     }
@@ -487,10 +484,9 @@
         // fallo real de carga (ver esperarImagenes, más arriba) podía quedar sin avisar nunca,
         // aunque la imagen llevara ya un buen rato en blanco por un problema de red y no por falta
         // de sitio en la hoja.
-        var vinoImgParaCarga = panel.querySelector('.sugerencias-vino-imagen');
-        if (vinoImgParaCarga && vinoImgParaCarga.dataset.cargaFallida === '1') {
-            resultado.imagenVinoFalloCarga = true;
-        }
+        panel.querySelectorAll('.sugerencias-vino-imagen').forEach(function(vinoImgParaCarga) {
+            if (vinoImgParaCarga.dataset.cargaFallida === '1') resultado.imagenVinoFalloCarga = true;
+        });
 
         // IMPORTANTE: el aviso de alérgenos es información de seguridad alimentaria — es MÁS
         // IMPORTANTE que cualquier plato de la hoja, así que nunca debe encogerse junto con el
@@ -541,7 +537,7 @@
             var alturaMm = mmDesdePx(alturaContenidoReal, maxAlturaPx);
             var pieFijoMm = mmDesdePx(bloqueFijo.alturaFija, maxAlturaPx);
             var disponibleCategoriasMm = mmDesdePx(maxAlturaPx - bloqueFijo.alturaFija, maxAlturaPx);
-            resultado.medidas.push(etiqueta + ': ' + alturaMm + 'mm de 267mm (cabecera+alérgenos+BODEGA: ' + pieFijoMm + 'mm → tope máximo disponible para Entrantes/Principales/Postres: ' + disponibleCategoriasMm + 'mm)');
+            resultado.medidas.push(etiqueta + ': ' + alturaMm + 'mm de 267mm (cabecera+alérgenos+vinos/aperitivos: ' + pieFijoMm + 'mm → tope máximo disponible para Entrantes/Principales/Postres: ' + disponibleCategoriasMm + 'mm)');
             var pxPorMm = maxAlturaPx / 267;
             return alturaContenidoReal <= (maxAlturaPx + pxPorMm);
         }
@@ -562,11 +558,12 @@
         if (pasosGap > 0) resultado.espacioCategoriasReducido = true;
         if (medir('Tras apretar categorías')) return resultado;
 
-        var vinoImg = panel.querySelector('.sugerencias-vino-imagen');
-        if (vinoImg && vinoImg.style.display !== 'none') {
-            ocultarPorAjuste(vinoImg);
-            resultado.imagenVinoQuitada = true;
-        }
+        panel.querySelectorAll('.sugerencias-vino-imagen').forEach(function(vinoImg) {
+            if (vinoImg.style.display !== 'none') {
+                ocultarPorAjuste(vinoImg);
+                resultado.imagenVinoQuitada = true;
+            }
+        });
         if (medir('Sin imagen vino')) return resultado;
 
         var qrImg = panel.querySelector('.sugerencias-qr-img');
@@ -588,8 +585,7 @@
         var disponibleParaCategoriasPx = maxAlturaPx - bloqueFijoActual.alturaFija;
         var alturaCategoriasActualPx = 0;
         panel.querySelectorAll('.sugerencias-seccion').forEach(function(sec) {
-            var titulo = sec.querySelector('.sugerencias-seccion-titulo');
-            if (titulo && titulo.textContent.indexOf('BODEGA') !== -1) return;
+            if (sec.classList.contains('sugerencias-seccion-bodega')) return;
             alturaCategoriasActualPx += sec.getBoundingClientRect().height;
         });
         if (alturaCategoriasActualPx > 0 && disponibleParaCategoriasPx > 0) {
@@ -660,8 +656,7 @@
 
         var secciones = [];
         panel.querySelectorAll('.sugerencias-seccion').forEach(function(sec) {
-            var titulo = sec.querySelector('.sugerencias-seccion-titulo');
-            if (titulo && titulo.textContent.indexOf('BODEGA') === -1) secciones.push(sec);
+            if (!sec.classList.contains('sugerencias-seccion-bodega')) secciones.push(sec);
         });
         if (secciones.length === 0) return;
 
@@ -794,6 +789,8 @@
         // sigue en el resto de la carta con normalidad, solo se omite en esta hoja de Sugerencias).
         const todosLosPlatos = fuente.filter(p => p && p.activa && parseInt(p.id, 10) >= 12000 && parseInt(p.id, 10) <= 12999);
         const platos = todosLosPlatos.filter(p => !excluidos.has(parseInt(p.id, 10)));
+        // NUEVO: aperitivo Canonita ("Usopen Splitz") — ID 12993, ver config.js
+        const esAperitivoCanonita = (p) => p && parseInt(p.id, 10) === APERITIVO_CANONITA_ID;
         let entrantes = [], principales = [], postres = [], vinos = [];
         platos.forEach(p => { const id = parseInt(p.id, 10); if (id >= 12990 && id <= 12999) vinos.push(p); /* MODIFICADO: rango 12990-12999 reservado a vinos de Sugerencias (antes solo 12990) */ else if (id >= 12100 && id <= 12399) entrantes.push(p); else if (id >= 12400 && id <= 12899) principales.push(p); else if (id >= 12900 && id <= 12999) postres.push(p); else entrantes.push(p); });
 
@@ -809,16 +806,23 @@
                 <img src="${config.logoSrc}" class="sugerencias-logo-img" onerror="this.src='${config.logoFallback}';">
             </div><div class="sugerencias-body">`;
 
-        const renderCat = (titulo, lista, extraHtml = '') => {
+        const renderCat = (titulo, lista, extraHtml = '', claseExtra = '') => {
             if (lista.length === 0) return '';
-            let h = `<div class="sugerencias-seccion"><div class="sugerencias-seccion-titulo">${titulo}</div>`;
+            let h = `<div class="sugerencias-seccion${claseExtra ? ' ' + claseExtra : ''}"><div class="sugerencias-seccion-titulo">${titulo}</div>`;
             lista.forEach(p => {
                 let iconsHtml = '';
                 if (p.alergenos) iconsHtml = '<div class="sugerencias-alergenos">' + p.alergenos.split(',').map(a => `<img src="${PATH_ALERGENOS}${a.trim()}.webp" class="sugerencias-alergeno-icon">`).join('') + '</div>';
                 const objEs = window.desglosarNombre(p.es); const objEn = window.desglosarNombre(p.en);
                 const esVino = ((p.id >= 12990 && p.id <= 12999) || p.id >= 13000); // MODIFICADO: 12990-12999 = vinos de Sugerencias
                 let htmlNombreEs = "", htmlNombreEn = "";
-                if (esVino) htmlNombreEs = objEs.uvas ? `<span class="sugerencias-nombre-es">${objEs.nombre} <span class="sugerencias-detalles-uvas-inline">(${objEs.uvas})</span></span>` : `<span class="sugerencias-nombre-es">${objEs.nombre}</span>`;
+                if (esAperitivoCanonita(p)) {
+                    // NUEVO: aperitivo — nombre y debajo su línea de explicación (ES y EN)
+                    const descEs = objEs.opciones.join(' // ');
+                    const descEn = objEn.opciones.join(' // ');
+                    htmlNombreEs = `<span class="sugerencias-nombre-es">${objEs.nombre}</span>${descEs ? `<span class="sugerencias-descripcion-aperitivo">${descEs}</span>` : ''}`;
+                    htmlNombreEn = (descEn && descEn !== descEs) ? `<span class="sugerencias-nombre-en">${descEn}</span>` : '';
+                }
+                else if (esVino) htmlNombreEs = objEs.uvas ? `<span class="sugerencias-nombre-es">${objEs.nombre} <span class="sugerencias-detalles-uvas-inline">(${objEs.uvas})</span></span>` : `<span class="sugerencias-nombre-es">${objEs.nombre}</span>`;
                 else {
                     // NUEVO: igual que ya se hacía con la uva del vino, si el plato tiene una
                     // segunda línea tras "//" (ingredientes/opciones) también se muestra aquí,
@@ -849,7 +853,9 @@
         // la imagen del vino — imagen del vino centrada (columna central de un grid de 3), QR
         // pegado a la derecha (columna derecha) — en vez de vivir abajo del todo junto al aviso
         // de alérgenos.
-        const tieneVinoEspecial = vinos.some(p => parseInt(p.id, 10) === 12990);
+        const tieneVinoTenista = vinos.some(p => parseInt(p.id, 10) === 12990);
+        const tieneAperitivoCanonita = vinos.some(esAperitivoCanonita);
+        const tieneVinoEspecial = tieneVinoTenista || tieneAperitivoCanonita;
         const vinoImagenDefaultCon = config.vinoImagenOptions.find(o => o.isDefault)?.value === 'con';
         // MODIFICADO: tamaño inicial ya a VINO_IMAGEN_ESCALA_DEFAULT (1.2x) en vez del 1x base,
         // tanto para la botella como para el QR (proporcional, ver QR_IMAGEN_BASE_SIZE). El
@@ -859,7 +865,7 @@
         const vinoImagenHtml = tieneVinoEspecial
             ? `<div class="sugerencias-vino-imagen-wrapper" id="${config.vinoImagenWrapperId}">
                 <span></span>
-                <img src="${config.vinoImagenSrc}" class="sugerencias-vino-imagen" style="display:${vinoImagenDefaultCon ? '' : 'none'}; height:${vinoImgAlturaInicial}px;">
+                <div class="sugerencias-vino-imagenes-grupo">${tieneVinoTenista ? `<img src="${config.vinoImagenSrc}" class="sugerencias-vino-imagen" style="display:${vinoImagenDefaultCon ? '' : 'none'}; height:${vinoImgAlturaInicial}px;">` : ''}${tieneAperitivoCanonita ? `<img src="${APERITIVO_IMAGEN_CANONITA}" class="sugerencias-vino-imagen" style="display:${vinoImagenDefaultCon ? '' : 'none'}; height:${vinoImgAlturaInicial}px;">` : ''}</div>
                 <img src="${initialImgSrc}" class="sugerencias-qr-img" id="${config.qrImgId}" style="width:${qrTamanoInicial}px !important; height:${qrTamanoInicial}px !important; display:${qrInicialOculto ? 'none' : ''};">
                </div>`
             : '';
@@ -867,7 +873,7 @@
         html += renderCat("ENTRANTES / STARTERS", entrantes);
         html += renderCat("PRINCIPALES / MAIN COURSES", principales);
         html += renderCat("POSTRES / DESSERTS", postres);
-        html += renderCat("BODEGA / WINE CELLAR", vinos, vinoImagenHtml);
+        html += renderCat("VINOS Y APERITIVOS RECOMENDADOS / RECOMMENDED WINES & APERITIFS", vinos, vinoImagenHtml, 'sugerencias-seccion-bodega');
 
         let qrButtonsHtml = '';
         config.qrOptions.forEach(opt => {

@@ -184,6 +184,10 @@ const QR_RESTAURANTE002_MOD = PATH_IMAGENES + 'qr-web02-02.png';
 // NUEVO: IMAGEN DEL VINO "EL TENISTA" (ID 12990) EN LA HOJA DE SUGERENCIAS
 // =====================================================================
 const VINO_IMAGEN_TENISTA = 'imagenes/vinos/tenista_pegado.webp';
+// NUEVO: imagen del aperitivo Canonita ("Usopen Splitz", ID 12993), que se muestra junto a la
+// del vino El Tenista en "Vinos y aperitivos recomendados" de la hoja de Sugerencias.
+const APERITIVO_IMAGEN_CANONITA = 'imagenes/vinos/canonita.webp';
+const APERITIVO_CANONITA_ID = 12993;
 const VINO_IMAGEN_DEFAULT_RESTAURANTE001 = true;  // true = "Con imagen Vino" marcado por defecto
 const VINO_IMAGEN_DEFAULT_RESTAURANTE002 = true;
 
