@@ -194,7 +194,7 @@ const VINO_IMAGEN_DEFAULT_RESTAURANTE002 = true;
 // NUEVO: tamaño por defecto de la imagen del vino y del QR en la hoja de Sugerencias (comparten
 // escala). Valores permitidos: 1, 1.2, 1.4, 1.6 — deben coincidir con uno de los botones que
 // ofrece la propia hoja (1x/1.2x/1.4x/1.6x), o si no, ninguno saldrá marcado como activo.
-const VINO_IMAGEN_ESCALA_DEFAULT = 1.2;
+const VINO_IMAGEN_ESCALA_DEFAULT = 1;
 
 // NUEVO: tipo de QR marcado por defecto en la hoja de Sugerencias, por restaurante. Valores
 // permitidos: 'none' (Sin QR), 'default' (Oficial), 'mod' (Alternativo).
