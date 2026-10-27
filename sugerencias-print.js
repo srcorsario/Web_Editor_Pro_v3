@@ -20,12 +20,8 @@
             ],
             vinoImagenSrc: VINO_IMAGEN_TENISTA,
             vinoImagenWrapperId: 'vino-imagen-rg',
-            vinoImagenRadioName: 'vino-imagen-mode-rg-footer',
-            vinoImagenOptions: [
-                { value: 'con', label: 'Con imagen Vino', isDefault: VINO_IMAGEN_DEFAULT_RESTAURANTE001 },
-                { value: 'sin', label: 'Sin imagen Vino', isDefault: !VINO_IMAGEN_DEFAULT_RESTAURANTE001 }
-            ]
-        },
+            vinoImagenDefault: VINO_IMAGEN_DEFAULT_RESTAURANTE001,
+                    },
         restaurante002: {
             versionStr: 'v2.9.7-Abstract-Keys',
             versionKey: 'sugerencias_restaurante002',
@@ -43,12 +39,8 @@
             ],
             vinoImagenSrc: VINO_IMAGEN_TENISTA,
             vinoImagenWrapperId: 'vino-imagen-usopen',
-            vinoImagenRadioName: 'vino-imagen-mode-usopen-footer',
-            vinoImagenOptions: [
-                { value: 'con', label: 'Con imagen Vino', isDefault: VINO_IMAGEN_DEFAULT_RESTAURANTE002 },
-                { value: 'sin', label: 'Sin imagen Vino', isDefault: !VINO_IMAGEN_DEFAULT_RESTAURANTE002 }
-            ]
-        }
+            vinoImagenDefault: VINO_IMAGEN_DEFAULT_RESTAURANTE002,
+                    }
     };
 
     if (!document.getElementById('sugerencias-print-styles')) {
@@ -133,11 +125,10 @@
             .sugerencias-qr-toggle { font-size: 0.7rem !important; color: #64748b !important; cursor: pointer !important; display: flex !important; user-select: none !important; gap: 5px !important; }
             .sugerencias-qr-toggle input:checked + span { font-weight: bold; }
             .sugerencias-qr-img { transition: opacity 0.3s; }
-            .sugerencias-vino-imagen-wrapper { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center !important; padding: 20px 0 8px 0 !important; column-gap: 10px !important; }
-            .sugerencias-vino-imagenes-grupo { justify-self: center !important; display: flex !important; align-items: flex-end !important; flex-wrap: nowrap !important; gap: 40px !important; }
+            .sugerencias-vino-imagen-wrapper { display: flex !important; flex-wrap: nowrap !important; align-items: center !important; justify-content: center !important; gap: 90px !important; padding: 20px 0 8px 0 !important; }
+            .sugerencias-vino-imagen-wrapper[data-n="3"] { justify-content: space-evenly !important; gap: 0 !important; }
             .sugerencias-descripcion-aperitivo { font-size: 0.75em !important; color: #555 !important; font-style: italic !important; font-weight: 400 !important; }
             .sugerencias-vino-imagen { justify-self: center !important; height: 140px; width: auto; max-width: 300px; object-fit: contain !important; transition: height 0.15s ease !important; }
-            .sugerencias-vino-imagen-wrapper .sugerencias-qr-img { justify-self: end !important; }
             .vino-imagen-selector-wrapper { font-size: 0.75rem !important; color: #64748b !important; }
             .btn-imprimir-a4 { display: block; width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 0.9rem; cursor: pointer; margin-bottom: 15px; text-align: center; }
             /* NUEVO: box de controles, deliberadamente separado y con estilo distinto (fondo gris,
@@ -200,9 +191,10 @@
         if (!config) return;
         const img = document.getElementById(config.qrImgId);
         if (!img) return;
-        if (tipo === 'none') { img.style.display = 'none'; reajustarVistaPrevia(modo); return; }
-        img.style.display = 'block';
+        if (tipo === 'none') { img.style.display = 'none'; window.repartirImagenesVino(modo); reajustarVistaPrevia(modo); return; }
+        img.style.display = '';
         img.src = (tipo === 'default') ? config.qrDefault : config.qrMod;
+        window.repartirImagenesVino(modo);
         reajustarVistaPrevia(modo);
     };
 
@@ -223,12 +215,24 @@
 
     // MODIFICADO: solo oculta/muestra la imagen del vino en sí, NUNCA el wrapper entero — desde
     // que el QR vive en la misma fila, ocultar el wrapper apagaba el QR también.
-    window.toggleVinoImagen = function(tipo, modo) {
+    // MODIFICADO: un control por imagen ('tenista' / 'canonita'); el QR sigue con toggleQR.
+    // Tras cada cambio se recalcula el reparto según cuántas imágenes quedan visibles.
+    window.repartirImagenesVino = function(modo) {
         const config = SUGERENCIAS_CONFIG[modo];
         if (!config) return;
         const wrapper = document.getElementById(config.vinoImagenWrapperId);
         if (!wrapper) return;
-        wrapper.querySelectorAll('.sugerencias-vino-imagen').forEach(img => { img.style.display = (tipo === 'con') ? '' : 'none'; });
+        const n = Array.from(wrapper.children).filter(el => el.style.display !== 'none').length;
+        wrapper.dataset.n = String(n);
+    };
+    window.toggleVinoImagen = function(cual, visible, modo) {
+        const config = SUGERENCIAS_CONFIG[modo];
+        if (!config) return;
+        const wrapper = document.getElementById(config.vinoImagenWrapperId);
+        if (!wrapper) return;
+        const img = wrapper.querySelector('.sugerencias-vino-imagen[data-img="' + cual + '"]');
+        if (img) img.style.display = visible ? '' : 'none';
+        window.repartirImagenesVino(modo);
         reajustarVistaPrevia(modo);
     };
 
@@ -856,18 +860,15 @@
         const tieneVinoTenista = vinos.some(p => parseInt(p.id, 10) === 12990);
         const tieneAperitivoCanonita = vinos.some(esAperitivoCanonita);
         const tieneVinoEspecial = tieneVinoTenista || tieneAperitivoCanonita;
-        const vinoImagenDefaultCon = config.vinoImagenOptions.find(o => o.isDefault)?.value === 'con';
+        const vinoImagenDefaultCon = !!config.vinoImagenDefault;
         // MODIFICADO: tamaño inicial ya a VINO_IMAGEN_ESCALA_DEFAULT (1.2x) en vez del 1x base,
         // tanto para la botella como para el QR (proporcional, ver QR_IMAGEN_BASE_SIZE). El
         // !important en el QR es necesario para ganarle al width/height !important de su CSS base.
         const vinoImgAlturaInicial = VINO_IMAGEN_BASE_MAX_HEIGHT * VINO_IMAGEN_ESCALA_DEFAULT;
         const qrTamanoInicial = QR_IMAGEN_BASE_SIZE * VINO_IMAGEN_ESCALA_DEFAULT;
+        const nImgsIniciales = (tieneVinoTenista && vinoImagenDefaultCon ? 1 : 0) + (tieneAperitivoCanonita && vinoImagenDefaultCon ? 1 : 0) + (qrInicialOculto ? 0 : 1);
         const vinoImagenHtml = tieneVinoEspecial
-            ? `<div class="sugerencias-vino-imagen-wrapper" id="${config.vinoImagenWrapperId}">
-                <span></span>
-                <div class="sugerencias-vino-imagenes-grupo">${tieneVinoTenista ? `<img src="${config.vinoImagenSrc}" class="sugerencias-vino-imagen" style="display:${vinoImagenDefaultCon ? '' : 'none'}; height:${vinoImgAlturaInicial}px;">` : ''}${tieneAperitivoCanonita ? `<img src="${APERITIVO_IMAGEN_CANONITA}" class="sugerencias-vino-imagen" style="display:${vinoImagenDefaultCon ? '' : 'none'}; height:${vinoImgAlturaInicial}px;">` : ''}</div>
-                <img src="${initialImgSrc}" class="sugerencias-qr-img" id="${config.qrImgId}" style="width:${qrTamanoInicial}px !important; height:${qrTamanoInicial}px !important; display:${qrInicialOculto ? 'none' : ''};">
-               </div>`
+            ? `<div class="sugerencias-vino-imagen-wrapper" id="${config.vinoImagenWrapperId}" data-n="${nImgsIniciales}">${tieneVinoTenista ? `<img src="${config.vinoImagenSrc}" class="sugerencias-vino-imagen" data-img="tenista" style="display:${vinoImagenDefaultCon ? '' : 'none'}; height:${vinoImgAlturaInicial}px;">` : ''}${tieneAperitivoCanonita ? `<img src="${APERITIVO_IMAGEN_CANONITA}" class="sugerencias-vino-imagen" data-img="canonita" style="display:${vinoImagenDefaultCon ? '' : 'none'}; height:${vinoImgAlturaInicial}px;">` : ''}<img src="${initialImgSrc}" class="sugerencias-qr-img" id="${config.qrImgId}" style="width:${qrTamanoInicial}px !important; height:${qrTamanoInicial}px !important; display:${qrInicialOculto ? 'none' : ''};"></div>`
             : '';
 
         html += renderCat("ENTRANTES / STARTERS", entrantes);
@@ -887,10 +888,11 @@
         let vinoImagenButtonsHtml = '';
         let vinoImagenEscalaHtml = '';
         if (tieneVinoEspecial) {
-            config.vinoImagenOptions.forEach(opt => {
-                const isActive = opt.isDefault;
+            [[tieneVinoTenista, 'tenista', 'El Tenista'], [tieneAperitivoCanonita, 'canonita', 'Canonita']].forEach(([existe, cual, etiqueta]) => {
+                if (!existe) return;
+                const isActive = vinoImagenDefaultCon;
                 const style = `cursor: pointer; color: ${isActive ? '#0d5c63' : '#64748b'}; font-weight: ${isActive ? 'bold' : 'normal'};`;
-                vinoImagenButtonsHtml += `<label style="${style}"><input type="radio" name="${config.vinoImagenRadioName}" value="${opt.value}" ${isActive ? 'checked' : ''} onchange="window.toggleVinoImagen('${opt.value}', '${modoSeguro}')"> ${opt.label}</label>`;
+                vinoImagenButtonsHtml += `<label style="${style}"><input type="checkbox" ${isActive ? 'checked' : ''} onchange="this.parentNode.style.fontWeight=this.checked?'bold':'normal';this.parentNode.style.color=this.checked?'#0d5c63':'#64748b';window.toggleVinoImagen('${cual}', this.checked, '${modoSeguro}')"> ${etiqueta}</label>`;
             });
             VINO_IMAGEN_ESCALAS.forEach((escala, idx) => {
                 const isActive = escala === VINO_IMAGEN_ESCALA_DEFAULT; // MODIFICADO: 1.2x por defecto (antes 1.4x)
@@ -946,7 +948,7 @@
                     <button onclick="window.imprimirSugerencias('${modoSeguro}')" class="btn-imprimir-a4" style="margin-bottom:0; flex:1;">🖨️ Imprimir Sugerencias ${getModoAlias(modoSeguro)} (A4)</button>
                     <button type="button" onclick="window.reajustarVistaPreviaSugerencias('${modoSeguro}')" title="Vuelve a calcular el ajuste a una página, por si algo no se ha actualizado solo" style="flex:0 0 auto; padding:12px 14px; background:#e2e8f0; color:#334155; border:none; border-radius:8px; font-weight:700; font-size:0.9rem; cursor:pointer;">🔄</button>
                 </div>
-                ${(vinoImagenButtonsHtml || vinoImagenEscalaHtml) ? `<div class="qr-selector-wrapper" style="font-size: 0.75rem; color: #64748b; text-align: center; margin-bottom: 3px; user-select:none; display: flex; flex-direction: row; align-items: center; justify-content: center; flex-wrap: nowrap; gap: 8px; white-space: nowrap;">${vinoImagenButtonsHtml ? `<span class="vino-imagen-selector-wrapper" style="display:flex; align-items:center; gap:8px; padding-right:10px; border-right:1px solid #cbd5e1;">Imagen Vino: ${vinoImagenButtonsHtml}</span>` : ''}${vinoImagenEscalaHtml ? `<span class="vino-imagen-selector-wrapper" style="display:flex; align-items:center; gap:6px;">Tamaño: ${vinoImagenEscalaHtml}</span>` : ''}</div>` : ''}
+                ${(vinoImagenButtonsHtml || vinoImagenEscalaHtml) ? `<div class="qr-selector-wrapper" style="font-size: 0.75rem; color: #64748b; text-align: center; margin-bottom: 3px; user-select:none; display: flex; flex-direction: row; align-items: center; justify-content: center; flex-wrap: nowrap; gap: 8px; white-space: nowrap;">${vinoImagenButtonsHtml ? `<span class="vino-imagen-selector-wrapper" style="display:flex; align-items:center; gap:8px; padding-right:10px; border-right:1px solid #cbd5e1;">Imágenes: ${vinoImagenButtonsHtml}</span>` : ''}${vinoImagenEscalaHtml ? `<span class="vino-imagen-selector-wrapper" style="display:flex; align-items:center; gap:6px;">Tamaño: ${vinoImagenEscalaHtml}</span>` : ''}</div>` : ''}
                 <div class="qr-selector-wrapper" style="font-size: 0.75rem; color: #64748b; text-align: center; margin-bottom: 0; user-select:none; display: flex; flex-direction: row; align-items: center; justify-content: center; flex-wrap: nowrap; gap: 8px; white-space: nowrap;">Tipo de QR: ${qrButtonsHtml}</div>
                 ${selectorQuitarHtml}
                 ${listaQuitadosHtml}
