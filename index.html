@@ -18,7 +18,7 @@
         // todo el JS/CSS de golpe en cada visita.
         // OJO: esto NO afecta a los datos del menu (platos/precios) — esos se piden
         // siempre en fresco con cache:"no-store" en app.js, y eso no cambia.
-        window.__CACHE_BUST__ = '2026.10.27.1';
+        window.__CACHE_BUST__ = '2026.10.30.2';
     </script>
     <script>document.write('<link rel="stylesheet" href="styles.css?v=' + window.__CACHE_BUST__ + '">');</script>
 </head>
@@ -56,10 +56,13 @@
             <button id="tab-btn-apikeys" class="tab-btn" onclick="switchTab('apikeys', this)">0. Gestión de API Keys Gemini</button>
             <button id="tab-btn-rg" class="tab-btn active" onclick="switchTab('editor', this)">1. Editor Carta RG</button>
             <button id="tab-btn-sug-rg" class="tab-btn" onclick="switchTab('sugerencias', this)">2. Sugerencias RG</button>
+            <!-- NUEVO (30 oct): hojas imprimibles de Postres (rango 16000-16299, no salen en la web pública) -->
+            <button id="tab-btn-pos-rg" class="tab-btn" onclick="switchTab('postres', this)">2.1. Postres RG</button>
             <button id="tab-btn-pro" class="tab-btn" onclick="switchTab('pro', this)" style="margin-left: auto; margin-right: auto;">3. Traductor Pro</button>
             <button id="tab-btn-qa" class="tab-btn" onclick="switchTab('qa', this)">3.1. Preguntas y respuestas</button>
             <button id="tab-btn-usopen" class="tab-btn" onclick="switchTab('editor-usopen', this)">4. Editor Carta USOpen</button>
             <button id="tab-btn-sug-usopen" class="tab-btn" onclick="switchTab('sugerencias-usopen', this)">5. Sugerencias USOpen</button>
+            <button id="tab-btn-pos-usopen" class="tab-btn" onclick="switchTab('postres-usopen', this)">5.1. Postres USOpen</button>
             <!-- NUEVO: pestaña común a los dos restaurantes (no la oculta el sistema de
                  Enable/Disable de RESTAURANTES_CONFIG ni depende de window.currentMode) — un
                  menú especial puede mezclar platos de RG y de US Open en la misma plantilla. -->
@@ -179,6 +182,15 @@
 
         <div id="tab-sugerencias-usopen" class="tab-content" style="display: none;">
             <div id="sugerencias-contenido-usopen"></div>
+        </div>
+
+        <!-- NUEVO (30 oct): hojas de Postres, las construye postres-print.js -->
+        <div id="tab-postres" class="tab-content" style="display: none;">
+            <div id="postres-contenido"></div>
+        </div>
+
+        <div id="tab-postres-usopen" class="tab-content" style="display: none;">
+            <div id="postres-contenido-usopen"></div>
         </div>
 
         <!-- NUEVO: pestaña "6. Menú Especial" — plantillas de menú de evento (boda/grupo), sin
@@ -376,6 +388,10 @@
             if (tabUSOPEN) tabUSOPEN.innerText = `4. Editor Carta ${getModoAlias('restaurante002')}`;
             const tabSugUSOPEN = document.getElementById('tab-btn-sug-usopen');
             if (tabSugUSOPEN) tabSugUSOPEN.innerText = `5. Sugerencias ${getModoAlias('restaurante002')}`;
+            const tabPosRG = document.getElementById('tab-btn-pos-rg');
+            if (tabPosRG) tabPosRG.innerText = `2.1. Postres ${getModoAlias('restaurante001')}`;
+            const tabPosUSOPEN = document.getElementById('tab-btn-pos-usopen');
+            if (tabPosUSOPEN) tabPosUSOPEN.innerText = `5.1. Postres ${getModoAlias('restaurante002')}`;
 
             const modalDestRG = document.getElementById('modal-dest-rg');
             if (modalDestRG) modalDestRG.innerText = getModoAlias('restaurante001');
@@ -401,10 +417,12 @@
             if (!RESTAURANTES_CONFIG.restaurante001.enabled) {
                 const t1 = document.getElementById('tab-btn-rg'); if(t1) t1.style.display = 'none';
                 const t2 = document.getElementById('tab-btn-sug-rg'); if(t2) t2.style.display = 'none';
+                const t2b = document.getElementById('tab-btn-pos-rg'); if(t2b) t2b.style.display = 'none';
             }
             if (!RESTAURANTES_CONFIG.restaurante002.enabled) {
                 const t3 = document.getElementById('tab-btn-usopen'); if(t3) t3.style.display = 'none';
                 const t4 = document.getElementById('tab-btn-sug-usopen'); if(t4) t4.style.display = 'none';
+                const t4b = document.getElementById('tab-btn-pos-usopen'); if(t4b) t4b.style.display = 'none';
             }
         }
 
@@ -509,6 +527,7 @@
         document.write('<scr' + 'ipt src="app.js?v=' + __v + '"></scr' + 'ipt>');
         document.write('<scr' + 'ipt type="module" src="ui.js?v=' + __v + '"></scr' + 'ipt>');
         document.write('<scr' + 'ipt src="sugerencias-print.js?v=' + __v + '"></scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="postres-print.js?v=' + __v + '"></scr' + 'ipt>');
         document.write('<scr' + 'ipt src="menu-especial.js?v=' + __v + '"></scr' + 'ipt>');
     </script>
 
@@ -614,7 +633,7 @@
                 // datos...". Ahora Menú Especial no toca window.currentMode en absoluto.
                 if (tabId === 'menu-especial') {
                     // no-op: se deja window.currentMode tal cual estaba
-                } else if (tabId === 'sugerencias-usopen' || tabId === 'editor-usopen') {
+                } else if (tabId === 'sugerencias-usopen' || tabId === 'editor-usopen' || tabId === 'postres-usopen') {
                     window.currentMode = 'restaurante002';
                 } else {
                     window.currentMode = 'restaurante001';
@@ -658,6 +677,10 @@
                     if (typeof window.renderCarta === 'function') window.renderCarta('restaurante001');
                 } else if (tabId === 'sugerencias-usopen') {
                     if (typeof window.renderCarta === 'function') window.renderCarta('restaurante002');
+                } else if (tabId === 'postres') {
+                    if (typeof window.renderHojaPostres === 'function') window.renderHojaPostres('restaurante001');
+                } else if (tabId === 'postres-usopen') {
+                    if (typeof window.renderHojaPostres === 'function') window.renderHojaPostres('restaurante002');
                 } else if (tabId === 'qa') {
                     if (window.UI && typeof window.UI.renderQA === 'function') window.UI.renderQA();
                 } else if (tabId === 'menu-especial') {
@@ -686,8 +709,8 @@
         // USOpen, RG no debería descargarse para nada).
         function modoTieneTabsVisibles(modo) {
             const ids = (modo === 'restaurante002')
-                ? ['tab-btn-usopen', 'tab-btn-sug-usopen']
-                : ['tab-btn-rg', 'tab-btn-sug-rg'];
+                ? ['tab-btn-usopen', 'tab-btn-sug-usopen', 'tab-btn-pos-usopen']
+                : ['tab-btn-rg', 'tab-btn-sug-rg', 'tab-btn-pos-rg'];
             return ids.some(id => {
                 const btn = document.getElementById(id);
                 return btn && btn.style.display !== 'none';
@@ -724,7 +747,9 @@
                 'tab-btn-pro': 'pro',
                 'tab-btn-qa': 'qa',
                 'tab-btn-usopen': 'editor-usopen',
-                'tab-btn-sug-usopen': 'sugerencias-usopen'
+                'tab-btn-sug-usopen': 'sugerencias-usopen',
+                'tab-btn-pos-rg': 'postres',
+                'tab-btn-pos-usopen': 'postres-usopen'
             };
             const tabIdInicial = MAPA_ID_A_TABID[tabBtnInicial.id] || 'editor';
             switchTab(tabIdInicial, tabBtnInicial).then(() => {

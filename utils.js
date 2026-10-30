@@ -15,6 +15,15 @@
  * @param {String} texto
  * @returns {Object} { nombre: String, uvas: String, opciones: String[] }
  */
+/**
+ * NUEVO (30 oct): ¿es este ID un vino de la carta (13000-14999)? Antes se usaba "id >= 13000",
+ * que ahora también atraparía la Hoja de Postres (16000-16299) y la trataría como vino.
+ */
+function esIdVino(id) {
+    const n = parseInt(id, 10);
+    return n >= 13000 && n < 15000;
+}
+
 function desglosarNombre(texto) {
     if (!texto) return { nombre: "", uvas: "", opciones: [] };
     const partes = texto.split('//');

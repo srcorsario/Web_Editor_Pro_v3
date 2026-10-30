@@ -1,7 +1,7 @@
 // --- config.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.config = '2.7.0'; // ACTUALIZADO (22 sept): WEB_APP_URL_RESTAURANTE001 vuelve a apuntar a OTRA implementación nueva de Codigo_RG.gs -- la anterior (AKfycbyNg...) enviaba "GUARDAR CAMBIOS EN WEB" sin error visible (alert de "Petición enviada") pero la hoja NUNCA se actualizaba (sospecha: "Quién tiene acceso" de esa implementación no estaba en "Cualquier usuario", así que Google bloqueaba en silencio las peticiones anónimas -- con no-cors el navegador no puede detectarlo). WEB_APP_URL_RESTAURANTE002 (US Open) no cambia en este commit.
+window.APP_VERSIONS.config = '2.8.0'; // NUEVO (30 oct): bloque HOJA IMPRIMIBLE DE POSTRES (rango 16000-16299). Anterior 2.7.0: // ACTUALIZADO (22 sept): WEB_APP_URL_RESTAURANTE001 vuelve a apuntar a OTRA implementación nueva de Codigo_RG.gs -- la anterior (AKfycbyNg...) enviaba "GUARDAR CAMBIOS EN WEB" sin error visible (alert de "Petición enviada") pero la hoja NUNCA se actualizaba (sospecha: "Quién tiene acceso" de esa implementación no estaba en "Cualquier usuario", así que Google bloqueaba en silencio las peticiones anónimas -- con no-cors el navegador no puede detectarlo). WEB_APP_URL_RESTAURANTE002 (US Open) no cambia en este commit.
 
 // =====================================================================
 // NUEVO: SISTEMA DE ENABLE/DISABLE DE RESTAURANTES (Desacoplamiento Visual)
@@ -200,6 +200,46 @@ const VINO_IMAGEN_ESCALA_DEFAULT = 1;
 // permitidos: 'none' (Sin QR), 'default' (Oficial), 'mod' (Alternativo).
 const QR_TIPO_DEFAULT_RESTAURANTE001 = 'none';
 const QR_TIPO_DEFAULT_RESTAURANTE002 = 'none';
+
+
+// =====================================================================
+// NUEVO (30 oct): HOJA IMPRIMIBLE DE POSTRES (pestañas "2.1 Postres" / "5.1 Postres")
+// =====================================================================
+// Rango propio que NO sale en la web pública (no hay categoría "16" allí). Mismo rango en RG y
+// en US Open: cada restaurante tiene su propia Google Sheet, así que cada uno pone sus postres.
+const POSTRES_HOJA_RANGOS = {
+    postres: [16000, 16099],  // postres con precio propio
+    helados: [16100, 16199],  // un sabor por fila; en la hoja salen juntos en UN bloque
+    bebidas: [16200, 16299]   // bebidas sugeridas para acompañar el postre
+};
+// Bloque de helados: título fijo + foto del tarro (deja '' para no usar imagen).
+const POSTRES_HELADOS_TITULO_ES = 'Helados artesanos RNA';
+const POSTRES_HELADOS_TITULO_EN = 'RNA artisan ice cream';
+const POSTRES_HELADOS_SUBTITULO_ES = 'Pregunte por el sabor que prefiera';
+const POSTRES_HELADOS_SUBTITULO_EN = 'Ask for your favourite flavour';
+const POSTRES_HELADO_IMAGEN = 'imagenes/postres/helado_tarro.webp';
+const POSTRES_HELADO_IMAGEN_DEFAULT = true;   // true = "Con imagen" marcado por defecto
+const POSTRES_HELADO_ALTURA = 80;             // px de alto de la foto del helado (a tamaño 1x)
+// Imagen de botella por ID de bebida (opcional: una bebida sin entrada aquí sale sin imagen).
+// Para añadir una nueva: sube el .webp a imagenes/vinos/ y añade aquí su ID.
+// "escala" = tamaño relativo entre botellas (1 = altura normal, 0.75 = 3/4 de alto).
+// Una bebida puede llevar VARIAS imágenes poniendo una lista [ {...}, {...} ].
+const POSTRES_BEBIDAS_IMAGENES = {
+    16200: [                                                                // botella + copa de licor
+        { src: 'imagenes/vinos/can_axartell_dolc.webp', escala: 0.75 },
+        { src: 'imagenes/vinos/copa_vino_dulce.webp', escala: 0.5 }
+    ],
+    16201: [                                                                // botella + vaso de vermut
+        { src: 'imagenes/vinos/dimoni_gros_vermut.webp', escala: 1 },
+        { src: 'imagenes/vinos/vermut_vaso.webp', escala: 0.375 }
+    ],
+    16202: { src: 'imagenes/vinos/copa_cava.webp', escala: 0.7 }               // copa de cava
+};
+const POSTRES_BEBIDAS_IMAGEN_DEFAULT = true;
+const POSTRES_BEBIDAS_ALTURA = 110;           // px de alto de la botella más alta (a tamaño 1x)
+// Tipo de QR por defecto en la hoja de Postres: 'none' | 'default' | 'mod'
+const POSTRES_QR_TIPO_DEFAULT_RESTAURANTE001 = 'none';
+const POSTRES_QR_TIPO_DEFAULT_RESTAURANTE002 = 'none';
 
 
 // =====================================================================

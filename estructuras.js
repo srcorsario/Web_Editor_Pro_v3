@@ -1,6 +1,6 @@
 // --- estructuras.js ---
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.estructuras = '3.4.0'; // MODIFICADO: RG Sugerencias -> subcategoría "Vino" 12990-12999 (Postres limitado a 12989). Anterior 3.3.0: // NUEVO: añadido subAcordeon (true) a "Sugerencias" en ambas cartas — activa el acordeón anidado de subcategorías en el Editor (app.js/renderizar) para no perder de vista los platos a medida que crecen
+window.APP_VERSIONS.estructuras = '3.5.0'; // NUEVO (30 oct): categoría "Hoja Postres (imprimible)" 16000-16299 en ambas cartas. Anterior 3.4.0: // MODIFICADO: RG Sugerencias -> subcategoría "Vino" 12990-12999 (Postres limitado a 12989). Anterior 3.3.0: // NUEVO: añadido subAcordeon (true) a "Sugerencias" en ambas cartas — activa el acordeón anidado de subcategorías en el Editor (app.js/renderizar) para no perder de vista los platos a medida que crecen
 
 // =================================================================================
 // CARTA 01 - ROLAND GARROS (restaurante001)
@@ -71,7 +71,15 @@ const ESTRUCTURA_RESTAURANTE001 = [
     // "web"). Rango de ID sin usar (15001-15099, por encima del 14499 al que llega Cavas más
     // arriba) solo para que el acordeón pueda mostrarla con su interruptor; "sinPlatos:true" es
     // lo que de verdad evita que app.js/renderizar() la oculte por no tener platos.
-    { id: 15001, name: "Alérgenos e Intolerancias", rango: 98, pestanaId: 'alergenos', folder: "alergenos", sinPlatos: true }
+    { id: 15001, name: "Alérgenos e Intolerancias", rango: 98, pestanaId: 'alergenos', folder: "alergenos", sinPlatos: true },
+    // --- RANGO 16000-16299: HOJA IMPRIMIBLE DE POSTRES --- (NUEVO 30 oct) Solo editor + hoja A4
+    // (postres-print.js). pestanaId null: sin interruptor de pestaña, y la web pública no tiene
+    // categoría "16", así que nunca sale allí. Cada elemento se activa/desactiva con su interruptor.
+    { id: 16000, name: "Hoja Postres (imprimible)", rango: 299, pestanaId: null, subAcordeon: true, sub: [
+        {id: 16000, name: "Postres", folder: "postres", max: 16099},
+        {id: 16100, name: "Helados (sabores)", folder: "postres", max: 16199},
+        {id: 16200, name: "Bebidas para acompañar", folder: "vinos", max: 16299}
+    ]},
 ];
 
 
@@ -180,7 +188,15 @@ const ESTRUCTURA_RESTAURANTE002 = [
     // más arriba) solo para que el acordeón pueda mostrarla con su interruptor;
     // "sinPlatos:true" es lo que de verdad evita que app.js/renderizar() la oculte por no tener
     // platos.
-    { id: 15001, name: "Alérgenos e Intolerancias", rango: 98, pestanaId: 'alergenos', folder: "alergenos", sinPlatos: true }
+    { id: 15001, name: "Alérgenos e Intolerancias", rango: 98, pestanaId: 'alergenos', folder: "alergenos", sinPlatos: true },
+    // --- RANGO 16000-16299: HOJA IMPRIMIBLE DE POSTRES --- (NUEVO 30 oct) Solo editor + hoja A4
+    // (postres-print.js). pestanaId null: sin interruptor de pestaña, y la web pública no tiene
+    // categoría "16", así que nunca sale allí. Cada elemento se activa/desactiva con su interruptor.
+    { id: 16000, name: "Hoja Postres (imprimible)", rango: 299, pestanaId: null, subAcordeon: true, sub: [
+        {id: 16000, name: "Postres", folder: "postres", max: 16099},
+        {id: 16100, name: "Helados (sabores)", folder: "postres", max: 16199},
+        {id: 16200, name: "Bebidas para acompañar", folder: "vinos", max: 16299}
+    ]},
 ];
 
 // =================================================================================

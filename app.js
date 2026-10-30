@@ -1,7 +1,7 @@
 // --- app.js ---
 // NUEVO: Registro de versión del archivo
 window.APP_VERSIONS = window.APP_VERSIONS || {};
-window.APP_VERSIONS.app = '2.16.0'; // NUEVO (22 sept, parte 2): fix "se queda regenerando la Info al tocar solo el precio", causa nº2. La v2.15.0 ya arregló que INFO_HASH_FICHA se guardara de verdad en la hoja (ver esa entrada de versión más abajo en el historial), pero seguía fallando en pruebas reales: fetchYParsearDatos() (la función que carga los platos al abrir/recargar el editor) leía SIEMPRE getCsvUrl(modo) -- la copia "publicar en la web" que Google cachea varios minutos -- así que justo después de guardar, recargar el editor devolvía una foto vieja de la hoja sin la huella (ni a veces sin la Info) recién guardada, y cualquier "Aplicar Cambios" volvía a disparar una regeneración completa con IA creyendo que nunca se había generado nada. Ahora fetchYParsearDatos() usa PRIMERO el endpoint EN VIVO de Código.gs (?accion=csv, sin caché de Google de por medio, misma vía que ya usaba servirCsvEnVivo() para "Sincronizar"), cayendo de vuelta al CSV publicado solo si esa petición fallara.
+window.APP_VERSIONS.app = '2.17.0'; // NUEVO (30 oct): esVino vía esIdVino() (13000-14999) para no tratar la Hoja Postres 16xxx como vino. Anterior 2.16.0: // NUEVO (22 sept, parte 2): fix "se queda regenerando la Info al tocar solo el precio", causa nº2. La v2.15.0 ya arregló que INFO_HASH_FICHA se guardara de verdad en la hoja (ver esa entrada de versión más abajo en el historial), pero seguía fallando en pruebas reales: fetchYParsearDatos() (la función que carga los platos al abrir/recargar el editor) leía SIEMPRE getCsvUrl(modo) -- la copia "publicar en la web" que Google cachea varios minutos -- así que justo después de guardar, recargar el editor devolvía una foto vieja de la hoja sin la huella (ni a veces sin la Info) recién guardada, y cualquier "Aplicar Cambios" volvía a disparar una regeneración completa con IA creyendo que nunca se había generado nada. Ahora fetchYParsearDatos() usa PRIMERO el endpoint EN VIVO de Código.gs (?accion=csv, sin caché de Google de por medio, misma vía que ya usaba servirCsvEnVivo() para "Sincronizar"), cayendo de vuelta al CSV publicado solo si esa petición fallara.
 
 console.group("%c[Editor] Inicializando sistema de control...", "color: orange; font-weight: bold;");
 
@@ -497,7 +497,7 @@ function renderPlatoItemHtml(p) {
     // había tras los separadores "//" — la uva/detalle en vinos (id >= 13000), o las opciones
     // (segunda línea de ingredientes/sabores intercambiables) en platos — que antes solo era
     // visible abriendo el editor de cada elemento.
-    const esVino = (p.id >= 13000);
+    const esVino = esIdVino(p.id); // MODIFICADO (30 oct): excluye la Hoja Postres 16xxx
     const desglosado = desglosarNombre(p.es);
     const nombreLimpio = desglosado.nombre;
     const detalle = esVino ? desglosado.uvas : desglosado.opciones.join(' // ');
@@ -782,7 +782,7 @@ function abrirEditor(id, esNuevo = false) {
 
     esNuevoPlato = esNuevo;
     platoEditandoId = id;
-    const esVino = (id >= 13000);
+    const esVino = esIdVino(id); // MODIFICADO (30 oct)
     const esCroqueta = esRangoCroquetasRG(id);
     const esCroquetaVeg = esCroqueta && id >= 12200;
     
@@ -1059,7 +1059,7 @@ function comprobarRequisitosTraduccion() {
 // tenía ui-batch-nombres.js, esto usa reconstruirNombreConOpciones() (utils.js) en vez de
 // reconstruir el texto a mano.
 function construirTextoCompletoParaTraducir(l) {
-    const esVino = (platoEditandoId >= 13000);
+    const esVino = esIdVino(platoEditandoId); // MODIFICADO (30 oct)
     const nom = (document.getElementById(`edit-${l}`)?.value || "").trim();
 
     if (esVino) {
@@ -1083,7 +1083,7 @@ function construirTextoCompletoParaTraducir(l) {
 
 async function generarTraduccionEN() {
     const nombreEs = document.getElementById('edit-es').value.trim();
-    const esVino = (platoEditandoId >= 13000);
+    const esVino = esIdVino(platoEditandoId); // MODIFICADO (30 oct)
 
     if (!nombreEs) { alert("❌ Debes introducir primero el nombre en Español."); return; }
 
@@ -1232,7 +1232,7 @@ function confirmarTraduccionEN() {
     const textoFinal = document.getElementById('editar-opcion-en').value.trim(); 
     if (!textoFinal) { alert("❌ Selecciona una opción o escribe la traducción antes de confirmar."); return; } 
     const desglosado = desglosarNombre(textoFinal); 
-    const esVino = (platoEditandoId >= 13000); 
+    const esVino = esIdVino(platoEditandoId); // MODIFICADO (30 oct) 
     const editEn = document.getElementById('edit-en'); 
     if (editEn) editEn.value = esVino ? formatWineName(desglosado.nombre) : desglosado.nombre; 
     
@@ -1257,7 +1257,7 @@ async function ejecutarTraduccionAutomatica() {
     btn.innerText = "✨ Traduciendo con Gemini 2.5...";
     btn.disabled = true;
 
-    const esVino = (platoEditandoId >= 13000);
+    const esVino = esIdVino(platoEditandoId); // MODIFICADO (30 oct)
 
     let keys = [];
     if (typeof getKeys === 'function') keys = getKeys();
@@ -1357,7 +1357,7 @@ function aplicarCambiosPlato() {
     
     if (esNuevoPlato) datosLocales.push(p);
     
-    const esVino = (platoEditandoId >= 13000);
+    const esVino = esIdVino(platoEditandoId); // MODIFICADO (30 oct)
 
     // NUEVO: nº de opciones que tenía ES ANTES de este guardado — para saber, una vez
     // reconstruido, si el modo ingredientes ha añadido o quitado alguna (ver más abajo).
@@ -1620,7 +1620,7 @@ async function generarInfoAutomaticaPlato(p) {
         const carpetaValor = (p.carpeta || "").trim().toLowerCase();
         if (CARPETAS_SIN_IA_INFO.includes(carpetaValor)) return;
 
-        const esVino = (p.id >= 13000);
+        const esVino = esIdVino(p.id); // MODIFICADO (30 oct): excluye la Hoja Postres 16xxx
         const nombreEs = p['es'] || "";
         if (!nombreEs) return;
 
@@ -1727,7 +1727,7 @@ function cerrarModalPlatoTrasInfoSiSigueAbierto(p) {
 // antes de darse por vencido; si al final falla, marca el plato en
 // window.platosInfoOtrosIdiomasFallidos para que quede visible en su ficha. Devuelve true/false.
 async function generarInfoOtrosIdiomasPlato(p, keys, infoEsObj, infoEnObj) {
-    const esVino = (p.id >= 13000);
+    const esVino = esIdVino(p.id); // MODIFICADO (30 oct): excluye la Hoja Postres 16xxx
     const idiomasObjetivo = (window.IDIOMAS_ORDEN || []).filter(l => l !== 'es' && l !== 'en');
     if (idiomasObjetivo.length === 0) { window.platosInfoOtrosIdiomasFallidos.delete(p.id); return true; }
 

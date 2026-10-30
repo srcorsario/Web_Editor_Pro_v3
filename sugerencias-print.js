@@ -4,7 +4,7 @@
     // MODIFICADO: Mapa de configuración unificado usando Abstract Keys estrictas
     const SUGERENCIAS_CONFIG = {
         restaurante001: {
-            versionStr: 'v2.9.7-Abstract-Keys',
+            versionStr: 'v2.9.8-Abstract-Keys',
             versionKey: 'sugerencias_restaurante001',
             containerId: 'sugerencias-contenido',
             logoSrc: LOGO_RESTAURANTE001,
@@ -23,7 +23,7 @@
             vinoImagenDefault: VINO_IMAGEN_DEFAULT_RESTAURANTE001,
                     },
         restaurante002: {
-            versionStr: 'v2.9.7-Abstract-Keys',
+            versionStr: 'v2.9.8-Abstract-Keys',
             versionKey: 'sugerencias_restaurante002',
             containerId: 'sugerencias-contenido-usopen',
             logoSrc: LOGO_RESTAURANTE002,
@@ -984,33 +984,11 @@
         });
     }
 
-    window.imprimirSugerencias = function(modo) {
-        const config = SUGERENCIAS_CONFIG[modo];
-        if (!config) return;
-        const contenedor = document.getElementById(config.containerId);
-        if (!contenedor) return;
-        // MODIFICADO: contenedor ya no ES la hoja — ahora también incluye debajo el box de
-        // controles (botón imprimir, opciones). Se busca el div.sugerencias-panel real dentro,
-        // que es exactamente lo único que debe imprimirse.
-        const panelReal = contenedor.querySelector('.sugerencias-panel');
-        if (!panelReal) return;
-        const styleContent = document.getElementById('sugerencias-print-styles').innerHTML;
-        const pWin = window.open('', '_blank', 'width=800,height=1000');
-
-        // MODIFICADO: el aviso ya no depende de window.opener (poco fiable: bloqueadores de
-        // popups, o que el admin corra embebido en un iframe de Apps Script pueden romper esa
-        // comunicación en silencio, sin error visible). Ahora el aviso se muestra DENTRO de esta
-        // misma ventana de impresión, antes de imprimir, con las medidas reales en mm para poder
-        // depurar si algo se quita sin hacer falta.
-        // MODIFICADO: el algoritmo de ajuste ya NO está duplicado aquí a mano — se serializan con
-        // .toString() las mismas funciones que usa la vista previa en pantalla (definidas arriba,
-        // ajustarAUnaPagina / repartirEspacioSobrante y sus auxiliares), para que solo exista UNA
-        // copia del cálculo y no puedan divergir con el tiempo. Sigue sin depender de window.opener
-        // por el mismo motivo de siempre: esta ventana es un documento JS completamente aparte. El
-        // panel que se copia (panelReal.outerHTML, más abajo) ya llega con el ajuste de la vista
-        // previa aplicado; aquí se resetea (limpiarAjustePrevio, al principio de ajustarAUnaPagina)
-        // y se recalcula desde cero por si la fuente o el layout rinden distinto en la ventana nueva.
-        const scriptAjuste = `
+    // NUEVO (30 oct): el script de ajuste que se inyecta en la ventana de impresión pasa a
+    // construirse en una función propia, para poder reutilizarlo tal cual desde la hoja de
+    // Postres (postres-print.js) sin duplicar el motor de ajuste a una página A4.
+    function construirScriptImpresion() {
+        return `
             var SELECTOR_IMAGENES_CON_REINTENTO = ${JSON.stringify(SELECTOR_IMAGENES_CON_REINTENTO)};
             var MAX_REINTENTOS_IMG = ${MAX_REINTENTOS_IMG};
             var RETRASO_REINTENTO_IMG_MS = ${RETRASO_REINTENTO_IMG_MS};
@@ -1071,8 +1049,48 @@
                 }
             });
         `;
+    }
+
+    window.imprimirSugerencias = function(modo) {
+        const config = SUGERENCIAS_CONFIG[modo];
+        if (!config) return;
+        const contenedor = document.getElementById(config.containerId);
+        if (!contenedor) return;
+        // MODIFICADO: contenedor ya no ES la hoja — ahora también incluye debajo el box de
+        // controles (botón imprimir, opciones). Se busca el div.sugerencias-panel real dentro,
+        // que es exactamente lo único que debe imprimirse.
+        const panelReal = contenedor.querySelector('.sugerencias-panel');
+        if (!panelReal) return;
+        const styleContent = document.getElementById('sugerencias-print-styles').innerHTML;
+        const pWin = window.open('', '_blank', 'width=800,height=1000');
+
+        // MODIFICADO: el aviso ya no depende de window.opener (poco fiable: bloqueadores de
+        // popups, o que el admin corra embebido en un iframe de Apps Script pueden romper esa
+        // comunicación en silencio, sin error visible). Ahora el aviso se muestra DENTRO de esta
+        // misma ventana de impresión, antes de imprimir, con las medidas reales en mm para poder
+        // depurar si algo se quita sin hacer falta.
+        // MODIFICADO: el algoritmo de ajuste ya NO está duplicado aquí a mano — se serializan con
+        // .toString() las mismas funciones que usa la vista previa en pantalla (definidas arriba,
+        // ajustarAUnaPagina / repartirEspacioSobrante y sus auxiliares), para que solo exista UNA
+        // copia del cálculo y no puedan divergir con el tiempo. Sigue sin depender de window.opener
+        // por el mismo motivo de siempre: esta ventana es un documento JS completamente aparte. El
+        // panel que se copia (panelReal.outerHTML, más abajo) ya llega con el ajuste de la vista
+        // previa aplicado; aquí se resetea (limpiarAjustePrevio, al principio de ajustarAUnaPagina)
+        // y se recalcula desde cero por si la fuente o el layout rinden distinto en la ventana nueva.
+        const scriptAjuste = construirScriptImpresion();
 
         pWin.document.write(`<html><head><title>Sugerencias ${getModoAlias(modo)}</title><style>${styleContent}@media print { #sugerencias-aviso-ajuste { display: none !important; } }</style></head><body>${panelReal.outerHTML}<script>${scriptAjuste}<\/script></body></html>`);
         pWin.document.close();
+    };
+    // NUEVO (30 oct): motor de ajuste A4 expuesto para la hoja de Postres (postres-print.js),
+    // que reutiliza las mismas clases .sugerencias-* y el mismo cálculo — una sola copia.
+    window.MotorA4Sugerencias = {
+        ajustarYRepartir: ajustarYRepartir,
+        mostrarAvisoInline: mostrarAvisoInline,
+        posicionarDebugA4: posicionarDebugA4,
+        construirScriptImpresion: construirScriptImpresion,
+        VINO_IMAGEN_BASE_MAX_HEIGHT: VINO_IMAGEN_BASE_MAX_HEIGHT,
+        QR_IMAGEN_BASE_SIZE: QR_IMAGEN_BASE_SIZE,
+        VINO_IMAGEN_ESCALAS: VINO_IMAGEN_ESCALAS
     };
 })();
