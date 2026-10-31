@@ -215,11 +215,11 @@ const POSTRES_HOJA_RANGOS = {
 // Bloque de helados: título fijo + foto del tarro (deja '' para no usar imagen).
 const POSTRES_HELADOS_TITULO_ES = 'Helados artesanos RNA';
 const POSTRES_HELADOS_TITULO_EN = 'RNA artisan ice cream';
-const POSTRES_HELADOS_SUBTITULO_ES = 'Pregunte por el sabor que prefiera';
-const POSTRES_HELADOS_SUBTITULO_EN = 'Ask for your favourite flavour';
+const POSTRES_HELADOS_SUBTITULO_ES = 'Seleccione el sabor que prefiera';
+const POSTRES_HELADOS_SUBTITULO_EN = 'Choose your favourite flavour';
 const POSTRES_HELADO_IMAGEN = 'imagenes/postres/helado_tarro.webp';
 const POSTRES_HELADO_IMAGEN_DEFAULT = true;   // true = "Con imagen" marcado por defecto
-const POSTRES_HELADO_ALTURA = 80;             // px de alto de la foto del helado (a tamaño 1x)
+const POSTRES_HELADO_ALTURA = 64;             // px de alto de la foto del helado (a tamaño 1x)
 // Imagen de botella por ID de bebida (opcional: una bebida sin entrada aquí sale sin imagen).
 // Para añadir una nueva: sube el .webp a imagenes/vinos/ y añade aquí su ID.
 // "escala" = tamaño relativo entre botellas (1 = altura normal, 0.75 = 3/4 de alto).
@@ -233,7 +233,8 @@ const POSTRES_BEBIDAS_IMAGENES = {
         { src: 'imagenes/vinos/dimoni_gros_vermut.webp', escala: 1 },
         { src: 'imagenes/vinos/vermut_vaso.webp', escala: 0.375 }
     ],
-    16202: { src: 'imagenes/vinos/copa_cava.webp', escala: 0.7 }               // copa de cava
+    16202: { src: 'imagenes/vinos/copa_cava.webp', escala: 0.7 },              // copa de cava
+    16203: { src: 'imagenes/vinos/cafe_con_leche.webp', escala: 0.45 }        // café con leche (taza + plato)
 };
 const POSTRES_BEBIDAS_IMAGEN_DEFAULT = true;
 const POSTRES_BEBIDAS_ALTURA = 110;           // px de alto de la botella más alta (a tamaño 1x)
