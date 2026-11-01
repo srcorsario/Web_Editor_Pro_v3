@@ -12,7 +12,7 @@
     'use strict';
 
     window.APP_VERSIONS = window.APP_VERSIONS || {};
-    window.APP_VERSIONS.postres_print = '1.7.0'; // inglés en 1 línea + alérgenos comunes de helados una sola vez. 1.6.1: // botella+copa agrupadas y solapadas. 1.6.0: // varias imágenes por bebida (botella + copa). 1.5.0: // bebidas en una sola línea. 1.4.0: // puntitos desde el nombre ES. 1.3.3: // marco separado de los bordes del A4 // marco de dos hojas superpuestas. 1.2.0: // alérgenos de sabores en línea con el nombre. 1.1.0: // helado más pequeño, escala por botella, alérgenos como el editor
+    window.APP_VERSIONS.postres_print = '1.8.0'; // puntitos a todo el ancho en helados, tarro centrado con los sabores, sin "Todos / All", logo mayor. 1.7.0: inglés en 1 línea + alérgenos comunes de helados una sola vez. 1.6.1: // botella+copa agrupadas y solapadas. 1.6.0: // varias imágenes por bebida (botella + copa). 1.5.0: // bebidas en una sola línea. 1.4.0: // puntitos desde el nombre ES. 1.3.3: // marco separado de los bordes del A4 // marco de dos hojas superpuestas. 1.2.0: // alérgenos de sabores en línea con el nombre. 1.1.0: // helado más pequeño, escala por botella, alérgenos como el editor
 
     const R = POSTRES_HOJA_RANGOS;
     const enRango = (id, r) => id >= r[0] && id <= r[1];
@@ -83,7 +83,7 @@
             .postres-hoja-fondo { top: 34px; left: 26px; right: 26px; bottom: 26px; background: #e05a2b !important; transform: rotate(-1.4deg); }
             .postres-hoja-frente { top: 28px; left: 36px; right: 36px; bottom: 36px; background: #ffffff !important; border: 3px solid #0d4d3a !important; }
             .postres-panel .sugerencias-footer { padding-bottom: 54px !important; }
-            .postres-panel .sugerencias-logo-img { width: 95px !important; }
+            .postres-panel .sugerencias-logo-img { width: 120px !important; }
             .postres-panel .sugerencias-header-layout { margin-bottom: 8px !important; }
             .postres-panel .sugerencias-title-en { color: #0d4d3a !important; font-weight: 700 !important; }
             .postres-helado-img { flex: 0 0 auto !important; height: 80px; width: auto; object-fit: contain !important; }
@@ -224,15 +224,13 @@
                 // Una sola línea por sabor: castellano · inglés + alérgenos propios
                 return `<div class="postres-sabor"><div class="postres-sabor-linea"><span class="sugerencias-nombre-es">${es}${extraPrecio}</span>${enHtml}${extra}</div></div>`;
             }).join('');
-            const comunesHtml = comunes.length ? `<span class="postres-bebida-sep">|</span><span class="postres-detalle-es">Todos / All:</span>${iconosHtml(comunes)}` : '';
+            const comunesHtml = comunes.length ? iconosHtml(comunes) : '';
             const imgHelado = est.heladoImg && POSTRES_HELADO_IMAGEN
                 ? `<img src="${POSTRES_HELADO_IMAGEN}" class="postres-helado-img" style="height:${Math.round(POSTRES_HELADO_ALTURA * est.escala)}px;" onerror="this.style.display='none'">` : '';
             html += `<div class="sugerencias-seccion"><div class="sugerencias-seccion-titulo">HELADOS / ICE CREAM</div>
-                <div class="postres-helados-bloque"><div class="postres-helados-info">
-                    <div class="postres-helados-cabecera">${lineaConPrecio(`<span class="sugerencias-nombre-es">${POSTRES_HELADOS_TITULO_ES}</span>`, precioUnico ? precio(precios[0]) : '', `<span class="sugerencias-nombre-en">${POSTRES_HELADOS_TITULO_EN}</span>`)}</div>
-                    <div class="postres-sabor-linea postres-helados-sub"><span>${POSTRES_HELADOS_SUBTITULO_ES} · ${POSTRES_HELADOS_SUBTITULO_EN}</span>${comunesHtml}</div>
-                    <div class="postres-sabores">${sabores}</div>
-                </div>${imgHelado}</div></div>`;
+                <div class="postres-helados-cabecera">${lineaConPrecio(`<span class="sugerencias-nombre-es">${POSTRES_HELADOS_TITULO_ES}</span>`, precioUnico ? precio(precios[0]) : '', `<span class="sugerencias-nombre-en">${POSTRES_HELADOS_TITULO_EN}</span>`)}</div>
+                <div class="postres-sabor-linea postres-helados-sub"><span>${POSTRES_HELADOS_SUBTITULO_ES} \u00b7 ${POSTRES_HELADOS_SUBTITULO_EN}</span>${comunesHtml}</div>
+                <div class="postres-helados-bloque"><div class="postres-helados-info"><div class="postres-sabores">${sabores}</div></div>${imgHelado}</div></div>`;
         }
 
         // --- Bebidas para acompañar (+ imágenes de botella y QR en la misma fila) ---

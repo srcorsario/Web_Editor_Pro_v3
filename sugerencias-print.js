@@ -103,6 +103,10 @@
             .sugerencias-seccion { flex: 0 1 auto !important; display: flex !important; flex-direction: column !important; margin-bottom: 12px !important; }
             .sugerencias-seccion-titulo { font-size: 0.85em !important; font-weight: 700 !important; color: #d97706 !important; border-bottom: 1px solid #334155 !important; margin-bottom: 8px !important; text-transform: uppercase !important; }
             .sugerencias-plato { display: flex !important; align-items: baseline !important; margin-bottom: 5px !important; width: 100% !important; }
+            .sugerencias-plato-col { flex-direction: column !important; align-items: stretch !important; }
+            .sugerencias-linea1 { display: flex !important; align-items: baseline !important; width: 100% !important; }
+            .sugerencias-linea1 > .sugerencias-nombre-es { flex: 0 1 auto !important; max-width: 93% !important; }
+            .sugerencias-plato-resto { display: flex !important; flex-direction: column !important; max-width: 93% !important; }
             .sugerencias-plato-nombres { flex: 0 1 auto !important; max-width: 93% !important; display: flex !important; flex-direction: column !important; }
             .sugerencias-nombre-es { font-size: 0.9em !important; font-weight: 600 !important; color: #000000 !important; }
             .sugerencias-nombre-en { font-size: 0.8em !important; color: #7f8c8d !important; font-style: italic !important; }
@@ -818,12 +822,13 @@
                 if (p.alergenos) iconsHtml = '<div class="sugerencias-alergenos">' + p.alergenos.split(',').map(a => `<img src="${PATH_ALERGENOS}${a.trim()}.webp" class="sugerencias-alergeno-icon">`).join('') + '</div>';
                 const objEs = window.desglosarNombre(p.es); const objEn = window.desglosarNombre(p.en);
                 const esVino = ((p.id >= 12990 && p.id <= 12999) || p.id >= 13000); // MODIFICADO: 12990-12999 = vinos de Sugerencias
-                let htmlNombreEs = "", htmlNombreEn = "";
+                let htmlNombreEs = "", htmlNombreEn = "", htmlExtraEs = "";
                 if (esAperitivoCanonita(p)) {
                     // NUEVO: aperitivo — nombre y debajo su línea de explicación (ES y EN)
                     const descEs = objEs.opciones.join(' // ');
                     const descEn = objEn.opciones.join(' // ');
-                    htmlNombreEs = `<span class="sugerencias-nombre-es">${objEs.nombre}</span>${descEs ? `<span class="sugerencias-descripcion-aperitivo">${descEs}</span>` : ''}`;
+                    htmlNombreEs = `<span class="sugerencias-nombre-es">${objEs.nombre}</span>`;
+                    htmlExtraEs = descEs ? `<span class="sugerencias-descripcion-aperitivo">${descEs}</span>` : '';
                     htmlNombreEn = (descEn && descEn !== descEs) ? `<span class="sugerencias-nombre-en">${descEn}</span>` : '';
                 }
                 else if (esVino) htmlNombreEs = objEs.uvas ? `<span class="sugerencias-nombre-es">${objEs.nombre} <span class="sugerencias-detalles-uvas-inline">(${objEs.uvas})</span></span>` : `<span class="sugerencias-nombre-es">${objEs.nombre}</span>`;
@@ -838,7 +843,8 @@
                     htmlNombreEn = `<span class="sugerencias-nombre-en">${objEn.nombre}${detalleEn ? ` <span class="sugerencias-detalles-uvas-inline">(${detalleEn})</span>` : ''}</span>`;
                 }
                 const precioFormateado = p.precio ? parseFloat(p.precio).toFixed(2) + '€' : '0.00€';
-                h += `<div class="sugerencias-plato"><div class="sugerencias-plato-nombres">${htmlNombreEs}${htmlNombreEn}${iconsHtml}</div><div class="sugerencias-puntos"></div><div class="sugerencias-precio">${precioFormateado}</div></div>`;
+                // MODIFICADO: los puntitos van del final del nombre ES al precio (1ª línea); EN, descripción y alérgenos debajo.
+                h += `<div class="sugerencias-plato sugerencias-plato-col"><div class="sugerencias-linea1">${htmlNombreEs}<div class="sugerencias-puntos"></div><div class="sugerencias-precio">${precioFormateado}</div></div><div class="sugerencias-plato-resto">${htmlExtraEs}${htmlNombreEn}${iconsHtml}</div></div>`;
             });
             if (extraHtml) h += extraHtml;
             return h + '</div>';
