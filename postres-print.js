@@ -12,7 +12,7 @@
     'use strict';
 
     window.APP_VERSIONS = window.APP_VERSIONS || {};
-    window.APP_VERSIONS.postres_print = '1.8.3'; // sabor con descripción: ES+descripción en 1ª línea, inglés debajo. 1.8.2: descripción //..// también en sabores de helado. 1.8.1: pantalla = impresión (neutraliza styles.css), hoja centrada con márgenes "Ninguno". 1.8.0: puntitos a todo el ancho en helados, tarro centrado con los sabores, sin "Todos / All", logo mayor. 1.7.0: inglés en 1 línea + alérgenos comunes de helados una sola vez. 1.6.1: // botella+copa agrupadas y solapadas. 1.6.0: // varias imágenes por bebida (botella + copa). 1.5.0: // bebidas en una sola línea. 1.4.0: // puntitos desde el nombre ES. 1.3.3: // marco separado de los bordes del A4 // marco de dos hojas superpuestas. 1.2.0: // alérgenos de sabores en línea con el nombre. 1.1.0: // helado más pequeño, escala por botella, alérgenos como el editor
+    window.APP_VERSIONS.postres_print = '1.8.4'; // marco con más aire lateral. 1.8.3: sabor con descripción: ES+descripción en 1ª línea, inglés debajo. 1.8.2: descripción //..// también en sabores de helado. 1.8.1: pantalla = impresión (neutraliza styles.css), hoja centrada con márgenes "Ninguno". 1.8.0: puntitos a todo el ancho en helados, tarro centrado con los sabores, sin "Todos / All", logo mayor. 1.7.0: inglés en 1 línea + alérgenos comunes de helados una sola vez. 1.6.1: // botella+copa agrupadas y solapadas. 1.6.0: // varias imágenes por bebida (botella + copa). 1.5.0: // bebidas en una sola línea. 1.4.0: // puntitos desde el nombre ES. 1.3.3: // marco separado de los bordes del A4 // marco de dos hojas superpuestas. 1.2.0: // alérgenos de sabores en línea con el nombre. 1.1.0: // helado más pequeño, escala por botella, alérgenos como el editor
 
     const R = POSTRES_HOJA_RANGOS;
     const enRango = (id, r) => id >= r[0] && id <= r[1];
@@ -81,8 +81,8 @@
             .postres-panel { padding: 62px 72px 0 72px !important; overflow: hidden !important; }
             .postres-panel > :not(.postres-hoja-capa):not(.sugerencias-debug-a4) { position: relative; z-index: 1; }
             .postres-hoja-capa { position: absolute !important; pointer-events: none !important; border-radius: 16px !important; z-index: 0 !important; box-sizing: border-box !important; }
-            .postres-hoja-fondo { top: 34px; left: 26px; right: 26px; bottom: 26px; background: #e05a2b !important; transform: rotate(-1.4deg); }
-            .postres-hoja-frente { top: 28px; left: 36px; right: 36px; bottom: 36px; background: #ffffff !important; border: 3px solid #0d4d3a !important; }
+            .postres-hoja-fondo { top: 34px; left: 44px; right: 44px; bottom: 26px; background: #e05a2b !important; transform: rotate(-1.4deg); }
+            .postres-hoja-frente { top: 28px; left: 52px; right: 52px; bottom: 36px; background: #ffffff !important; border: 3px solid #0d4d3a !important; }
             .postres-panel .sugerencias-footer { padding-bottom: 54px !important; }
             .postres-panel .sugerencias-logo-img { width: 120px !important; }
             .postres-panel .sugerencias-header-layout { margin-bottom: 8px !important; }
