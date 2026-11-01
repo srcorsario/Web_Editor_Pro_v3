@@ -12,7 +12,7 @@
     'use strict';
 
     window.APP_VERSIONS = window.APP_VERSIONS || {};
-    window.APP_VERSIONS.postres_print = '1.8.0'; // puntitos a todo el ancho en helados, tarro centrado con los sabores, sin "Todos / All", logo mayor. 1.7.0: inglés en 1 línea + alérgenos comunes de helados una sola vez. 1.6.1: // botella+copa agrupadas y solapadas. 1.6.0: // varias imágenes por bebida (botella + copa). 1.5.0: // bebidas en una sola línea. 1.4.0: // puntitos desde el nombre ES. 1.3.3: // marco separado de los bordes del A4 // marco de dos hojas superpuestas. 1.2.0: // alérgenos de sabores en línea con el nombre. 1.1.0: // helado más pequeño, escala por botella, alérgenos como el editor
+    window.APP_VERSIONS.postres_print = '1.8.1'; // pantalla = impresión (neutraliza styles.css), hoja centrada con márgenes "Ninguno". 1.8.0: puntitos a todo el ancho en helados, tarro centrado con los sabores, sin "Todos / All", logo mayor. 1.7.0: inglés en 1 línea + alérgenos comunes de helados una sola vez. 1.6.1: // botella+copa agrupadas y solapadas. 1.6.0: // varias imágenes por bebida (botella + copa). 1.5.0: // bebidas en una sola línea. 1.4.0: // puntitos desde el nombre ES. 1.3.3: // marco separado de los bordes del A4 // marco de dos hojas superpuestas. 1.2.0: // alérgenos de sabores en línea con el nombre. 1.1.0: // helado más pequeño, escala por botella, alérgenos como el editor
 
     const R = POSTRES_HOJA_RANGOS;
     const enRango = (id, r) => id >= r[0] && id <= r[1];
@@ -310,7 +310,7 @@
         if (!panel || !motor()) return;
         const css = document.getElementById('sugerencias-print-styles').innerHTML + document.getElementById('postres-print-styles').innerHTML;
         const pWin = window.open('', '_blank', 'width=800,height=1000');
-        pWin.document.write(`<html><head><title>Postres ${getModoAlias(modo)}</title><style>${css}@media print { #sugerencias-aviso-ajuste { display: none !important; } }</style></head><body>${panel.outerHTML}<script>${motor().construirScriptImpresion()}<\/script></body></html>`);
+        pWin.document.write(`<html><head><title>Postres ${getModoAlias(modo)}</title><style>${css}@media print { #sugerencias-aviso-ajuste { display: none !important; } }@page { size: A4; margin: 0; } body { margin: 0; padding: 15mm 0 0 0; }</style></head><body>${panel.outerHTML}<script>${motor().construirScriptImpresion()}<\/script></body></html>`);
         pWin.document.close();
     };
 })();

@@ -114,6 +114,15 @@
             .sugerencias-alergenos { display: flex !important; flex-direction: row !important; flex-wrap: wrap !important; margin-top: 2px !important; align-items: center !important; }
             .sugerencias-alergeno-icon { display: inline-block !important; width: 20px !important; height: 20px !important; object-fit: contain !important; vertical-align: middle !important; margin-right: 3px !important; }
             .sugerencias-puntos { flex: 1 !important; border-bottom: 1px dotted #94a3b8 !important; margin: 0 8px !important; height: 1px !important; }
+            /* NUEVO: neutraliza reglas de styles.css (solo existen en la página del editor, no en la ventana
+               de impresión) que hacían la vista previa ~16mm más alta que la impresión: margen superior y
+               línea del footer, margen del inglés, espaciado de letras y borde del panel. Así pantalla e
+               impresión miden lo mismo y no se quita la imagen de las bebidas "por falta de sitio". */
+            .sugerencias-footer { margin-top: 0 !important; border-top: none !important; }
+            .sugerencias-nombre-en { margin-top: 0 !important; }
+            .sugerencias-seccion-titulo { letter-spacing: normal !important; }
+            .sugerencias-puntos { top: 0 !important; }
+            .sugerencias-panel { border: none !important; }
             .sugerencias-precio { font-size: 0.9em !important; font-weight: 700 !important; flex-shrink: 0 !important; }
             .sugerencias-footer { padding-top: 15px !important; display: flex !important; flex-direction: column !important; align-items: center !important; width: 100% !important; }
             /* MODIFICADO: font-size en "em" en vez de "rem" en todas las reglas de dentro de
