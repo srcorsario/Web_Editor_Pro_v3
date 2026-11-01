@@ -575,13 +575,16 @@
         if (pasosGap > 0) resultado.espacioCategoriasReducido = true;
         if (medir('Tras apretar categorías')) return resultado;
 
+        // NUEVO: con data-texto-primero (hoja de Postres) se reduce antes la letra y solo al final se quitan imagen/QR.
+        var textoPrimero = panel.getAttribute('data-texto-primero') === '1';
+        function quitarImagenYQr() {
         panel.querySelectorAll('.sugerencias-vino-imagen').forEach(function(vinoImg) {
             if (vinoImg.style.display !== 'none') {
                 ocultarPorAjuste(vinoImg);
                 resultado.imagenVinoQuitada = true;
             }
         });
-        if (medir('Sin imagen vino')) return resultado;
+        if (medir('Sin imagen vino')) return true;
 
         var qrImg = panel.querySelector('.sugerencias-qr-img');
         var qrYaEstabaVisible = qrImg && qrImg.style.display !== 'none' && qrImg.offsetHeight > 0;
@@ -589,7 +592,10 @@
             ocultarPorAjuste(qrImg);
             if (qrYaEstabaVisible) resultado.qrQuitado = true;
         }
-        if (medir('Sin QR')) return resultado;
+        if (medir('Sin QR')) return true;
+            return false;
+        }
+        if (!textoPrimero && quitarImagenYQr()) return resultado;
 
         var factor = 1, pasos = 0, MAX_PASOS = 12;
         // NUEVO: suelo de legibilidad — el texto de los platos no se reduce por debajo de este
@@ -646,6 +652,7 @@
         // NUEVO: comprobación final — si ni reduciendo el texto hasta el mínimo legible cabe todo
         // en una página, no se sigue encogiendo: se marca para pedirle a la persona que quite algún
         // plato de la hoja (ver el desplegable "Quitar un plato de esta hoja" en los controles).
+        if (textoPrimero && !medir('Antes de quitar imagen') && quitarImagenYQr()) return resultado;
         if (!medir('Comprobación final')) {
             resultado.noCabeNiReduciendo = true;
         }

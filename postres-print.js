@@ -12,7 +12,7 @@
     'use strict';
 
     window.APP_VERSIONS = window.APP_VERSIONS || {};
-    window.APP_VERSIONS.postres_print = '1.8.1'; // pantalla = impresión (neutraliza styles.css), hoja centrada con márgenes "Ninguno". 1.8.0: puntitos a todo el ancho en helados, tarro centrado con los sabores, sin "Todos / All", logo mayor. 1.7.0: inglés en 1 línea + alérgenos comunes de helados una sola vez. 1.6.1: // botella+copa agrupadas y solapadas. 1.6.0: // varias imágenes por bebida (botella + copa). 1.5.0: // bebidas en una sola línea. 1.4.0: // puntitos desde el nombre ES. 1.3.3: // marco separado de los bordes del A4 // marco de dos hojas superpuestas. 1.2.0: // alérgenos de sabores en línea con el nombre. 1.1.0: // helado más pequeño, escala por botella, alérgenos como el editor
+    window.APP_VERSIONS.postres_print = '1.8.2'; // descripción //..// también en sabores de helado. 1.8.1: pantalla = impresión (neutraliza styles.css), hoja centrada con márgenes "Ninguno". 1.8.0: puntitos a todo el ancho en helados, tarro centrado con los sabores, sin "Todos / All", logo mayor. 1.7.0: inglés en 1 línea + alérgenos comunes de helados una sola vez. 1.6.1: // botella+copa agrupadas y solapadas. 1.6.0: // varias imágenes por bebida (botella + copa). 1.5.0: // bebidas en una sola línea. 1.4.0: // puntitos desde el nombre ES. 1.3.3: // marco separado de los bordes del A4 // marco de dos hojas superpuestas. 1.2.0: // alérgenos de sabores en línea con el nombre. 1.1.0: // helado más pequeño, escala por botella, alérgenos como el editor
 
     const R = POSTRES_HOJA_RANGOS;
     const enRango = (id, r) => id >= r[0] && id <= r[1];
@@ -67,6 +67,7 @@
             .postres-sabor { display: flex !important; flex-direction: column !important; justify-content: center !important; padding-left: 10px !important; border-left: 3px solid #f3c9a8 !important; }
             .postres-sabor .sugerencias-nombre-es { font-size: 0.82em !important; }
             .postres-sabor .sugerencias-nombre-en { font-size: 0.72em !important; }
+            .postres-sabor-det { line-height: 1.15 !important; }
             .postres-sabor-linea { display: flex !important; flex-wrap: wrap !important; align-items: center !important; column-gap: 6px !important; }
             .postres-sabor-linea .sugerencias-alergenos { margin-top: 0 !important; }
             .postres-sabor .sugerencias-alergeno-icon { width: 16px !important; height: 16px !important; }
@@ -196,7 +197,7 @@
         const helados = visibles.filter(p => enRango(parseInt(p.id, 10), R.helados));
         const bebidas = visibles.filter(p => enRango(parseInt(p.id, 10), R.bebidas));
 
-        let html = `<div class="sugerencias-panel postres-panel">
+        let html = `<div class="sugerencias-panel postres-panel" data-texto-primero="1">
             <div class="postres-hoja-capa postres-hoja-fondo"></div><div class="postres-hoja-capa postres-hoja-frente"></div>
             <div class="sugerencias-debug-a4"></div>
             <div class="sugerencias-header-layout">
@@ -217,12 +218,15 @@
             const codsPorSabor = helados.map(codigosAlergenos);
             const comunes = codsPorSabor.length ? codsPorSabor[0].filter(c => codsPorSabor.every(l => l.includes(c))) : [];
             const sabores = helados.map((p, i) => {
-                const es = window.desglosarNombre(p.es || '').nombre, en = window.desglosarNombre(p.en || '').nombre;
+                const dEs = window.desglosarNombre(p.es || ''), dEn = window.desglosarNombre(p.en || '');
+                const es = dEs.nombre, en = dEn.nombre;
+                const detS = dEs.opciones.join(' // '), detE = dEn.opciones.join(' // ');
+                const detHtml = detS || (detE && detE !== detS) ? `<span class="postres-sabor-det">${detS ? `<span class="postres-detalle-es">${detS}</span>` : ''}${detS && detE && detE !== detS ? '<span class="postres-bebida-sep"> · </span>' : ''}${detE && detE !== detS ? `<span class="postres-detalle-en">${detE}</span>` : ''}</span>` : '';
                 const extraPrecio = precioUnico ? '' : ` <span class="sugerencias-detalles-uvas-inline">${precio(p.precio)}</span>`;
                 const extra = iconosHtml(codsPorSabor[i].filter(c => !comunes.includes(c)));
                 const enHtml = en && en.toLowerCase() !== es.toLowerCase() ? `<span class="sugerencias-nombre-en">${en}</span>` : '';
                 // Una sola línea por sabor: castellano · inglés + alérgenos propios
-                return `<div class="postres-sabor"><div class="postres-sabor-linea"><span class="sugerencias-nombre-es">${es}${extraPrecio}</span>${enHtml}${extra}</div></div>`;
+                return `<div class="postres-sabor"><div class="postres-sabor-linea"><span class="sugerencias-nombre-es">${es}${extraPrecio}</span>${detHtml}${enHtml}${extra}</div></div>`;
             }).join('');
             const comunesHtml = comunes.length ? iconosHtml(comunes) : '';
             const imgHelado = est.heladoImg && POSTRES_HELADO_IMAGEN
