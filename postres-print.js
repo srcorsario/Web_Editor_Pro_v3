@@ -12,7 +12,7 @@
     'use strict';
 
     window.APP_VERSIONS = window.APP_VERSIONS || {};
-    window.APP_VERSIONS.postres_print = '1.8.2'; // descripción //..// también en sabores de helado. 1.8.1: pantalla = impresión (neutraliza styles.css), hoja centrada con márgenes "Ninguno". 1.8.0: puntitos a todo el ancho en helados, tarro centrado con los sabores, sin "Todos / All", logo mayor. 1.7.0: inglés en 1 línea + alérgenos comunes de helados una sola vez. 1.6.1: // botella+copa agrupadas y solapadas. 1.6.0: // varias imágenes por bebida (botella + copa). 1.5.0: // bebidas en una sola línea. 1.4.0: // puntitos desde el nombre ES. 1.3.3: // marco separado de los bordes del A4 // marco de dos hojas superpuestas. 1.2.0: // alérgenos de sabores en línea con el nombre. 1.1.0: // helado más pequeño, escala por botella, alérgenos como el editor
+    window.APP_VERSIONS.postres_print = '1.8.3'; // sabor con descripción: ES+descripción en 1ª línea, inglés debajo. 1.8.2: descripción //..// también en sabores de helado. 1.8.1: pantalla = impresión (neutraliza styles.css), hoja centrada con márgenes "Ninguno". 1.8.0: puntitos a todo el ancho en helados, tarro centrado con los sabores, sin "Todos / All", logo mayor. 1.7.0: inglés en 1 línea + alérgenos comunes de helados una sola vez. 1.6.1: // botella+copa agrupadas y solapadas. 1.6.0: // varias imágenes por bebida (botella + copa). 1.5.0: // bebidas en una sola línea. 1.4.0: // puntitos desde el nombre ES. 1.3.3: // marco separado de los bordes del A4 // marco de dos hojas superpuestas. 1.2.0: // alérgenos de sabores en línea con el nombre. 1.1.0: // helado más pequeño, escala por botella, alérgenos como el editor
 
     const R = POSTRES_HOJA_RANGOS;
     const enRango = (id, r) => id >= r[0] && id <= r[1];
@@ -221,12 +221,18 @@
                 const dEs = window.desglosarNombre(p.es || ''), dEn = window.desglosarNombre(p.en || '');
                 const es = dEs.nombre, en = dEn.nombre;
                 const detS = dEs.opciones.join(' // '), detE = dEn.opciones.join(' // ');
-                const detHtml = detS || (detE && detE !== detS) ? `<span class="postres-sabor-det">${detS ? `<span class="postres-detalle-es">${detS}</span>` : ''}${detS && detE && detE !== detS ? '<span class="postres-bebida-sep"> · </span>' : ''}${detE && detE !== detS ? `<span class="postres-detalle-en">${detE}</span>` : ''}</span>` : '';
                 const extraPrecio = precioUnico ? '' : ` <span class="sugerencias-detalles-uvas-inline">${precio(p.precio)}</span>`;
                 const extra = iconosHtml(codsPorSabor[i].filter(c => !comunes.includes(c)));
                 const enHtml = en && en.toLowerCase() !== es.toLowerCase() ? `<span class="sugerencias-nombre-en">${en}</span>` : '';
-                // Una sola línea por sabor: castellano · inglés + alérgenos propios
-                return `<div class="postres-sabor"><div class="postres-sabor-linea"><span class="sugerencias-nombre-es">${es}${extraPrecio}</span>${detHtml}${enHtml}${extra}</div></div>`;
+                const nomEs = `<span class="sugerencias-nombre-es">${es}${extraPrecio}</span>`;
+                if (detS || detE) {
+                    // Con descripción: castellano + su descripción en la 1ª línea; inglés (+ su descripción) en la 2ª
+                    const l1 = `${nomEs}${detS ? `<span class="postres-detalle-es">${detS}</span>` : ''}${extra}`;
+                    const l2 = (enHtml || detE) ? `<div class="postres-sabor-linea">${enHtml}${detE ? `<span class="postres-detalle-en">${detE}</span>` : ''}</div>` : '';
+                    return `<div class="postres-sabor"><div class="postres-sabor-linea">${l1}</div>${l2}</div>`;
+                }
+                // Sin descripción: una sola línea castellano · inglés + alérgenos propios
+                return `<div class="postres-sabor"><div class="postres-sabor-linea">${nomEs}${enHtml}${extra}</div></div>`;
             }).join('');
             const comunesHtml = comunes.length ? iconosHtml(comunes) : '';
             const imgHelado = est.heladoImg && POSTRES_HELADO_IMAGEN
