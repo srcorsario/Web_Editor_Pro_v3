@@ -18,7 +18,7 @@
         // todo el JS/CSS de golpe en cada visita.
         // OJO: esto NO afecta a los datos del menu (platos/precios) — esos se piden
         // siempre en fresco con cache:"no-store" en app.js, y eso no cambia.
-        window.__CACHE_BUST__ = '2026.11.01.5';
+        window.__CACHE_BUST__ = '2026.11.02.1';
     </script>
     <script>document.write('<link rel="stylesheet" href="styles.css?v=' + window.__CACHE_BUST__ + '">');</script>
 </head>
@@ -357,6 +357,8 @@
         // subirlo. Antes aquí se usaba Date.now(), lo que obligaba a descargar todo el
         // JS/CSS propio en CADA visita sin poder usar nunca la caché del navegador.
         document.write('<scr' + 'ipt src="config.js?v=' + window.__CACHE_BUST__ + '"></scr' + 'ipt>');
+        // almacen-json.js: carta en datos.json (GitHub) en vez de Sheets — justo tras config.js.
+        document.write('<scr' + 'ipt src="almacen-json.js?v=' + window.__CACHE_BUST__ + '"></scr' + 'ipt>');
         </script>
         <script>
         // MODIFICADO: Inyección dinámica desde config.js Abstract Keys
