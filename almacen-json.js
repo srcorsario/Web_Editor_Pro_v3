@@ -10,6 +10,8 @@
 //                                  en el payload se conserva; los platos que no vengan se borran)
 //   POST ?accion=categorias     -> activa/desactiva pestaña o interruptor (fotos / info)
 //   POST ?accion=infoplato      -> Info de un plato (+ huella INFO_HASH_FICHA)
+// Cada guardado sube en un solo commit datos.json + datos/base.json + datos/<idioma>.json
+// (lo que lee la web pública, por idiomas; solo los que cambian).
 // El resto de peticiones (Gemini, Menús Especiales...) pasan tal cual.
 //
 // Token de GitHub: se pide la 1ª vez y se guarda en este navegador (hace de contraseña).
@@ -20,7 +22,7 @@
 (function () {
     'use strict';
     window.APP_VERSIONS = window.APP_VERSIONS || {};
-    window.APP_VERSIONS.almacenJson = '1.0.0';
+    window.APP_VERSIONS.almacenJson = '1.1.0';
 
     const BASE_RG = [
         'ID', 'Precio', 'Activa', 'Nombre_ES', 'Carpeta', 'Archivo_Foto', 'Alergenos_Cod',
@@ -173,15 +175,15 @@
     }
 
     // ---------- GitHub ----------
-    async function gh(cfg, opciones, intentoToken) {
+    async function gh(cfg, opciones, intentoToken, ref) {
         const t = token();
         if (!t) throw new Error('Sin token de GitHub');
-        const r = await fetchOriginal(API + cfg.repo + '/contents/' + cfg.ruta, Object.assign({ cache: 'no-store' }, opciones, {
+        const r = await fetchOriginal(API + cfg.repo + '/contents/' + cfg.ruta + (ref ? '?ref=' + ref : ''), Object.assign({ cache: 'no-store' }, opciones, {
             headers: Object.assign({ Authorization: 'Bearer ' + t, Accept: 'application/vnd.github+json' }, (opciones && opciones.headers) || {})
         }));
         if ((r.status === 401 || r.status === 403) && !intentoToken) {
             try { localStorage.removeItem(CLAVE_TOKEN); } catch (e) { }
-            if (pedirToken('El token no vale o no tiene permiso para ' + cfg.repo + ' (HTTP ' + r.status + ').')) return gh(cfg, opciones, true);
+            if (pedirToken('El token no vale o no tiene permiso para ' + cfg.repo + ' (HTTP ' + r.status + ').')) return gh(cfg, opciones, true, ref);
         }
         return r;
     }
@@ -201,13 +203,89 @@
         return { datos: JSON.parse(texto), sha: j.sha };
     }
 
-    async function escribirRemoto(cfg, datos, sha, mensaje) {
-        const cuerpo = { message: mensaje, content: textoAB64(serializar(datos)) };
-        if (sha) cuerpo.sha = sha;
-        const r = await gh(cfg, { method: 'PUT', body: JSON.stringify(cuerpo), headers: { 'Content-Type': 'application/json' } });
-        if (r.status === 409 || r.status === 422) { const e = new Error('conflicto'); e.conflicto = true; throw e; }
-        if (!r.ok) throw new Error('GitHub HTTP ' + r.status + ' guardando: ' + (await r.text()).slice(0, 200));
-        return (await r.json()).content.sha;
+    // ---------- datos.json -> datos/base.json + datos/<idioma>.json (lo que lee la web) ----------
+    // Mismo formato y huella "h" que construir.ps1 (Dividir-Datos).
+    const IDIOMAS_WEB = ['ES', 'EN', 'DE', 'FR', 'IT', 'RU', 'NL', 'PL', 'SV', 'NO', 'DA', 'FI', 'PT', 'RO', 'HU', 'CS', 'EL', 'TR', 'AR', 'ZH', 'JA', 'KO', 'CA', 'EU', 'GL', 'VA'];
+    const hex = (buf, n) => Array.from(new Uint8Array(buf)).slice(0, n || 1e9).map(b => b.toString(16).padStart(2, '0')).join('');
+    async function dividir(datos) {
+        const S = (v) => (v === null || v === undefined) ? '' : String(v);
+        const J = JSON.stringify;
+        const porIdioma = {}; IDIOMAS_WEB.forEach(l => { porIdioma[l] = []; });
+        const filas = [];
+        for (const p of (datos.platos || [])) {
+            const id = S(p.id); if (!id) continue;
+            const al = (p.alergenos || []).map(S), op = (p.opcionesInactivas || []).map(S);
+            const partes = [id, S(p.activa), S(p.precio), S(p.precioMedia), S(p.carpeta), S(p.archivo), al.join(','), op.join(',')];
+            IDIOMAS_WEB.forEach(l => {
+                const n = S((p.nombre || {})[l]), i = S((p.info || {})[l]);
+                partes.push(n, i);
+                if (n || i) porIdioma[l].push(J(id) + ':[' + J(n) + ',' + J(i) + ']');
+            });
+            const h = hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(partes.join('\u001f'))), 6);
+            filas.push('{"id":' + J(id) + ',"activa":' + J(S(p.activa)) + ',"precio":' + J(S(p.precio)) + ',"precioMedia":' + J(S(p.precioMedia)) +
+                ',"carpeta":' + J(S(p.carpeta)) + ',"archivo":' + J(S(p.archivo)) + ',"alergenos":[' + al.map(x => J(x)).join(',') +
+                '],"opcionesInactivas":[' + op.join(',') + '],"h":' + J(h) + '}');
+        }
+        const res = { 'datos/base.json': '{"ocultas":[' + (datos.ocultas || []).map(x => J(S(x))).join(',') + '],"platos":[\n' + filas.join(',\n') + '\n]}\n' };
+        IDIOMAS_WEB.forEach(l => { res['datos/' + l.toLowerCase() + '.json'] = '{\n' + porIdioma[l].join(',\n') + '\n}\n'; });
+        return res;
+    }
+
+    // ---------- commit de varios archivos a la vez (API de Git de GitHub) ----------
+    async function ghApi(cfg, ruta, metodo, cuerpo) {
+        const t = token();
+        const r = await fetchOriginal('https://api.github.com/repos/' + cfg.repo + ruta, {
+            method: metodo || 'GET', cache: 'no-store',
+            headers: { Authorization: 'Bearer ' + t, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
+            body: cuerpo ? JSON.stringify(cuerpo) : undefined
+        });
+        if (!r.ok) { const e = new Error('GitHub HTTP ' + r.status + ' en ' + ruta + ': ' + (await r.text()).slice(0, 200)); e.status = r.status; throw e; }
+        return r.json();
+    }
+    async function shaBlob(texto) {
+        const b = new TextEncoder().encode(texto);
+        const cab = new TextEncoder().encode('blob ' + b.length + '\0');
+        const todo = new Uint8Array(cab.length + b.length); todo.set(cab); todo.set(b, cab.length);
+        return hex(await crypto.subtle.digest('SHA-1', todo));
+    }
+
+    // Sube datos.json + los archivos de la web que cambien, en UN commit. Si datos.json cambió en
+    // GitHub desde que se leyó (otro dispositivo), lanza "conflicto" para releer y reaplicar.
+    async function escribirRemoto(cfg, datos, shaLeido, mensaje, e) {
+        const dir = cfg.ruta.indexOf('/') >= 0 ? cfg.ruta.slice(0, cfg.ruta.lastIndexOf('/') + 1) : '';
+        const archivos = Object.assign({ [cfg.ruta]: serializar(datos) }, {});
+        const web = await dividir(datos);
+        Object.keys(web).forEach(k => {
+            if (!e.ultimosWeb || e.ultimosWeb[k] !== web[k]) archivos[dir + k] = web[k];
+        });
+        if (!e.rama) e.rama = (await ghApi(cfg, '', 'GET')).default_branch || 'main';
+        let entradas = null;
+        for (let intento = 0; intento < 4; intento++) {
+            const ref = await ghApi(cfg, '/git/ref/heads/' + e.rama);
+            const cabeza = ref.object.sha;
+            const actual = await gh(cfg, { method: 'GET' }, false, cabeza);
+            if (actual.status === 200) {
+                const shaActual = (await actual.json()).sha;
+                if (shaActual !== shaLeido) { const c = new Error('conflicto'); c.conflicto = true; throw c; }
+            } else if (actual.status !== 404 || shaLeido) { const c = new Error('conflicto'); c.conflicto = true; throw c; }
+            const commitCabeza = await ghApi(cfg, '/git/commits/' + cabeza);
+            if (!entradas) {
+                entradas = await Promise.all(Object.keys(archivos).map(ruta =>
+                    ghApi(cfg, '/git/blobs', 'POST', { content: archivos[ruta], encoding: 'utf-8' })
+                        .then(b => ({ path: ruta, mode: '100644', type: 'blob', sha: b.sha }))));
+            }
+            const arbol = await ghApi(cfg, '/git/trees', 'POST', { base_tree: commitCabeza.tree.sha, tree: entradas });
+            const commit = await ghApi(cfg, '/git/commits', 'POST', { message: mensaje, tree: arbol.sha, parents: [cabeza] });
+            try {
+                await ghApi(cfg, '/git/refs/heads/' + e.rama, 'PATCH', { sha: commit.sha, force: false });
+            } catch (err) {
+                if (err.status === 422 || err.status === 409) continue; // alguien subió algo a la vez: otra vuelta
+                throw err;
+            }
+            e.ultimosWeb = web;
+            return shaBlob(archivos[cfg.ruta]);
+        }
+        throw new Error('El repo cambia sin parar; vuelve a guardar en un momento.');
     }
 
     // ---------- estado y cola de guardado por modo ----------
@@ -221,7 +299,7 @@
     async function refrescar(modo) {
         const e = est(modo), cfg = CONFIG.modos[modo];
         const { datos, sha } = await leerRemoto(cfg);
-        e.base = datos; e.sha = sha;
+        e.base = datos; e.sha = sha; e.ultimosWeb = null;
         e.vista = clonar(datos);
         e.sinConfirmar.forEach(c => c.op(e.vista));
     }
@@ -255,7 +333,7 @@
             for (let intento = 0; ; intento++) {
                 try {
                     const datos = clonar(e.vista);
-                    e.sha = await escribirRemoto(cfg, datos, e.sha, mensaje);
+                    e.sha = await escribirRemoto(cfg, datos, e.sha, mensaje, e);
                     // Confirmados los del lote; los que llegaran después siguen pendientes.
                     e.sinConfirmar = e.sinConfirmar.filter(c => lote.indexOf(c) === -1);
                     e.base = datos;
